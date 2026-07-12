@@ -21,6 +21,10 @@ approval:
 scenes: []
 prefabs: []
 scripts: []
+module_decomposition:
+  status: draft # draft | approved | stale
+  modules: [] # id、responsibility、public_interfaces、owned_paths、depends_on、test_boundaries
+dependency_graph: [] # from_module_id、to_module_id、reason；禁止循环依赖
 asset_dependencies: []
 tasks: []
 path_ownership:
@@ -32,6 +36,10 @@ acceptance_mapping: []
 unresolved_questions: []
 content_hash: sha256:<规范化内容，不含 content_hash>
 ```
+
+## 模块拆分任务
+
+`module_decomposition` 是 `implementation-plan.yaml` 的必需工件：每个模块必须声明 `id`、责任、公开接口、拥有路径、依赖和测试边界。`dependency_graph` 只能指向已声明模块，禁止循环依赖。每个 `kind: code` 任务必须在 `depends_on` 中引用已批准的模块拆分任务，并声明非空 `module_ids`；未批准的模块拆分结果不得进入实现阶段。
 
 ## Capture manifest
 
