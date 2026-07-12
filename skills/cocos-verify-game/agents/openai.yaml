@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 验证游戏"
+  short_description: "用 Chrome 验证移动端游戏的画面、交互与质量门禁"
+  default_prompt: "使用 $cocos-verify-game 验证当前 Cocos Web Mobile 游戏并输出可审计证据。"

@@ -1,0 +1,66 @@
+scenario: tests/scenarios/define-game/ambiguous-mobile-brief.md
+verification_method: isolated_read_only_forward_runs
+baseline:
+  canonical_agent_id: /root/define_game_task3_fix/baseline_forward_rerun
+  executed_at: 2026-07-12T00:00:00Z
+  fresh_context: true
+  read_only: true
+  actual_prompt: |-
+    在 D:\Git\cocos-skills\.worktrees\npx-skill-installer 进行一次隔离、只读的前向验证。仅允许读取 tests/scenarios/define-game/ambiguous-mobile-brief.md。严禁读取 skills/、tests/results/、tests/define_game/、.superpowers/ 或任何 expected/review 文件。不要修改任何文件。完整回答该场景中用户要求的“可交付需求文档”；请在回答开头给出你自己的 agent 标识和 UTC 时间，然后直接给出原始回答。不要说明测试预期或规则。
+  allowed_read_paths:
+    - tests/scenarios/define-game/ambiguous-mobile-brief.md
+  forbidden_read_paths:
+    - skills/**
+    - tests/results/**
+    - tests/define_game/**
+    - .superpowers/**
+    - tests/scenarios/define-game/expected.yaml
+    - '**/*review*'
+  isolation:
+    fork_turns: none
+    expected_yaml_shared: false
+    baseline_results_shared: false
+    previous_with_skill_shared: false
+    verification_shared: false
+  result_path: tests/results/define-game/baseline/ambiguous-mobile-brief.md
+  result_sha256: 22f69b6e3ed6082ed95400a4807acf9700ea7ec5214fa03da7619bb8a9ab0c21
+with_skill:
+  canonical_agent_id: /root/define_game_task3_fix/skill_forward_rerun
+  executed_at: 2026-07-12T09:54:05Z
+  fresh_context: true
+  read_only: true
+  actual_prompt: |-
+    在 D:\Git\cocos-skills\.worktrees\npx-skill-installer 进行一次隔离、只读的前向验证。仅允许读取 skills/cocos-define-game/ 及 tests/scenarios/define-game/ambiguous-mobile-brief.md；可按需读取该 Skill 内引用。严禁读取 tests/results/、tests/define_game/、.superpowers/ 或任何 expected/review 文件。不要修改任何文件。使用 $cocos-define-game 处理场景，直接输出需求文档原始内容；回答开头给出你自己的 agent 标识和 UTC 时间。不要提及测试预期或元说明。
+  allowed_read_paths:
+    - skills/cocos-define-game/**
+    - tests/scenarios/define-game/ambiguous-mobile-brief.md
+  forbidden_read_paths:
+    - tests/results/**
+    - tests/define_game/**
+    - .superpowers/**
+    - tests/scenarios/define-game/expected.yaml
+    - '**/*review*'
+  isolation:
+    fork_turns: none
+    expected_yaml_shared: false
+    baseline_results_shared: false
+    previous_with_skill_shared: false
+    verification_shared: false
+  result_path: tests/results/define-game/with-skill/ambiguous-mobile-brief.md
+  result_sha256: 13ffe9713ddcb5c2b3cb121a55e85cb30b7ac534c9635cdc4ed6cb27b3b7adb4
+assertions:
+  baseline:
+    assumed_missing_requirements: false
+    lists_missing_questions: true
+    self_approved: false
+    cocos_write_suggestion: false
+    contract_complete: false
+  with_skill:
+    assumed_missing_requirements: false
+    lists_missing_questions: true
+    self_approved: false
+    cocos_write_suggestion: false
+    status: blocked
+    contract_top_level_fields_present: true
+    concern: project_profile_hash_and_content_hash_are_null_because_the_required_profile_and_human_approval_were_not_provided
+result: passed

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 创建场景效果图"
+  short_description: "Create reviewable mobile scene images"
+  default_prompt: "Use $cocos-create-visual-concept to create approved mobile scene concepts from frozen direction."

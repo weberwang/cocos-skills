@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 规划项目"
+  short_description: "将批准输入转为 Cocos 实施计划与单写者任务"
+  default_prompt: "Use $cocos-plan-project to create an approved implementation-plan.yaml for this Cocos Web Mobile project."

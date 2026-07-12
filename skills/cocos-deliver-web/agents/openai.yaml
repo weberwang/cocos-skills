@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 交付 Web"
+  short_description: "构建、预览并打包 Cocos Web Mobile 本地交付物"
+  default_prompt: "使用 $cocos-deliver-web 构建或打包当前 Cocos Web Mobile 项目并生成交付证据。"

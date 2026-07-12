@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 集成资源"
+  short_description: "由唯一写者串行导入绑定并逐批读回验证"
+  default_prompt: "Use $cocos-integrate-assets to safely integrate approved Cocos assets and code through the single editor writer."
