@@ -13,7 +13,7 @@ description: Use when a Cocos Creator 2D Web Mobile project needs Chrome-based r
 
 开始前必须读取并校验：
 
-1. `.cocos-workflow/project-profile.yaml` 的冻结哈希、方向、设计分辨率与全部 `capture_profiles`。
+1. `.cocos-workflow/project-profile.yaml` 的冻结哈希、方向、设计分辨率与全部 `capture_profiles`，以及当前 `scene_loop_id`。验证只消费该场景小循环声明的路径、交互和 `exit_checks`；未通过前不得启动下一场景循环。
 2. `.cocos-workflow/artifacts/visual-direction.yaml` 的冻结版本与 SHA-256 哈希。
 3. `.cocos-workflow/artifacts/capture-manifest.yaml` 的 `status: approved`、批准主体哈希、基线修订和全 profile 覆盖。
 4. 编排任务的 `baseline_revision`、允许路径、集成结果、需求验收项及视觉依赖。

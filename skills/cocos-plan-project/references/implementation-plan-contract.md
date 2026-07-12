@@ -25,6 +25,19 @@ module_decomposition:
   status: draft # draft | approved | stale
   modules: [] # id、responsibility、public_interfaces、owned_paths、depends_on、test_boundaries
 dependency_graph: [] # from_module_id、to_module_id、reason；禁止循环依赖
+global_scaffold:
+  task_id: global-scaffold
+  status: pending # pending | passed | stale
+  allowed_paths: []
+  provides: [app_bootstrap, scene_router, global_state, event_bus, config, resource_service, error_boundary]
+  acceptance_checks: []
+global_scaffold_task_id: global-scaffold
+scene_loops:
+  - id: scene-loop-menu
+    scene_id: menu
+    depends_on: [module-decomposition, global-scaffold]
+    task_ids: [] # asset-preparation → code → integration → verification → review
+    exit_checks: [] # 每项含 id、kind、evidence_path
 asset_dependencies: []
 tasks: []
 path_ownership:
@@ -40,6 +53,14 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 ## 模块拆分任务
 
 `module_decomposition` 是 `implementation-plan.yaml` 的必需工件：每个模块必须声明 `id`、责任、公开接口、拥有路径、依赖和测试边界。`dependency_graph` 只能指向已声明模块，禁止循环依赖。每个 `kind: code` 任务必须在 `depends_on` 中引用已批准的模块拆分任务，并声明非空 `module_ids`；未批准的模块拆分结果不得进入实现阶段。
+
+## 全局骨架代码
+
+`global_scaffold` 是唯一的 `kind: global_scaffold` 前置任务，必须在 `module_decomposition` 通过后、所有 `scene_loops` 前完成。它只拥有共享启动路径，并提供应用入口、场景路由、全局状态/事件、配置、资源服务、错误边界与可测试接口。`global_scaffold_task_id` 必须被每个场景循环引用；其 `acceptance_checks` 未通过时，禁止场景代码、集成和 Chrome 验证。
+
+## 场景小循环
+
+`scene_loops` 必须覆盖每个可交付 `scene_id`。每项包含稳定 `id`、`scene_id`、`depends_on`、按资源→代码→串行集成→Chrome 验证→人工复核排列的 `task_ids`，以及非空 `exit_checks`。只有本循环 exit_checks 的项目内证据全部通过，才可启动下一场景循环；共享模块必须在首个消费者循环前完成。任何两个 scene_loop 不得并发拥有 Cocos MCP 写权。
 
 ## Capture manifest
 

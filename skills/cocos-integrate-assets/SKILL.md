@@ -17,11 +17,11 @@ Perform the only Cocos MCP write phase in an approved plan. Serially import asse
 
 ## Serial integration protocol
 
-1. Process `integration_batches.batch_index` in order. Query stable IDs for resources, scenes, nodes, and components before each modification.
+1. Require each integration task to name one `scene_loop_id` and process only the current approved scene loop. Process `integration_batches.batch_index` in order. Query stable IDs for resources, scenes, nodes, and components before each modification.
 2. Import only planned, licensed assets with non-conflicting target paths. Read back resource metadata and verify type, path, and reference ID.
 3. Apply the binding-manifest `binding_order` with minimal writes to planned nodes, components, properties, and resource references. Do not run opaque bulk scripts.
 4. Save the current scene and immediately read back every node, component, property, and asset reference. Run that batch's `readback_checks`. On failure, stop later batches, preserve evidence, and return `failed`; do not continue with improvised repair.
-5. Start the next batch only after the previous read-back passes. Write the integration report, scene read-back evidence, and result when complete; the orchestrator performs state transition.
+5. Start the next batch only after the previous read-back passes. Write the `scene_loop_id` integration report, scene read-back evidence, and result when complete; the orchestrator performs state transition. Do not start the next scene loop until verification returns its exit evidence.
 
 ## Result and invalidation
 
