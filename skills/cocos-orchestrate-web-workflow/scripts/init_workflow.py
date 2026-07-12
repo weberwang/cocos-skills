@@ -120,6 +120,13 @@ def initialize_workflow(
             or design_height <= 0
         ):
             raise WorkflowError("设计分辨率必须为正整数")
+        relation_matches = (
+            orientation == "portrait" and design_width < design_height
+        ) or (
+            orientation == "landscape" and design_width > design_height
+        )
+        if not relation_matches:
+            raise WorkflowError("自定义设计分辨率必须与冻结的屏幕方向一致")
 
     resolved_root = project_root.resolve()
     if not resolved_root.is_dir():
@@ -197,6 +204,7 @@ def initialize_workflow(
             "tasks",
             "results",
             "art/concepts",
+            "art/assets",
             "art/visual-references",
             "art/runtime-baselines",
             "artifacts",

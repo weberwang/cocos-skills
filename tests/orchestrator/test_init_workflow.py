@@ -96,6 +96,27 @@ class InitializeWorkflowTests(unittest.TestCase):
                 {"width": 1600, "height": 900, "source": "approved-custom"},
             )
 
+    def test_custom_resolution_must_match_frozen_orientation(self) -> None:
+        """验证初始化立即拒绝与已选屏幕方向相反的自定义分辨率。"""
+        invalid_profiles = (
+            ("portrait", 1920, 1080),
+            ("landscape", 1080, 1920),
+            ("portrait", 1080, 1080),
+            ("landscape", 1080, 1080),
+        )
+        for orientation, width, height in invalid_profiles:
+            with self.subTest(orientation=orientation, width=width, height=height):
+                with tempfile.TemporaryDirectory() as tmp:
+                    with self.assertRaises(WorkflowError):
+                        initialize_workflow(
+                            Path(tmp),
+                            orientation,
+                            creator_version="3.8.6",
+                            approved_by="tester",
+                            design_width=width,
+                            design_height=height,
+                        )
+
     def test_existing_workflow_is_not_overwritten(self) -> None:
         """验证重复初始化时拒绝覆盖已有工作流状态。"""
         with tempfile.TemporaryDirectory() as tmp:
@@ -196,6 +217,6 @@ class InitializeWorkflowTests(unittest.TestCase):
             self.assertEqual(set(gates), {"schema_version", "P0", "P1", "P2"})
             for relative in (
                 "tasks", "results", "art/concepts", "art/visual-references",
-                "art/runtime-baselines", "artifacts", "reports/chrome",
+                "art/runtime-baselines", "art/assets", "artifacts", "reports/chrome",
             ):
                 self.assertTrue((state / relative).is_dir(), relative)

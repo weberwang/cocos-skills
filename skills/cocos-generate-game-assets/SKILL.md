@@ -20,7 +20,7 @@ Read the installed `$cocos-orchestrate-web-workflow` `workflow-contracts.md` and
 3. Build each asset prompt from the approved concept and frozen direction. Use the asset plan's exact output dimensions; preserve palette, style, and prohibited list from the visual direction. Generate with `$imagegen`; request transparent background only when the declared asset purpose requires it.
 4. Save each output and metadata under `.cocos-workflow/art/assets/<asset_id>/`. Record source concept path/hash, source reference licenses, generator metadata, final prompt hash, dimensions, alpha/background requirement, and binary SHA-256.
 5. Leave `license_status: needs-human-review` unless an authorized human supplies a valid usage decision. Do not infer transferable rights from an image generator or reference image. Present all provenance and license gaps for review.
-6. Validate uniqueness, dimensions, hashes, source lineage, frozen-input binding, and license decisions. After explicit human approval of the exact manifest hash, mark it `approved`; otherwise keep it `pending` or `blocked`.
+6. Validate uniqueness, dimensions, hashes, source lineage, frozen-input binding, and license decisions. After explicit human approval of the exact manifest hash, mark it `approved`; otherwise keep it `pending` or `blocked`. The production join gate is not satisfied by an individual image approval: only `game-assets.yaml.approval.subject_hash == game-assets.yaml.content_hash` releases asset import and runtime binding.
 7. Return manifest and per-asset evidence to the orchestrator. If concepts, direction, profile, or planned dimensions change, report the affected assets as stale and request orchestration invalidation; do not mutate workflow state.
 
 ## Hard Gates

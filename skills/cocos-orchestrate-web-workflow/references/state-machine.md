@@ -1,6 +1,6 @@
 # 状态机
 
-## 允许迁移
+## 常规迁移
 
 ```text
 bootstrap → requirements → visual-direction → scene-concepts → planning
@@ -14,32 +14,33 @@ stale → pending
 blocked → pending | running
 ```
 
-除上述边外不得迁移。`run_status` 的故障、阻塞与失效迁移附着于当前主状态；恢复后继续原主状态。人工门禁的批准必须绑定对应工件版本与哈希。
+正常主状态只前进一个阶段；同一主状态使用运行状态迁移。每条迁移必须包含 `from_state`、`to_state`、`from_run_status`、`to_run_status`、`timestamp`、`reason`、`evidence`，与上一条连续，最后一条等于当前状态。
 
-## 主状态规则
+## 上游失效回退
 
-| 状态 | 进入条件 | 退出证据 | 人工门禁 | 下游失效范围 |
-| --- | --- | --- | --- | --- |
-| `bootstrap` | 总控获得人工确认的方向、分辨率、Creator 版本和批准者；原子初始化或恢复状态目录 | `project-profile.yaml` 内容哈希有效、项目配置门禁绑定相同哈希、Cocos Creator 正式三段版本 `>= 3.8.6`、MCP 能力快照 | 项目配置（初始化 CLI 调用即表示已批准） | `requirements` 至 `completed` |
-| `requirements` | 项目配置门禁已批准 | 需求工件、验收检查、批准记录 | 需求 | `visual-direction` 至 `completed` |
-| `visual-direction` | 需求已冻结 | 带 `version` 与 `content_hash` 的冻结视觉方向 | 视觉方向 | `scene-concepts` 至 `completed` |
-| `scene-concepts` | 视觉版本与哈希匹配 | 场景效果图、生成记录、匹配的输入哈希 | 场景效果图 | `planning` 至 `completed` |
-| `planning` | 场景效果图已批准 | 实施计划、任务依赖、路径所有权和验收检查 | 实施计划 | `production` 至 `completed` |
-| `production` | 计划已批准且任务路径无冲突 | 资源/代码产物、检查、变更清单 | 无 | `integration` 至 `completed` |
-| `integration` | 生产产物通过，已取得唯一编辑器写入权 | 场景读回、资源绑定证据、保存后的检查 | 无 | `verification` 至 `completed` |
-| `verification` | 集成证据有效且 Chrome 验证环境可用 | 视觉与交互检查、截图/日志、缺陷结论 | 视觉验证 | `building` 至 `completed` |
-| `building` | 视觉验证已批准，构建配置有效 | 成功构建日志、产物清单及哈希 | 无 | `delivery` 至 `completed` |
-| `delivery` | 构建产物通过且未失效 | 本地交付包、运行说明、最终检查 | 交付 | `completed` |
-| `completed` | 交付门禁已批准，所有必需证据有效 | 最终审计记录 | 无 | 无；任一上游变化时退回相应 `pending` |
+非 `completed` 阶段发现上游变化时，总控必须调用 `invalidate_artifacts.py`，不得把旧结果继续标为 `passed`：
 
-## 硬规则
+1. 计算变化工件及所有依赖它的下游工件；保留元数据并将其 `status` 设为 `stale`。
+2. 写入项目内 `.cocos-workflow/reports/invalidation-<id>.yaml`，其中包含变化/失效工件、最早回退阶段、清除的任务和门禁；两条迁移都必须以该安全相对路径作为 `evidence`。
+3. 若当前运行状态不是 `stale`，先以 `reason: upstream-change` 迁移到当前主状态的 `stale`。随后以 canonical 回退 `reason: upstream-change` 从当前主状态/`stale` 迁移到最早受影响主状态/`pending`。
+4. 将失效任务重置为 `pending`，从活动/已完成索引移除，删除这些任务的 `results/<task_id>.yaml`，并移除对应产物批准门禁；`project-configuration` 根门禁不得删除。
+5. 在 `workflow.invalidated` 追加同一审计事实。新任务只能在回退阶段重新执行并获得新的工件哈希和人工批准后再前进。
 
-- `project-profile.yaml` 的 `status` 不是 `frozen`、批准者或冻结时间为空、内容哈希错误，或项目配置门禁未绑定相同哈希时，不能离开 `bootstrap`；修改配置后必须同步重算哈希并更新门禁绑定。
-- `bootstrap` 的 `pending | running | blocked` 阶段允许 `initial_scene: null`；`bootstrap/passed` 或离开 `bootstrap` 后必须提供安全的项目相对 `.scene` 路径，禁止绝对路径与 `..`。
-- 离开 `bootstrap` 或将其标为 `passed` 前，必须保存根为映射且含非空 `tools` 或 `capabilities` 的 `reports/mcp-capabilities.json`。
-- 每条迁移必须使用 canonical 七字段、与前条连续，并回放到当前 `state/run_status`；主状态只能按表中顺序前进一步。
-- Cocos Creator 版本必须按语义版本比较满足 `>= 3.8.6` 才能离开 `bootstrap`；检测到更低版本时必须将当前运行标记为 `blocked`，记录升级到 3.8.6 或更高版本这一解除条件，且不得继续下游动作。
-- 视觉版本或哈希不匹配时拒绝汇合，将结果由 `passed` 标记为 `stale`，再置相关任务为 `pending`；不得向下游迁移。
-- 代码、资源、场景或构建配置变化后，旧验证或交付产物不能继续保持 `passed`。至少将 `verification`、`building`、`delivery` 和 `completed` 相关结果标记为 `stale`，再置待重跑项为 `pending`。
-- 配置、需求或视觉方向变化时，按表中范围递归失效所有下游工件、批准和结果。
-- 每次 Cocos Editor 写入批次后，必须读取验证完成，才能释放唯一写入权或启动下一批。
+回退阶段按以下顺序取最早值：`requirements`、`visual-direction`、`scene-concepts`、`planning`、`production`、`integration`、`verification`、`building`、`delivery`。工件必须显式声明 `stage`；未声明且不能从规范别名解析的工件会阻塞回退。
+
+## 阶段门禁
+
+| 主状态 | 进入条件 | 退出工件与门禁 |
+| --- | --- | --- |
+| `bootstrap` | 方向、分辨率、Creator 版本和批准者已冻结 | `project-profile.yaml` 哈希与项目配置门禁一致，且 MCP 能力快照可用 |
+| `requirements` | 项目配置门禁通过 | 需求工件、验收项和人工批准 |
+| `visual-direction` | 需求已冻结 | `artifacts/visual-direction.yaml` 的版本、哈希和人工批准 |
+| `scene-concepts` | 视觉方向版本/哈希匹配 | 场景效果图、生成记录和人工批准 |
+| `planning` | 场景概念已批准 | `implementation-plan.yaml`、`capture-manifest.yaml`、单编辑器写者和人工批准 |
+| `production` | 计划已批准且任务路径不冲突 | 代码产物和 `game-assets.yaml`；资源清单必须获人工批准才能进入绑定/导入 |
+| `integration` | 生产汇合门禁通过 | 唯一 Cocos 写者的导入、绑定和读回证据 |
+| `verification` | 集成结果有效 | Chrome 对全部冻结 mobile profiles 的截图、交互、基线和像素差证据 |
+| `building` | 验证门禁已批准 | 成功构建日志、产物清单和哈希 |
+| `delivery` | 构建产物未失效 | 本地交付包、运行说明和人工批准 |
+
+`bootstrap` 的 `pending | running | blocked` 可使用 `initial_scene: null`；`bootstrap/passed` 或任何后续阶段必须使用安全的项目相对 `.scene` 路径。Cocos Creator 必须为正式三段版本且不低于 `3.8.6`。每批 Cocos Editor 写入后必须读回验证，才可释放唯一写入权。

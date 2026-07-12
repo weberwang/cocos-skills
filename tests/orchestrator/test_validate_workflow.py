@@ -555,3 +555,121 @@ class ValidateWorkflowTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(damaged.returncode, 2)
+
+    def test_passed_evidence_must_be_safe_existing_project_paths(self) -> None:
+        """已通过任务的证据必须位于项目内且实际存在，不能用字符串伪造门禁。"""
+        cases = (
+            ("reports/missing-proof.log", "missing-evidence-path"),
+            ("../outside-proof.log", "unsafe-path"),
+            ("C:/outside-proof.log", "unsafe-path"),
+        )
+        for evidence_path, expected_code in cases:
+            with self.subTest(evidence_path=evidence_path):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    state = initialize_workflow(
+                        root, "portrait", creator_version="3.8.6", approved_by="tester"
+                    )
+                    workflow = read_yaml(state / "workflow.yaml")
+                    workflow["task_status"] = {
+                        "proof-task": {"status": "passed", "evidence": [evidence_path]}
+                    }
+                    write_yaml(state / "workflow.yaml", workflow)
+
+                    self.assertIn(
+                        expected_code, {issue.code for issue in validate_workflow(root)}
+                    )
+
+    def test_completed_requirements_stage_requires_hash_bound_gate(self) -> None:
+        """离开需求阶段前必须有已批准需求工件及绑定同一哈希的门禁。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = initialize_workflow(
+                root, "portrait", creator_version="3.8.6", approved_by="tester"
+            )
+            _make_requirements_state_valid(state)
+            proof = state / "reports" / "requirements-proof.log"
+            proof.write_text("approved", encoding="utf-8")
+            workflow = read_yaml(state / "workflow.yaml")
+            workflow["state"] = "visual-direction"
+            workflow["run_status"] = "pending"
+            workflow["transitions"].extend(
+                [
+                    {
+                        "from_state": "requirements",
+                        "to_state": "requirements",
+                        "from_run_status": "pending",
+                        "to_run_status": "running",
+                        "timestamp": "2026-07-12T00:03:00+00:00",
+                        "reason": "requirements-started",
+                        "evidence": ["reports/requirements-proof.log"],
+                    },
+                    {
+                        "from_state": "requirements",
+                        "to_state": "requirements",
+                        "from_run_status": "running",
+                        "to_run_status": "passed",
+                        "timestamp": "2026-07-12T00:04:00+00:00",
+                        "reason": "requirements-approved",
+                        "evidence": ["reports/requirements-proof.log"],
+                    },
+                    {
+                        "from_state": "requirements",
+                        "to_state": "visual-direction",
+                        "from_run_status": "passed",
+                        "to_run_status": "pending",
+                        "timestamp": "2026-07-12T00:05:00+00:00",
+                        "reason": "requirements-complete",
+                        "evidence": ["reports/requirements-proof.log"],
+                    },
+                ]
+            )
+            write_yaml(state / "workflow.yaml", workflow)
+
+            requirements = {
+                "schema_version": 1,
+                "requirements_version": 1,
+                "status": "approved",
+                "approval": {
+                    "status": "approved",
+                    "approved_by": "tester",
+                    "approved_at": "2026-07-12T00:04:00+00:00",
+                    "subject_hash": None,
+                },
+            }
+            requirements["content_hash"] = content_hash(requirements)
+            requirements["approval"]["subject_hash"] = requirements["content_hash"]
+            requirements["content_hash"] = content_hash(
+                {key: value for key, value in requirements.items() if key != "content_hash"}
+            )
+            requirements["approval"]["subject_hash"] = requirements["content_hash"]
+            write_yaml(state / "requirements.yaml", requirements)
+
+            self.assertIn(
+                "missing-stage-approval-gate",
+                {issue.code for issue in validate_workflow(root)},
+            )
+
+    def test_passed_result_requires_existing_safe_changed_and_output_paths(self) -> None:
+        """已通过结果的变更和声明输出均应是存在的项目内安全路径。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = initialize_workflow(
+                root, "portrait", creator_version="3.8.6", approved_by="tester"
+            )
+            proof = state / "reports" / "result-proof.log"
+            proof.write_text("passed", encoding="utf-8")
+            write_yaml(
+                state / "results" / "result-task.yaml",
+                {
+                    "task_id": "result-task",
+                    "status": "passed",
+                    "evidence": ["reports/result-proof.log"],
+                    "changed_paths": ["../outside.ts"],
+                    "output_paths": ["reports/missing-output.json"],
+                },
+            )
+
+            codes = {issue.code for issue in validate_workflow(root)}
+            self.assertIn("unsafe-path", codes)
+            self.assertIn("missing-output-path", codes)

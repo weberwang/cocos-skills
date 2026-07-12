@@ -1,6 +1,6 @@
 # 游戏图片资源契约
 
-清单为 `.cocos-workflow/artifacts/game-assets.yaml`；独立图片和元数据位于 `.cocos-workflow/art/assets/<asset_id>/`。这些是待集成源文件，不是 Cocos Editor 已导入资源。
+清单位于 `.cocos-workflow/artifacts/game-assets.yaml`；独立图片和元数据位于 `.cocos-workflow/art/assets/<asset_id>/`。它们是待集成的源文件，不代表已经导入 Cocos Editor。
 
 ```yaml
 schema_version: 1
@@ -35,9 +35,11 @@ content_hash: sha256:<normalized content excluding content_hash>
 
 ## 必须检查
 
-- `asset_id`、`output_path` 唯一；每项只有一个运行时用途和一个独立图像。
-- `output_hash` 是图像二进制 SHA-256；提示词和所有上游来源也必须记录 `sha256:` 哈希。
-- `dimensions` 必须匹配批准的资源计划，不可用设计分辨率推断替代；`orientation` 和 `design_resolution` 仍须逐字段等于冻结项目配置。
-- `source` 必须引用已批准场景概念并保留所有相关参考许可信息。许可证未知、不兼容或 `needs-human-review` 时不可批准。
-- `status: approved` 时，审批主题哈希必须等于清单 `content_hash`，并且每个资源都有可用许可证决定与检查证据。
-- 上游概念、视觉方向、项目配置或资源计划变化时，受影响条目和清单为 `stale`，需重新生成和审核。
+- `asset_id`、`output_path` 唯一；每项只服务一个运行时用途和一个独立图像。
+- `output_hash` 是图像二进制 SHA-256；提示词、概念、视觉方向、项目配置和许可证证据均必须可追溯。
+- 尺寸、方向和设计分辨率必须匹配已批准资产计划与冻结项目配置；未知、冲突或 `needs-human-review` 的许可证不得批准。
+- `status: approved` 时，`approval.status` 为 `approved`，`approved_by`、`approved_at` 非空，且 `approval.subject_hash == content_hash`；每项资产均有可用许可证决定和检查证据。
+
+## 生产汇合门禁
+
+完整 `game-assets.yaml` 的批准是生产汇合门禁。`cocos-integrate-assets` 和任何包含 `asset_ids` 的代码绑定都必须引用同一份 `content_hash`，并确认资源 ID 存在于已批准清单。单个图片审批、旧清单或未批准清单不能用于 Cocos 导入、节点绑定或把生产阶段推进到 integration。概念、视觉方向、项目配置或资产计划改变时，受影响资产和清单必须置为 `stale` 并重新生成、复核、批准。

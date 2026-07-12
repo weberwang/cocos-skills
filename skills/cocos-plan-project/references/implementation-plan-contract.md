@@ -33,6 +33,36 @@ unresolved_questions: []
 content_hash: sha256:<规范化内容，不含 content_hash>
 ```
 
+## Capture manifest
+
+规划阶段必须同时生成 `.cocos-workflow/artifacts/capture-manifest.yaml`。它固定 Chrome 验证的目标、基线和像素差阈值，不能由验证阶段临时删减：
+
+```yaml
+schema_version: 1
+status: draft # draft | approved | stale
+project_profile_hash: sha256:<当前 project-profile>
+visual_direction: {version: 1, content_hash: sha256:<冻结视觉方向>}
+baseline_revision: <build 或 git revision>
+profiles:
+  - profile_id: mobile-small
+    viewport: {width: 375, height: 667}
+    orientation: portrait
+    checks:
+      - id: home-start
+        url: http://127.0.0.1:<port>/
+        steps: [{action: open}, {action: tap, target: start-button}]
+        screenshot_path: reports/chrome/mobile-small/home-start.png
+        baseline_path: art/runtime-baselines/mobile-small/home-start.png
+        mask_path: null
+        pixel_diff: {max_changed_ratio: 0.005, pixel_threshold: 10}
+approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
+content_hash: sha256:<规范化内容，不含 content_hash>
+```
+
+- `profiles` 必须与 `project-profile.capture_profiles` 一一对应，且 `profile_id`、视口和方向完全相同；必须覆盖 `mobile-small`、`mobile-standard`、`mobile-large`。
+- 每个必经场景和核心交互都必须在每个 profile 具有一个 check；每项均声明截图、基线、遮罩（可为 `null`）与像素差阈值。
+- `status: approved` 时，`approval.subject_hash` 必须等于 `content_hash`。配置、需求、场景、视觉方向或基线修订变化时必须置为 `stale` 并重新审批。
+
 ## 必填结构
 
 - `scenes` 每项含 `id`、`path`、`purpose`、`entry`、`exit`、`node_ids`、`prefab_ids`、`script_ids`、`asset_ids`、`acceptance_ids`。

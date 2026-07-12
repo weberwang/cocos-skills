@@ -261,7 +261,24 @@ def _validate_initial_scene(
     return [] if valid else [_issue("invalid-initial-scene", path, "当前阶段必须提供安全的项目相对 .scene 路径")]
 
 
-def _validate_transitions(workflow: Mapping[str, Any], path: Path) -> list[ValidationIssue]:
+def _rewind_target(workflow: Mapping[str, Any], transition: Mapping[str, Any]) -> str | None:
+    """从失效工件声明推导唯一允许的最早回退阶段。"""
+    artifact_ids = transition.get("artifact_ids")
+    artifacts = workflow.get("artifacts")
+    if not isinstance(artifact_ids, list) or not artifact_ids or not isinstance(artifacts, Mapping):
+        return None
+    stages: list[str] = []
+    for artifact_id in artifact_ids:
+        artifact = artifacts.get(artifact_id)
+        if not isinstance(artifact, Mapping) or artifact.get("stage") not in MAIN_STATES:
+            return None
+        stages.append(artifact["stage"])
+    return min(stages, key=MAIN_STATE_SEQUENCE.index)
+
+
+def _validate_transitions(
+    workflow: Mapping[str, Any], project_root: Path, state_dir: Path, path: Path
+) -> list[ValidationIssue]:
     """校验 canonical 迁移结构、顺序、连续性及当前状态回放结果。"""
     transitions = workflow.get("transitions")
     if not isinstance(transitions, list):
@@ -300,8 +317,15 @@ def _validate_transitions(workflow: Mapping[str, Any], path: Path) -> list[Valid
         if from_state == to_state:
             valid = valid and (from_status, to_status) in RUN_STATUS_TRANSITIONS
         elif from_state in MAIN_STATES and to_state in MAIN_STATES:
-            valid = valid and MAIN_STATE_SEQUENCE.index(to_state) == MAIN_STATE_SEQUENCE.index(from_state) + 1
-            valid = valid and from_status == "passed" and to_status == "pending"
+            is_forward = MAIN_STATE_SEQUENCE.index(to_state) == MAIN_STATE_SEQUENCE.index(from_state) + 1
+            is_rewind = (
+                MAIN_STATE_SEQUENCE.index(to_state) <= MAIN_STATE_SEQUENCE.index(from_state)
+                and from_status == "stale"
+                and to_status == "pending"
+                and transition["reason"] == "upstream-change"
+                and _rewind_target(workflow, transition) == to_state
+            )
+            valid = valid and ((is_forward and from_status == "passed" and to_status == "pending") or is_rewind)
         if index == 0:
             valid = valid and from_state == "bootstrap" and from_status == "pending"
         if previous is not None:
@@ -309,6 +333,16 @@ def _validate_transitions(workflow: Mapping[str, Any], path: Path) -> list[Valid
             valid = valid and previous.get("to_run_status") == from_status
         if not valid:
             issues.append(_issue("invalid-transition", path, f"transitions[{index}] 迁移非法或与前项不连续"))
+        issues.extend(
+            _validate_existing_paths(
+                transition.get("evidence"),
+                project_root=project_root,
+                state_dir=state_dir,
+                path=path,
+                field=f"transitions[{index}].evidence",
+                missing_code="missing-evidence-path",
+            )
+        )
         previous = transition
 
     if transitions and isinstance(transitions[-1], Mapping):
@@ -387,6 +421,157 @@ VISUAL_KEYS = {"visual", "visual_direction", "scene_concept"}
 VISUAL_TYPES = {"visual", "visual-direction", "scene-concept"}
 SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 
+# 阶段离开后必须保留可复算的工件和与该工件哈希绑定的总控门禁。
+STAGE_ARTIFACTS = (
+    ("requirements", "requirements", "requirements.yaml", "approved", "requirements_version"),
+    ("visual-direction", "visual-direction", "artifacts/visual-direction.yaml", "frozen", "visual_direction_version"),
+    ("scene-concepts", "scene-concepts", "artifacts/scene-concepts.yaml", "approved", None),
+    ("planning", "implementation-plan", "artifacts/implementation-plan.yaml", "approved", "plan_version"),
+    ("production", "game-assets", "artifacts/game-assets.yaml", "approved", "asset_set_version"),
+    ("verification", "verification", "artifacts/verification.yaml", "passed", None),
+    ("delivery", "delivery", "artifacts/delivery.yaml", "passed", None),
+)
+
+
+def _artifact_hash_source(artifact: Mapping[str, Any]) -> dict[str, Any]:
+    """返回可复算的工件哈希来源，排除审批对自身哈希的回填字段。"""
+    source = dict(artifact)
+    source.pop("content_hash", None)
+    approval = source.get("approval")
+    if isinstance(approval, Mapping):
+        normalized_approval = dict(approval)
+        normalized_approval.pop("subject_hash", None)
+        source["approval"] = normalized_approval
+    return source
+
+
+def _is_safe_relative_path(project_root: Path, state_dir: Path, value: Any) -> tuple[Path | None, str | None]:
+    """解析项目内路径并阻止绝对路径、穿越和链接逃逸。"""
+    if not isinstance(value, str) or not value.strip():
+        return None, "path must be a non-empty string"
+    if "\\" in value or re.match(r"^[A-Za-z]:", value):
+        return None, "path must use a safe POSIX relative form"
+    candidate = PurePosixPath(value)
+    if candidate.is_absolute() or ".." in candidate.parts or str(candidate) in {"", "."}:
+        return None, "path escapes the project root"
+
+    # 工作流工件使用 .cocos-workflow 相对路径，其余变更仍以项目根目录为基准。
+    workflow_prefixes = {"art", "artifacts", "reports", "tasks", "results"}
+    workflow_files = {"requirements.yaml", "project-profile.yaml", "quality-gates.yaml", "ownership.yaml", "workflow.yaml"}
+    base = state_dir if candidate.parts[0] in workflow_prefixes or value in workflow_files else project_root
+    resolved_root = project_root.resolve()
+    resolved_path = (base / Path(*candidate.parts)).resolve()
+    try:
+        resolved_path.relative_to(resolved_root)
+    except ValueError:
+        return None, "path resolves outside the project root"
+    return resolved_path, None
+
+
+def _validate_existing_paths(
+    value: Any,
+    *,
+    project_root: Path,
+    state_dir: Path,
+    path: Path,
+    field: str,
+    missing_code: str,
+) -> list[ValidationIssue]:
+    """校验一组声明路径真实存在且没有借助链接或父目录逃逸项目范围。"""
+    if not isinstance(value, list):
+        return [_issue("invalid-path-list", path, f"{field} 必须为路径列表")]
+    issues: list[ValidationIssue] = []
+    for index, item in enumerate(value):
+        resolved, error = _is_safe_relative_path(project_root, state_dir, item)
+        if error is not None:
+            issues.append(_issue("unsafe-path", path, f"{field}[{index}] {error}"))
+        elif resolved is None or not resolved.exists():
+            issues.append(_issue(missing_code, path, f"{field}[{index}] 指向的项目内路径不存在"))
+    return issues
+
+
+def _stage_is_complete(workflow: Mapping[str, Any], stage: str) -> bool:
+    """判定阶段已被验收并离开，避免要求当前尚未产出的未来工件。"""
+    current_state = workflow.get("state")
+    if current_state not in MAIN_STATES:
+        return False
+    current_index = MAIN_STATE_SEQUENCE.index(current_state)
+    stage_index = MAIN_STATE_SEQUENCE.index(stage)
+    return current_index > stage_index or (
+        current_state == stage and workflow.get("run_status") == "passed"
+    )
+
+
+def _validate_stage_artifacts(
+    workflow: Mapping[str, Any], project_root: Path, state_dir: Path
+) -> list[ValidationIssue]:
+    """验证已完成阶段的工件内容、审批绑定及总控门禁，拒绝伪造推进。"""
+    issues: list[ValidationIssue] = []
+    gates = workflow.get("approval_gates")
+    for state, gate_name, relative_path, expected_status, version_field in STAGE_ARTIFACTS:
+        if not _stage_is_complete(workflow, state):
+            continue
+        artifact_path = state_dir / relative_path
+        if not artifact_path.is_file():
+            issues.append(_issue("missing-stage-artifact", artifact_path, f"{state} 阶段缺少必需工件"))
+            continue
+        try:
+            artifact = read_yaml(artifact_path)
+        except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
+            issues.append(_issue("invalid-state-file", artifact_path, str(error)))
+            continue
+
+        valid = (
+            type(artifact.get("schema_version")) is int
+            and artifact.get("status") == expected_status
+            and isinstance(artifact.get("content_hash"), str)
+            and bool(SHA256_PATTERN.fullmatch(artifact["content_hash"]))
+            and artifact.get("content_hash") == content_hash(_artifact_hash_source(artifact))
+        )
+        if version_field is not None:
+            valid = valid and bool(artifact.get(version_field))
+        if not valid:
+            issues.append(_issue("invalid-stage-artifact", artifact_path, f"{state} 工件的 schema、状态或内容哈希无效"))
+
+        if state in {"requirements", "visual-direction", "scene-concepts", "planning", "production"}:
+            approval = artifact.get("approval")
+            approved_status = "approved"
+            valid_approval = (
+                isinstance(approval, Mapping)
+                and approval.get("status") == approved_status
+                and isinstance(approval.get("approved_by"), str)
+                and bool(approval.get("approved_by", "").strip())
+                and isinstance(approval.get("approved_at"), str)
+                and bool(approval.get("approved_at", "").strip())
+                and approval.get("subject_hash") == artifact.get("content_hash")
+            )
+            if not valid_approval:
+                issues.append(_issue("invalid-artifact-approval", artifact_path, f"{state} 工件审批未绑定当前内容哈希"))
+
+        gate = gates.get(gate_name) if isinstance(gates, Mapping) else None
+        valid_gate = (
+            isinstance(gate, Mapping)
+            and gate.get("status") == "passed"
+            and isinstance(gate.get("approved_by"), str)
+            and bool(gate.get("approved_by", "").strip())
+            and isinstance(gate.get("approved_at"), str)
+            and bool(gate.get("approved_at", "").strip())
+            and gate.get("subject_hash") == artifact.get("content_hash")
+        )
+        if gate is None:
+            issues.append(_issue("missing-stage-approval-gate", state_dir / "workflow.yaml", f"{state} 阶段缺少哈希绑定门禁"))
+        elif not valid_gate:
+            issues.append(_issue("stage-approval-mismatch", state_dir / "workflow.yaml", f"{state} 阶段门禁未绑定当前工件哈希"))
+
+        if state == "visual-direction" and isinstance(workflow.get("visual_direction"), Mapping):
+            visual = workflow["visual_direction"]
+            if (
+                visual.get("version") != artifact.get("visual_direction_version")
+                or visual.get("content_hash") != artifact.get("content_hash")
+            ):
+                issues.append(_issue("visual-direction-mismatch", state_dir / "workflow.yaml", "总控视觉方向与冻结工件不一致"))
+    return issues
+
 
 def _collect_visual_dependencies(value: Any) -> list[Any]:
     """递归收集映射键和列表类型标记声明的视觉依赖。"""
@@ -421,6 +606,8 @@ def _validate_task(
     task_id: str,
     task: Any,
     task_path: Path,
+    project_root: Path,
+    state_dir: Path,
 ) -> list[ValidationIssue]:
     """独立校验单个任务或结果的通过证据和视觉输入冻结信息。"""
     if not isinstance(task, Mapping):
@@ -432,6 +619,32 @@ def _validate_task(
         issues.append(
             _issue("missing-task-evidence", task_path, f"passed 任务 {task_id} 必须包含非空 evidence")
         )
+    if status == "passed" and evidence:
+        issues.extend(
+            _validate_existing_paths(
+                evidence,
+                project_root=project_root,
+                state_dir=state_dir,
+                path=task_path,
+                field="evidence",
+                missing_code="missing-evidence-path",
+            )
+        )
+    for field, missing_code in (
+        ("output_paths", "missing-output-path"),
+        ("changed_paths", "missing-changed-path"),
+    ):
+        if status == "passed" and field in task:
+            issues.extend(
+                _validate_existing_paths(
+                    task[field],
+                    project_root=project_root,
+                    state_dir=state_dir,
+                    path=task_path,
+                    field=field,
+                    missing_code=missing_code,
+                )
+            )
     dependencies = _collect_visual_dependencies(task.get("inputs"))
     if "visual_dependency" in task or "visual_dependencies" in task:
         dependencies.extend(_collect_visual_dependencies(task))
@@ -446,7 +659,9 @@ def _validate_task(
     return issues
 
 
-def _validate_tasks(workflow: Mapping[str, Any], state_dir: Path) -> list[ValidationIssue]:
+def _validate_tasks(
+    workflow: Mapping[str, Any], project_root: Path, state_dir: Path
+) -> list[ValidationIssue]:
     """校验内联任务状态以及任务、结果目录中的持久化任务记录。"""
     issues: list[ValidationIssue] = []
     checked_results: set[Path] = set()
@@ -459,10 +674,10 @@ def _validate_tasks(workflow: Mapping[str, Any], state_dir: Path) -> list[Valida
                 checked_results.add(result_path)
                 try:
                     result = read_yaml(result_path)
-                    issues.extend(_validate_task(str(task_id), result, result_path))
+                    issues.extend(_validate_task(str(task_id), result, result_path, project_root, state_dir))
                 except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
                     issues.append(_issue("invalid-state-file", result_path, str(error)))
-            issues.extend(_validate_task(str(task_id), task, state_dir / "workflow.yaml"))
+            issues.extend(_validate_task(str(task_id), task, state_dir / "workflow.yaml", project_root, state_dir))
 
     tasks_dir = state_dir / "tasks"
     for task_path in sorted(tasks_dir.glob("*.yaml")) if tasks_dir.is_dir() else ():
@@ -477,10 +692,10 @@ def _validate_tasks(workflow: Mapping[str, Any], state_dir: Path) -> list[Valida
             checked_results.add(result_path)
             try:
                 result = read_yaml(result_path)
-                issues.extend(_validate_task(task_id, result, result_path))
+                issues.extend(_validate_task(task_id, result, result_path, project_root, state_dir))
             except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
                 issues.append(_issue("invalid-state-file", result_path, str(error)))
-        issues.extend(_validate_task(task_id, task, task_path))
+        issues.extend(_validate_task(task_id, task, task_path, project_root, state_dir))
 
     results_dir = state_dir / "results"
     for result_path in sorted(results_dir.glob("*.yaml")) if results_dir.is_dir() else ():
@@ -491,7 +706,7 @@ def _validate_tasks(workflow: Mapping[str, Any], state_dir: Path) -> list[Valida
         except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
             issues.append(_issue("invalid-state-file", result_path, str(error)))
             continue
-        issues.extend(_validate_task(result_path.stem, result, result_path))
+        issues.extend(_validate_task(result_path.stem, result, result_path, project_root, state_dir))
     return issues
 
 
@@ -509,7 +724,7 @@ def validate_workflow(project_root: Path) -> list[ValidationIssue]:
     if workflow is not None:
         issues.extend(_validate_workflow_document(workflow, profile or {}, state_dir / "workflow.yaml"))
         issues.extend(_validate_initial_scene(profile or {}, workflow, state_dir / "project-profile.yaml"))
-        issues.extend(_validate_transitions(workflow, state_dir / "workflow.yaml"))
+        issues.extend(_validate_transitions(workflow, project_root, state_dir, state_dir / "workflow.yaml"))
         issues.extend(_validate_bootstrap_exit_evidence(workflow, state_dir))
         if workflow.get("state") not in MAIN_STATES:
             issues.append(
@@ -531,7 +746,8 @@ def validate_workflow(project_root: Path) -> list[ValidationIssue]:
                     "Creator 版本必须为正式三段版本且不低于 3.8.6",
                 )
             )
-        issues.extend(_validate_tasks(workflow, state_dir))
+        issues.extend(_validate_stage_artifacts(workflow, project_root, state_dir))
+        issues.extend(_validate_tasks(workflow, project_root, state_dir))
 
     if profile is not None:
         issues.extend(_validate_profile(profile, state_dir / "project-profile.yaml"))

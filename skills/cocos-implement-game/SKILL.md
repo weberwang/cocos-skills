@@ -11,7 +11,8 @@ Write TypeScript, tests, and a binding manifest from an approved plan. This is a
 
 1. Read the orchestrator contracts and [the code-production contract](references/code-production-contract.md). Read project profile, `requirements.yaml`, frozen visual direction, and approved `implementation-plan.yaml`.
 2. Verify `project_profile_hash`, `requirements_hash`, visual-direction `version` and `content_hash`, and plan `content_hash` against current frozen inputs. On mismatch, mark the result `stale` and do not change code.
-3. Claim only `kind: code` tasks whose `allowed_paths` belong to this worker. Return path overlaps to the orchestrator; do not partition or take ownership unilaterally.
+3. Code-only tasks may execute in parallel with asset generation. Before writing any binding entry with a nonempty `asset_ids`, read `artifacts/game-assets.yaml` and require `status: approved`, a valid human approval whose `subject_hash` equals its `content_hash`, and exact asset IDs. Otherwise leave that binding task `blocked`; do not insert placeholder IDs or unapproved assets.
+4. Claim only `kind: code` tasks whose `allowed_paths` belong to this worker. Return path overlaps to the orchestrator; do not partition or take ownership unilaterally.
 
 ## Implement
 

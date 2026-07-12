@@ -120,6 +120,24 @@
 
 `passed` 结果必须包含非空证据。`changed_paths` 越界、证据缺失、冻结版本不匹配或 P0 失败时拒绝验收。P1 只有绑定具体检查与工件哈希的有效人工豁免才可继续；P2 默认仅报告。
 
+## 阶段工件与审批门禁
+
+阶段离开后，总控必须同时校验实际存在的工件及 `workflow.yaml.approval_gates` 中的同名门禁。唯一视觉方向工件路径为 `artifacts/visual-direction.yaml`，不得使用 `art/visual-direction.yaml`。
+
+| 完成阶段 | 工件路径 | 工件状态 | 门禁键 |
+| --- | --- | --- | --- |
+| requirements | `requirements.yaml` | `approved` | `requirements` |
+| visual-direction | `artifacts/visual-direction.yaml` | `frozen` | `visual-direction` |
+| scene-concepts | `artifacts/scene-concepts.yaml` | `approved` | `scene-concepts` |
+| planning | `artifacts/implementation-plan.yaml` | `approved` | `implementation-plan` |
+| production | `artifacts/game-assets.yaml` | `approved` | `game-assets` |
+| verification | `artifacts/verification.yaml` | `passed` | `verification` |
+| delivery | `artifacts/delivery.yaml` | `passed` | `delivery` |
+
+每个已完成阶段的工件必须具有有效 `schema_version`、`content_hash` 和阶段要求的状态；需要人工批准的工件还必须具有 `approval.status`、`approved_by`、`approved_at` 与等于 `content_hash` 的 `approval.subject_hash`。门禁必须严格使用 `status: passed`、非空 `approved_by`、非空 `approved_at` 和等于同一工件 `content_hash` 的 `subject_hash`。为避免审批哈希自引用，工件的 `content_hash` 计算排除顶层 `content_hash` 以及 `approval.subject_hash`。
+
+`passed` 任务和结果中的 `evidence`、`changed_paths`、`output_paths` 必须是实际存在的项目内 POSIX 相对路径；绝对路径、盘符、`..`、反斜杠和解析后越过项目根目录的符号链接均为 P0。过渡 `evidence` 同样必须指向真实项目内文件，不能使用字符串、外部路径或伪造的工件 ID 替代。
+
 ## 项目配置示例
 
 ```yaml

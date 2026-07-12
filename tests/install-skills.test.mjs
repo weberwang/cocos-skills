@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { lstat, mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
@@ -97,6 +97,99 @@ test("覆盖同名 Skill 时清理遗留文件并保留未托管的 Skill", asyn
   assert.deepEqual(reinstalled, ["alpha", "beta"]);
   assert.equal(await exists(join(projectRoot, ".agents", "skills", "alpha", "legacy.txt")), false);
   assert.equal(await readFile(join(projectRoot, ".agents", "skills", "custom", "keep.txt"), "utf8"), "keep");
+});
+
+test("复制任一 Skill 失败时保留全部既有目录且不产生半升级", async (t) => {
+  const temporaryDirectory = await createTemporaryDirectory(t);
+  const sourceRoot = join(temporaryDirectory, "source-skills");
+  const projectRoot = join(temporaryDirectory, "project");
+  await createSkill(sourceRoot, "alpha", "new-alpha");
+  await createSkill(sourceRoot, "beta", "new-beta");
+  await createSkill(join(projectRoot, ".agents", "skills"), "alpha", "old-alpha");
+  await createSkill(join(projectRoot, ".agents", "skills"), "beta", "old-beta");
+
+  await assert.rejects(
+    installSkills({
+      sourceRoot,
+      projectRoot,
+      log: () => {},
+      copyDirectory: async (source, target, options) => {
+        if (source.endsWith("beta")) {
+          throw new Error("模拟复制失败");
+        }
+        await cp(source, target, options);
+      },
+    }),
+    /模拟复制失败/,
+  );
+
+  assert.equal(await readFile(join(projectRoot, ".agents", "skills", "alpha", "marker.txt"), "utf8"), "old-alpha");
+  assert.equal(await readFile(join(projectRoot, ".agents", "skills", "beta", "marker.txt"), "utf8"), "old-beta");
+});
+
+test("替换阶段失败时回滚已替换的全部 Skill", async (t) => {
+  const temporaryDirectory = await createTemporaryDirectory(t);
+  const sourceRoot = join(temporaryDirectory, "source-skills");
+  const projectRoot = join(temporaryDirectory, "project");
+  await createSkill(sourceRoot, "alpha", "new-alpha");
+  await createSkill(sourceRoot, "beta", "new-beta");
+  await createSkill(join(projectRoot, ".agents", "skills"), "alpha", "old-alpha");
+  await createSkill(join(projectRoot, ".agents", "skills"), "beta", "old-beta");
+
+  let renameCount = 0;
+  await assert.rejects(
+    installSkills({
+      sourceRoot,
+      projectRoot,
+      log: () => {},
+      renameDirectory: async (source, target) => {
+        renameCount += 1;
+        if (renameCount === 4) {
+          throw new Error("模拟替换失败");
+        }
+        const { rename } = await import("node:fs/promises");
+        await rename(source, target);
+      },
+    }),
+    /模拟替换失败/,
+  );
+
+  assert.equal(await readFile(join(projectRoot, ".agents", "skills", "alpha", "marker.txt"), "utf8"), "old-alpha");
+  assert.equal(await readFile(join(projectRoot, ".agents", "skills", "beta", "marker.txt"), "utf8"), "old-beta");
+});
+
+test("拒绝源 Skill 内任意符号链接且不触碰既有安装", async (t) => {
+  const temporaryDirectory = await createTemporaryDirectory(t);
+  const sourceRoot = join(temporaryDirectory, "source-skills");
+  const projectRoot = join(temporaryDirectory, "project");
+  const externalFile = join(temporaryDirectory, "external.txt");
+  await createSkill(sourceRoot, "alpha", "new");
+  await createSkill(join(projectRoot, ".agents", "skills"), "alpha", "old");
+  await writeFile(externalFile, "external");
+  await symlink(externalFile, join(sourceRoot, "alpha", "linked.txt"));
+
+  await assert.rejects(
+    installSkills({ sourceRoot, projectRoot, log: () => {} }),
+    /源 Skill.*链接|源 Skill.*重解析点/,
+  );
+
+  assert.equal(await readFile(join(projectRoot, ".agents", "skills", "alpha", "marker.txt"), "utf8"), "old");
+});
+
+test("成功安装输出包含全部 Skill 的安装清单", async (t) => {
+  const temporaryDirectory = await createTemporaryDirectory(t);
+  const sourceRoot = join(temporaryDirectory, "source-skills");
+  const projectRoot = join(temporaryDirectory, "project");
+  const messages = [];
+  await createSkill(sourceRoot, "beta", "beta");
+  await createSkill(sourceRoot, "alpha", "alpha");
+  await mkdir(projectRoot, { recursive: true });
+
+  await installSkills({ sourceRoot, projectRoot, log: (message) => messages.push(message) });
+
+  const manifest = messages.find((message) => message.startsWith("安装清单："));
+  assert.ok(manifest, "应输出安装清单");
+  assert.deepEqual(JSON.parse(manifest.slice("安装清单：".length)).skills, ["alpha", "beta"]);
 });
 
 test("源目录没有有效 Skill 时不创建目标目录", async (t) => {

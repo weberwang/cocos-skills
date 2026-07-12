@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { cp, lstat, mkdir, readdir, rm, stat } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, readdir, rename, rm, stat } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join, relative, resolve, sep, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -131,25 +132,123 @@ async function assertManagedTargetIsNotLink(target) {
 }
 
 /** 覆盖安装全部有效 Skill，只删除目标项目中同名的托管目录。 */
-export async function installSkills({ sourceRoot, projectRoot, log }) {
+/** 递归验证源 Skill 是无链接的真实目录，且入口 SKILL.md 是非空普通文件。 */
+async function validateSourceSkillDirectory(source) {
+  const root = await lstat(source);
+  if (root.isSymbolicLink()) {
+    throw new Error(`源 Skill 不能是链接或重解析点：${source}`);
+  }
+  if (!root.isDirectory()) {
+    throw new Error(`源 Skill 必须是目录：${source}`);
+  }
+
+  const skillFile = join(source, "SKILL.md");
+  const skillFileStat = await lstat(skillFile);
+  if (skillFileStat.isSymbolicLink() || !skillFileStat.isFile()) {
+    throw new Error(`源 Skill 的 SKILL.md 必须是普通文件：${skillFile}`);
+  }
+  if (!(await readFile(skillFile, "utf8")).trim()) {
+    throw new Error(`源 Skill 的 SKILL.md 不能为空：${skillFile}`);
+  }
+
+  await validateSourceTree(source);
+}
+
+/** 递归检查源目录树中的链接或 Windows 重解析点。 */
+async function validateSourceTree(directory) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const entryPath = join(directory, entry.name);
+    const entryStat = await lstat(entryPath);
+    if (entryStat.isSymbolicLink()) {
+      throw new Error(`源 Skill 不允许包含链接或重解析点：${entryPath}`);
+    }
+    if (entryStat.isDirectory()) {
+      await validateSourceTree(entryPath);
+    }
+  }
+}
+
+/** 仅允许替换受控的同名目录，防止将普通文件或链接误作安装目标。 */
+async function prepareManagedTarget(target) {
+  try {
+    const entry = await lstat(target);
+    if (entry.isSymbolicLink()) {
+      throw new Error(`受控 Skill 目录不能是链接或重解析点：${target}`);
+    }
+    if (!entry.isDirectory()) {
+      throw new Error(`受控 Skill 目标必须是目录：${target}`);
+    }
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/** 用同卷暂存、验证和可回滚的目录替换完成一次全量覆盖安装。 */
+export async function installSkills({ sourceRoot, projectRoot, log, copyDirectory = cp, renameDirectory = rename }) {
   const names = await discoverSkillDirectories(sourceRoot);
 
   if (names.length === 0) {
     throw new Error("未发现有效 Skill，安装已取消。");
   }
 
+  // 在创建任何目标目录前完成源校验，链接或空入口绝不触碰项目现有安装。
+  for (const name of names) {
+    await validateSourceSkillDirectory(join(sourceRoot, name));
+  }
+
   const targetRoot = await ensureSafeTargetRoot(projectRoot);
+  const transactionId = randomUUID();
+  // 暂存根在 .agents/skills 内，保证与最终目录同卷，从而支持目录 rename 的原子替换。
+  const stageRoot = join(targetRoot, `.cocos-skills-stage-${transactionId}`);
+  const backupRoot = join(targetRoot, `.cocos-skills-backup-${transactionId}`);
+  const changed = [];
+
+  try {
+    await mkdir(stageRoot);
+    for (const name of names) {
+      const stagedTarget = join(stageRoot, name);
+      await copyDirectory(join(sourceRoot, name), stagedTarget, { recursive: true });
+      await validateSourceSkillDirectory(stagedTarget);
+    }
+
+    await mkdir(backupRoot);
+    for (const name of names) {
+      const target = resolveManagedTarget(targetRoot, name);
+      await inspectControlledDirectory(join(projectRoot, ".agents"));
+      await inspectControlledDirectory(targetRoot);
+      const hadOriginal = await prepareManagedTarget(target);
+      const backup = join(backupRoot, name);
+      const change = { target, backup, hadOriginal };
+
+      if (hadOriginal) {
+        await renameDirectory(target, backup);
+      }
+      changed.push(change);
+      await renameDirectory(join(stageRoot, name), target);
+    }
+  } catch (error) {
+    // 复制和暂存验证发生在替换前；若替换阶段失败，则按逆序还原已经移动的旧目录。
+    for (const change of changed.reverse()) {
+      await assertManagedTargetIsNotLink(change.target);
+      await rm(change.target, { recursive: true, force: true });
+      if (change.hadOriginal) {
+        await renameDirectory(change.backup, change.target);
+      }
+    }
+    throw error;
+  } finally {
+    await rm(stageRoot, { recursive: true, force: true });
+    await rm(backupRoot, { recursive: true, force: true });
+  }
 
   for (const name of names) {
-    const target = resolveManagedTarget(targetRoot, name);
-    // 每次 rm 前逐级 lstat，确保不会删除 .agents/skills 之外的目录。
-    await inspectControlledDirectory(join(projectRoot, ".agents"));
-    await inspectControlledDirectory(targetRoot);
-    await assertManagedTargetIsNotLink(target);
-    await rm(target, { recursive: true, force: true });
-    await cp(join(sourceRoot, name), target, { recursive: true });
     log(`已安装：${name}`);
   }
+  log(`安装清单：${JSON.stringify({ skills: names, target_root: targetRoot })}`);
 
   return names;
 }

@@ -18,11 +18,12 @@ Convert approved inputs into the sole `.cocos-workflow/artifacts/implementation-
 
 1. Map every requirement page to a scene or UI state with entry, exit, core interaction, acceptance criteria, and concept reference.
 2. Define stable IDs, responsibilities, dependencies, and acceptance criteria for scenes, nodes, prefabs, components, and TypeScript modules. Do not turn unconfirmed gameplay into implementation detail.
-3. Build an asset dependency graph including source, import target, consumers, license status, and missing-asset handling. Create integration work only for approved assets.
-4. Split production into non-overlapping asset-preparation and code tasks. Code tasks may run in parallel only when `allowed_paths` do not overlap; asset preparation must not use the Cocos editor.
-5. Put every Cocos MCP write into one serial `integration` queue. Each batch names one `cocos_writer` and requires query, minimal write, and read-back verification. Do not plan concurrent editor writes, deletion, movement, or default overwrite.
-6. Validate the draft, request human approval, and set `approved` only when approver, time, and plan hash are complete.
-7. Return the plan artifact, frozen input hashes, ownership checks, dependency checks, and unresolved questions through the assigned result path. The orchestrator accepts it before entering `production`.
+3. Build an asset dependency graph including source, import target, consumers, license status, and missing-asset handling. Asset-preparation can create only a pending manifest; Cocos import and every runtime binding must wait for the exact `game-assets.yaml` approval hash.
+4. Generate `.cocos-workflow/artifacts/capture-manifest.yaml` from all frozen `project-profile.capture_profiles`. It must define required routes, replayable interactions, screenshot paths, approved baseline paths, optional masks, and pixel-diff thresholds for `mobile-small`, `mobile-standard`, and `mobile-large`; do not permit a desktop substitute or an omitted profile.
+5. Split production into non-overlapping asset-preparation and code tasks. Code files may run in parallel only when `allowed_paths` do not overlap, but a code binding task that names `asset_ids` depends on the approved asset-manifest gate; asset preparation must not use the Cocos editor.
+6. Put every Cocos MCP write into one serial `integration` queue. Each batch names one `cocos_writer` and requires query, minimal write, and read-back verification. Do not plan concurrent editor writes, deletion, movement, or default overwrite.
+7. Validate the draft, request human approval, and set `approved` only when approver, time, plan hash, and capture-manifest hash are complete.
+8. Return the plan artifact, capture manifest, frozen input hashes, ownership checks, dependency checks, and unresolved questions through the assigned result path. The orchestrator accepts them before entering `production`.
 
 ## Block and invalidate
 
@@ -32,6 +33,7 @@ Convert approved inputs into the sole `.cocos-workflow/artifacts/implementation-
 
 ## Output requirements
 
-- `implementation-plan.yaml` must carry frozen input versions and `sha256:` hashes and define scenes, prefabs, scripts, asset dependencies, tasks, ownership, and the one Cocos writer.
+- `implementation-plan.yaml` must carry frozen input versions and `sha256:` hashes and define scenes, prefabs, scripts, asset dependencies, tasks, ownership, the asset-approval join gate, and the one Cocos writer.
+- `capture-manifest.yaml` is a planning artifact, not a verification report. It must bind the frozen profile and visual-direction hashes and enumerate all frozen mobile profiles before baseline capture begins.
 - Every production or integration task must have `allowed_paths`, `depends_on`, `acceptance_checks`, and expected outputs.
 - Follow the orchestrator result contract: a `passed` result has nonempty evidence, returns only authorized paths, and cannot waive P0 failure.
