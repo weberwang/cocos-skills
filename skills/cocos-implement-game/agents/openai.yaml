@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 实现游戏"
+  short_description: "按批准计划编写可测试 TypeScript 与绑定清单"
+  default_prompt: "Use $cocos-implement-game to implement the approved Cocos plan without editing the Cocos project."

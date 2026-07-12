@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 生成游戏资源"
+  short_description: "Generate traceable game image assets from approved concepts"
+  default_prompt: "Use $cocos-generate-game-assets to create traceable image assets from approved concepts."
