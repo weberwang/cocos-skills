@@ -1,0 +1,77 @@
+skill: cocos-orchestrate-web-workflow
+quick_validate: passed
+unit_tests: passed
+scenarios:
+  normal-initialization: passed
+  missing-profile: passed
+  version-mismatch: passed
+  parallel-cocos-writers: passed
+passed_count: 4
+total_count: 4
+dispatch_audit:
+  - scenario: normal-initialization
+    canonical_agent_id: /root/final_fix/forward_normal_v3
+    fresh_context: true
+    read_only: true
+    skill_path: skills/cocos-orchestrate-web-workflow
+    scenario_path: tests/scenarios/orchestrator/normal-initialization.md
+    actual_prompt: |-
+      在 D:/Git/cocos-skills 中执行只读前向验证。Use $cocos-orchestrate-web-workflow at skills/cocos-orchestrate-web-workflow to handle the provided Cocos workflow scenario in tests/scenarios/orchestrator/normal-initialization.md. Only analyze and return actions, state transitions, gates, and evidence requirements. Do not modify files or call Cocos tools. 不要读取 tests/scenarios/orchestrator/expected.yaml、tests/results/orchestrator/baseline、tests/results/orchestrator/with-skill、tests/results/orchestrator/verification.yaml 或任何失败分析。请完整读取本地 Skill 及其按需引用后，直接返回原始场景回答，不要附加测试评价或元说明。approval_gates.project-configuration 必须严格使用 canonical 字段 status、approved_by、approved_at、subject_hash，禁止 artifact/content_hash 替代字段。
+    isolation:
+      fork_turns: none
+      expected_yaml_shared: false
+      baseline_results_shared: false
+      previous_with_skill_shared: false
+      verification_shared: false
+    result_path: tests/results/orchestrator/with-skill/normal-initialization.md
+    result_sha256: 4906db9435f51ed5a13081515780e4d7e341e2e6348708934e7dd8d537c89302
+  - scenario: missing-profile
+    canonical_agent_id: /root/final_fix/forward_missing_v2
+    fresh_context: true
+    read_only: true
+    skill_path: skills/cocos-orchestrate-web-workflow
+    scenario_path: tests/scenarios/orchestrator/missing-profile.md
+    actual_prompt: |-
+      在 D:/Git/cocos-skills 中执行只读前向验证。Use $cocos-orchestrate-web-workflow at skills/cocos-orchestrate-web-workflow to handle the provided Cocos workflow scenario in tests/scenarios/orchestrator/missing-profile.md. Only analyze and return actions, state transitions, gates, and evidence requirements. Do not modify files or call Cocos tools. 不要读取 tests/scenarios/orchestrator/expected.yaml、tests/results/orchestrator/baseline、tests/results/orchestrator/with-skill、tests/results/orchestrator/verification.yaml 或任何失败分析。请完整读取本地 Skill 及其按需引用后，直接返回原始场景回答，不要附加测试评价或元说明。
+    isolation:
+      fork_turns: none
+      expected_yaml_shared: false
+      baseline_results_shared: false
+      previous_with_skill_shared: false
+      verification_shared: false
+    result_path: tests/results/orchestrator/with-skill/missing-profile.md
+    result_sha256: a711943c283afff59862b5db9b039ca915bc0b35d5ae9d9480947e3527490591
+  - scenario: version-mismatch
+    canonical_agent_id: /root/final_fix/forward_version_v2
+    fresh_context: true
+    read_only: true
+    skill_path: skills/cocos-orchestrate-web-workflow
+    scenario_path: tests/scenarios/orchestrator/version-mismatch.md
+    actual_prompt: |-
+      在 D:/Git/cocos-skills 中执行只读前向验证。Use $cocos-orchestrate-web-workflow at skills/cocos-orchestrate-web-workflow to handle the provided Cocos workflow scenario in tests/scenarios/orchestrator/version-mismatch.md. Only analyze and return actions, state transitions, gates, and evidence requirements. Do not modify files or call Cocos tools. 不要读取 tests/scenarios/orchestrator/expected.yaml、tests/results/orchestrator/baseline、tests/results/orchestrator/with-skill、tests/results/orchestrator/verification.yaml 或任何失败分析。请完整读取本地 Skill 及其按需引用后，直接返回原始场景回答，不要附加测试评价或元说明。
+    isolation:
+      fork_turns: none
+      expected_yaml_shared: false
+      baseline_results_shared: false
+      previous_with_skill_shared: false
+      verification_shared: false
+    result_path: tests/results/orchestrator/with-skill/version-mismatch.md
+    result_sha256: ec39034125c04aa8406af764f01cc529ab345b2c2f861b8d265b7fc1135af2e3
+  - scenario: parallel-cocos-writers
+    canonical_agent_id: /root/final_fix/forward_parallel_v2
+    fresh_context: true
+    read_only: true
+    skill_path: skills/cocos-orchestrate-web-workflow
+    scenario_path: tests/scenarios/orchestrator/parallel-cocos-writers.md
+    actual_prompt: |-
+      在 D:/Git/cocos-skills 中执行只读前向验证。Use $cocos-orchestrate-web-workflow at skills/cocos-orchestrate-web-workflow to handle the provided Cocos workflow scenario in tests/scenarios/orchestrator/parallel-cocos-writers.md. Only analyze and return actions, state transitions, gates, and evidence requirements. Do not modify files or call Cocos tools. 不要读取 tests/scenarios/orchestrator/expected.yaml、tests/results/orchestrator/baseline、tests/results/orchestrator/with-skill、tests/results/orchestrator/verification.yaml 或任何失败分析。请完整读取本地 Skill 及其按需引用后，直接返回原始场景回答，不要附加测试评价或元说明。
+    isolation:
+      fork_turns: none
+      expected_yaml_shared: false
+      baseline_results_shared: false
+      previous_with_skill_shared: false
+      verification_shared: false
+    result_path: tests/results/orchestrator/with-skill/parallel-cocos-writers.md
+    result_sha256: 1e21385e84a45a51be89956b34561be0a0bb9f625ec3d752abbf430610d78dd5
+audit_verified_by: /root/final_fix
+result: passed

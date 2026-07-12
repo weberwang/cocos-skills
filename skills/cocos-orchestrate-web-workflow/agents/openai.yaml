@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Web 工作流总控"
+  short_description: "编排 Cocos Web Mobile 从设计到交付"
+  default_prompt: "Use $cocos-orchestrate-web-workflow to start and coordinate a Cocos Web Mobile project workflow."

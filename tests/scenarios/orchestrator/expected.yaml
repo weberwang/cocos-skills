@@ -1,0 +1,21 @@
+normal-initialization:
+  required:
+    - record-orientation
+    - portrait-default-1080x1920
+    - freeze-project-profile
+    - remain-in-bootstrap-until-approved
+missing-profile:
+  required:
+    - refuse-skip
+    - no-concept-generation
+    - request-project-profile
+version-mismatch:
+  required:
+    - reject-merge
+    - mark-result-stale
+    - no-downstream-transition
+parallel-cocos-writers:
+  required:
+    - serialize-cocos-writes
+    - assign-single-cocos-writer
+    - verify-after-each-write-batch
