@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import re
 import sys
 from collections.abc import Mapping
@@ -32,7 +33,6 @@ MAIN_STATES = {
     "bootstrap",
     "requirements",
     "visual-direction",
-    "scene-concepts",
     "planning",
     "production",
     "integration",
@@ -45,7 +45,6 @@ MAIN_STATE_SEQUENCE = (
     "bootstrap",
     "requirements",
     "visual-direction",
-    "scene-concepts",
     "planning",
     "production",
     "integration",
@@ -425,7 +424,6 @@ SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 STAGE_ARTIFACTS = (
     ("requirements", "requirements", "requirements.yaml", "approved", "requirements_version"),
     ("visual-direction", "visual-direction", "artifacts/visual-direction.yaml", "frozen", "visual_direction_version"),
-    ("scene-concepts", "scene-concepts", "artifacts/scene-concepts.yaml", "approved", None),
     ("planning", "implementation-plan", "artifacts/implementation-plan.yaml", "approved", "plan_version"),
     ("production", "game-assets", "artifacts/game-assets.yaml", "approved", "asset_set_version"),
     ("verification", "verification", "artifacts/verification.yaml", "passed", None),
@@ -502,6 +500,168 @@ def _stage_is_complete(workflow: Mapping[str, Any], stage: str) -> bool:
     )
 
 
+def _file_hash(path: Path) -> str | None:
+    """计算单个二进制文件的 SHA-256，文件不可读时返回空值。"""
+    try:
+        return f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+    except OSError:
+        return None
+
+
+def _validate_visual_reference_effect_images(
+    artifact: Mapping[str, Any], artifact_path: Path, state_dir: Path
+) -> list[ValidationIssue]:
+    """验证冻结视觉方向恰好包含两张已批准的参考效果图。"""
+    images = artifact.get("reference_effect_images")
+    if not isinstance(images, list) or len(images) != 2:
+        return [_issue("invalid-visual-reference-images", artifact_path, "视觉方向必须包含恰好两张参考效果图")]
+
+    issues: list[ValidationIssue] = []
+    seen_references: set[tuple[str, str]] = set()
+    for index, image in enumerate(images, start=1):
+        image_path = image.get("path") if isinstance(image, Mapping) else None
+        image_hash = image.get("content_hash") if isinstance(image, Mapping) else None
+        valid = (
+            isinstance(image, Mapping)
+            and isinstance(image_path, str)
+            and image_path.startswith("art/visual-references/")
+            and isinstance(image.get("purpose"), str)
+            and bool(image["purpose"].strip())
+            and isinstance(image.get("prompt_hash"), str)
+            and bool(SHA256_PATTERN.fullmatch(image["prompt_hash"]))
+            and isinstance(image.get("generator"), Mapping)
+            and image["generator"].get("tool") == "imagegen"
+            and isinstance(image_hash, str)
+            and bool(SHA256_PATTERN.fullmatch(image_hash))
+            and _file_hash(state_dir / image_path) == image_hash
+            and image.get("review_status") == "approved"
+        )
+        if isinstance(image_path, str) and isinstance(image_hash, str):
+            if (image_path, image_hash) in seen_references:
+                valid = False
+            seen_references.add((image_path, image_hash))
+        if not valid:
+            issues.append(
+                _issue(
+                    "invalid-visual-reference-image",
+                    artifact_path,
+                    f"第 {index} 张参考效果图缺少必要证据或未获批准",
+                )
+            )
+    return issues
+
+
+def _validate_scene_concept_design_evidence(
+    artifact: Mapping[str, Any], artifact_path: Path, frozen_direction: Mapping[str, Any] | None
+) -> list[ValidationIssue]:
+    """验证场景高保真图继承已批准草图与冻结的全局视觉方向。"""
+    issues: list[ValidationIssue] = []
+    expected_references = (
+        frozen_direction.get("reference_effect_images")
+        if isinstance(frozen_direction, Mapping)
+        else None
+    )
+    references_match = (
+        isinstance(expected_references, list)
+        and len(expected_references) == 2
+        and artifact.get("frozen_reference_effect_images")
+        == [
+            {"path": image.get("path"), "content_hash": image.get("content_hash")}
+            for image in expected_references
+            if isinstance(image, Mapping)
+        ]
+    )
+    visual_matches = (
+        isinstance(frozen_direction, Mapping)
+        and artifact.get("visual_direction_version") == frozen_direction.get("visual_direction_version")
+        and artifact.get("visual_direction_hash") == frozen_direction.get("content_hash")
+        and references_match
+    )
+    if not visual_matches:
+        issues.append(
+            _issue(
+                "scene-concept-visual-mismatch",
+                artifact_path,
+                "场景效果图未逐项绑定当前冻结视觉方向及两张参考效果图",
+            )
+        )
+
+    scenes = artifact.get("scenes")
+    if not isinstance(scenes, list) or not scenes:
+        return issues + [_issue("invalid-scene-concept-scenes", artifact_path, "场景效果图清单不得为空")]
+
+    for scene in scenes:
+        pencil_draft = scene.get("pencil_draft") if isinstance(scene, Mapping) else None
+        review = pencil_draft.get("review") if isinstance(pencil_draft, Mapping) else None
+        valid_draft = (
+            isinstance(pencil_draft, Mapping)
+            and isinstance(pencil_draft.get("path"), str)
+            and bool(pencil_draft["path"].strip())
+            and isinstance(pencil_draft.get("content_hash"), str)
+            and bool(SHA256_PATTERN.fullmatch(pencil_draft["content_hash"]))
+            and isinstance(review, Mapping)
+            and review.get("status") == "approved"
+            and review.get("subject_hash") == pencil_draft["content_hash"]
+        )
+        if not valid_draft:
+            issues.append(
+                _issue(
+                    "invalid-scene-pencil-draft",
+                    artifact_path,
+                    "场景效果图缺少已批准且哈希绑定的 Pencil 草图",
+                )
+            )
+    return issues
+
+
+def _validate_implementation_plan_tasks(
+    artifact: Mapping[str, Any], artifact_path: Path
+) -> list[ValidationIssue]:
+    """验证计划中的场景设计与代码任务依赖形成不可绕过的 DAG。"""
+    tasks = artifact.get("tasks")
+    if not isinstance(tasks, list):
+        return [_issue("invalid-plan-tasks", artifact_path, "实施计划必须包含 tasks 列表")]
+    task_map = {
+        task.get("task_id"): task
+        for task in tasks
+        if isinstance(task, Mapping) and isinstance(task.get("task_id"), str)
+    }
+    issues: list[ValidationIssue] = []
+    module_ids = {task_id for task_id, task in task_map.items() if task.get("kind") == "module_decomposition"}
+    scaffold_ids = {task_id for task_id, task in task_map.items() if task.get("kind") == "global_scaffold"}
+    by_scene: dict[str, dict[str, str]] = {}
+    for task_id, task in task_map.items():
+        kind = task.get("kind")
+        scene_id = task.get("scene_id")
+        if kind in {"pencil-draft", "visual-concept", "code", "asset-preparation"}:
+            if not isinstance(scene_id, str) or not scene_id.strip():
+                issues.append(_issue("missing-task-scene", artifact_path, f"任务 {task_id} 缺少 scene_id"))
+                continue
+            by_scene.setdefault(scene_id, {})[str(kind)] = task_id
+        depends_on = task.get("depends_on")
+        if kind != "module_decomposition" and (not isinstance(depends_on, list) or not depends_on):
+            issues.append(_issue("missing-task-dependency", artifact_path, f"任务 {task_id} 缺少 depends_on"))
+
+    for scene_id, task_ids in by_scene.items():
+        pencil_id = task_ids.get("pencil-draft")
+        concept_id = task_ids.get("visual-concept")
+        for required in ("pencil-draft", "visual-concept", "code", "asset-preparation"):
+            if required not in task_ids:
+                issues.append(_issue("incomplete-scene-loop", artifact_path, f"场景 {scene_id} 缺少 {required} 任务"))
+        if concept_id and pencil_id and pencil_id not in task_map[concept_id].get("depends_on", []):
+            issues.append(_issue("missing-pencil-dependency", artifact_path, f"场景 {scene_id} 高保真任务未依赖 Pencil 草图"))
+        for kind in ("code", "asset-preparation"):
+            task_id = task_ids.get(kind)
+            if not task_id:
+                continue
+            depends_on = task_map[task_id].get("depends_on", [])
+            if concept_id not in depends_on:
+                issues.append(_issue("missing-visual-concept-dependency", artifact_path, f"场景 {scene_id} 的 {kind} 未依赖高保真图"))
+            if kind == "code" and (not module_ids.intersection(depends_on) or not scaffold_ids.intersection(depends_on)):
+                issues.append(_issue("missing-code-foundation-dependency", artifact_path, f"场景 {scene_id} 代码任务缺少模块拆分或全局骨架依赖"))
+    return issues
+
+
 def _validate_stage_artifacts(
     workflow: Mapping[str, Any], project_root: Path, state_dir: Path
 ) -> list[ValidationIssue]:
@@ -533,7 +693,12 @@ def _validate_stage_artifacts(
         if not valid:
             issues.append(_issue("invalid-stage-artifact", artifact_path, f"{state} 工件的 schema、状态或内容哈希无效"))
 
-        if state in {"requirements", "visual-direction", "scene-concepts", "planning", "production"}:
+        if state == "visual-direction":
+            issues.extend(_validate_visual_reference_effect_images(artifact, artifact_path, state_dir))
+        if state == "planning":
+            issues.extend(_validate_implementation_plan_tasks(artifact, artifact_path))
+
+        if state in {"requirements", "visual-direction", "planning", "production"}:
             approval = artifact.get("approval")
             approved_status = "approved"
             valid_approval = (
@@ -656,6 +821,45 @@ def _validate_task(
                 f"任务 {task_id} 的视觉依赖必须包含版本和内容哈希",
             )
         )
+    if status == "passed" and task.get("kind") in {"code", "asset-preparation"}:
+        approvals = task.get("design_approvals")
+        valid_approvals = (
+            isinstance(approvals, Mapping)
+            and isinstance(approvals.get("pencil_source_hash"), str)
+            and bool(SHA256_PATTERN.fullmatch(approvals["pencil_source_hash"]))
+            and isinstance(approvals.get("visual_concept_hash"), str)
+            and bool(SHA256_PATTERN.fullmatch(approvals["visual_concept_hash"]))
+        )
+        if not valid_approvals:
+            issues.append(_issue("missing-design-approvals", task_path, f"任务 {task_id} 缺少已批准的草图和高保真哈希"))
+    if status == "passed" and task.get("kind") == "visual-concept":
+        concept_path = task.get("scene_concept_artifact")
+        if not isinstance(concept_path, str) or not concept_path.startswith("artifacts/scene-concepts/"):
+            issues.append(_issue("missing-scene-concept-artifact", task_path, f"任务 {task_id} 缺少场景效果图工件"))
+        else:
+            try:
+                concept = read_yaml(state_dir / concept_path)
+                frozen = read_yaml(state_dir / "artifacts" / "visual-direction.yaml")
+                expected_references = [
+                    {"path": item.get("path"), "content_hash": item.get("content_hash")}
+                    for item in frozen.get("reference_effect_images", [])
+                    if isinstance(item, Mapping)
+                ]
+                image_path = concept.get("image_path")
+                valid_concept = (
+                    concept.get("status") == "approved"
+                    and concept.get("visual_direction_version") == frozen.get("visual_direction_version")
+                    and concept.get("visual_direction_hash") == frozen.get("content_hash")
+                    and concept.get("frozen_reference_effect_images") == expected_references
+                    and isinstance(image_path, str)
+                    and _file_hash(state_dir / image_path) == concept.get("image_hash")
+                    and isinstance(concept.get("generator"), Mapping)
+                    and concept["generator"].get("tool") == "imagegen"
+                )
+                if not valid_concept:
+                    issues.append(_issue("invalid-scene-concept-evidence", task_path, f"任务 {task_id} 的效果图未绑定冻结视觉或真实图像"))
+            except (WorkflowError, yaml.YAMLError, UnicodeError, OSError):
+                issues.append(_issue("invalid-scene-concept-artifact", task_path, f"任务 {task_id} 的效果图工件不可读取"))
     return issues
 
 

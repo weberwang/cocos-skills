@@ -3,8 +3,7 @@
 ## 常规迁移
 
 ```text
-bootstrap → requirements → visual-direction → scene-concepts → planning
-planning → production → integration → verification → building → delivery → completed
+bootstrap → requirements → visual-direction → planning → production → integration → verification → building → delivery → completed
 pending → running | blocked
 running → passed | failed | blocked
 failed → retrying | blocked
@@ -26,7 +25,7 @@ blocked → pending | running
 4. 将失效任务重置为 `pending`，从活动/已完成索引移除，删除这些任务的 `results/<task_id>.yaml`，并移除对应产物批准门禁；`project-configuration` 根门禁不得删除。
 5. 在 `workflow.invalidated` 追加同一审计事实。新任务只能在回退阶段重新执行并获得新的工件哈希和人工批准后再前进。
 
-回退阶段按以下顺序取最早值：`requirements`、`visual-direction`、`scene-concepts`、`planning`、`production`、`integration`、`verification`、`building`、`delivery`。工件必须显式声明 `stage`；未声明且不能从规范别名解析的工件会阻塞回退。
+回退阶段按以下顺序取最早值：`requirements`、`visual-direction`、`planning`、`production`、`integration`、`verification`、`building`、`delivery`。Pencil 草图和场景效果图属于对应 `scene_loop` 的 production 工件。工件必须显式声明 `stage`；未声明且不能从规范别名解析的工件会阻塞回退。
 
 ## 阶段门禁
 
@@ -34,10 +33,9 @@ blocked → pending | running
 | --- | --- | --- |
 | `bootstrap` | 方向、分辨率、Creator 版本和批准者已冻结 | `project-profile.yaml` 哈希与项目配置门禁一致，且 MCP 能力快照可用 |
 | `requirements` | 项目配置门禁通过 | 需求工件、验收项和人工批准 |
-| `visual-direction` | 需求已冻结 | `artifacts/visual-direction.yaml` 的版本、哈希和人工批准 |
-| `scene-concepts` | 视觉方向版本/哈希匹配 | 场景效果图、生成记录和人工批准 |
-| `planning` | 场景概念已批准 | `implementation-plan.yaml`、`capture-manifest.yaml`、单编辑器写者和人工批准 |
-| `production` | 计划已批准且任务路径不冲突 | 代码产物和 `game-assets.yaml`；资源清单必须获人工批准才能进入绑定/导入 |
+| `visual-direction` | 需求已冻结 | `artifacts/visual-direction.yaml` 的版本、哈希、两张参考效果图和人工批准 |
+| `planning` | 视觉方向版本/哈希匹配 | `implementation-plan.yaml`、`capture-manifest.yaml`、每场景 Pencil/高保真任务、单编辑器写者和人工批准 |
+| `production` | 计划已批准且任务路径不冲突 | 每个 scene loop 的已批准 Pencil 草图与高保真效果图、代码产物和 `game-assets.yaml`；资源清单必须获人工批准才能进入绑定/导入 |
 | `integration` | 生产汇合门禁通过 | 唯一 Cocos 写者的导入、绑定和读回证据 |
 | `verification` | 集成结果有效 | Chrome 对全部冻结 mobile profiles 的截图、交互、基线和像素差证据 |
 | `building` | 验证门禁已批准 | 成功构建日志、产物清单和哈希 |

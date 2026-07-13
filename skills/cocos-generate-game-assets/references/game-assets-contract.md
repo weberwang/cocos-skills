@@ -7,7 +7,7 @@ schema_version: 1
 status: pending # pending | blocked | approved | stale
 asset_set_version: 1
 asset_plan_hash: sha256:<approved planning asset-plan hash>
-scene_concepts_hash: sha256:<approved scene-concepts hash>
+scene_concept_hash: sha256:<approved per-scene scene-concept hash>
 project_profile_hash: sha256:<hash>
 visual_direction_version: 3
 visual_direction_hash: sha256:<hash>

@@ -7,14 +7,14 @@
 - 当前保持 `bootstrap`。
 - `bootstrap/pending → bootstrap/blocked`；若已运行，则 `bootstrap/running → bootstrap/blocked`。
 - 配置补齐并批准后：`bootstrap/blocked → bootstrap/pending | running`。
-- 引导证据完整后才可依次推进：`bootstrap → requirements → visual-direction → scene-concepts`，不得跨级。
+- 引导证据完整后才可依次推进：`bootstrap → requirements → visual-direction → planning → production`，不得跨级。
 
 ## 门禁与动作
 
 - 项目配置门禁：阻塞。补齐并冻结项目配置，绑定相同内容哈希的人工批准。
 - 需求门禁：未验证。验收现有需求文档并记录人工批准。
 - 视觉方向门禁：未满足。冻结带版本和哈希的视觉方向并批准。
-- 场景效果图门禁：未满足。进入 `scene-concepts` 后才能派发生成任务。
+- 场景效果图门禁：未满足。实施计划批准后进入 `production`，先完成 Pencil 草图批准才能派发高保真生成任务。
 - 当前不创建任务、不并行派发、不调用 Cocos 工具。
 
 ## 证据要求

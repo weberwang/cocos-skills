@@ -28,9 +28,8 @@ Never accept a child-agent result that only says completion; require artifacts, 
 | `bootstrap` | 总控自身完成目录初始化、项目配置门禁和 MCP 能力发现，不派发阶段 Skill |
 | `requirements` | `$cocos-define-game` |
 | `visual-direction` | `$cocos-freeze-visual-direction` |
-| `scene-concepts` | `$cocos-create-visual-concept` |
 | `planning` | `$cocos-plan-project` |
-| `production` | 并行编排 `$cocos-generate-game-assets` 与 `$cocos-implement-game`；仅在路径所有权无冲突时并行 |
+| `production` | 对每个 `scene_loop` 依次编排 `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game`；仅在已通过依赖且路径所有权无冲突时并行 |
 | `integration` | `$cocos-integrate-assets` |
 | `verification` | `$cocos-verify-game` |
 | `building` | `$cocos-deliver-web`，传入 `entry_mode=build` |
@@ -41,7 +40,7 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 ## 人工门禁
 
-在项目配置、需求、视觉方向、场景效果图、实施计划、视觉验证和交付各门禁处记录明确的人工批准及其版本。Never advance past an approval gate without explicit human approval.
+在项目配置、需求、视觉方向、Pencil 场景/UI 草图、高保真场景效果图、实施计划、视觉验证和交付各门禁处记录明确的人工批准及其版本。生产阶段按单场景循环执行 `Pencil 草图 → 高保真效果图 → 资源/代码 → 集成 → 验证`，不得要求其他场景先完成设计。高保真图必须绑定冻结视觉版本、内容哈希和两张全局参考效果图，任何局部视觉变更均须返回视觉冻结。Never advance past an approval gate without explicit human approval.
 
 ## 子代理规则
 

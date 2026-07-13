@@ -23,6 +23,9 @@ class SceneLoopContractTest(unittest.TestCase):
         self.assertIn("exit_checks", contract)
         self.assertIn("global_scaffold", contract)
         self.assertIn("global_scaffold_task_id", contract)
+        self.assertIn("pencil-draft", contract)
+        self.assertIn("visual-concept", contract)
+        self.assertIn("两张参考效果图", contract)
 
     def test_integration_and_verification_consume_scene_loop(self) -> None:
         """集成和验证均须以场景循环为最小交付单位。"""
@@ -34,3 +37,4 @@ class SceneLoopContractTest(unittest.TestCase):
         plan = PLAN_SKILL.read_text(encoding="utf-8")
         self.assertIn("global scaffold code task", plan)
         self.assertIn("global_scaffold", plan)
+        self.assertIn("pencil-draft → visual-concept", plan)

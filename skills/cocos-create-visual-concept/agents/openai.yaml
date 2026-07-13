@@ -1,4 +1,4 @@
 interface:
   display_name: "Cocos 创建场景效果图"
-  short_description: "Create reviewable mobile scene images"
-  default_prompt: "Use $cocos-create-visual-concept to create approved mobile scene concepts from frozen direction."
+  short_description: "Create high-fidelity scenes from approved Pencil drafts"
+  default_prompt: "Use $cocos-create-visual-concept to turn approved Pencil scene/UI drafts into high-fidelity concepts that strictly follow the frozen visual direction."

@@ -89,39 +89,21 @@ class InvalidateArtifactsTests(unittest.TestCase):
                     "evidence": ["artifacts/visual-direction.yaml"],
                 },
                 {
-                    "from_state": "visual-direction", "to_state": "scene-concepts",
+                    "from_state": "visual-direction", "to_state": "planning",
                     "from_run_status": "passed", "to_run_status": "pending",
                     "timestamp": "2026-07-12T00:08:00+00:00", "reason": "next-stage",
-                    "evidence": ["artifacts/scene-concepts.yaml"],
-                },
-                {
-                    "from_state": "scene-concepts", "to_state": "scene-concepts",
-                    "from_run_status": "pending", "to_run_status": "running",
-                    "timestamp": "2026-07-12T00:09:00+00:00", "reason": "start",
-                    "evidence": ["tasks/concept.yaml"],
-                },
-                {
-                    "from_state": "scene-concepts", "to_state": "scene-concepts",
-                    "from_run_status": "running", "to_run_status": "passed",
-                    "timestamp": "2026-07-12T00:10:00+00:00", "reason": "verified",
-                    "evidence": ["artifacts/scene-concepts.yaml"],
-                },
-                {
-                    "from_state": "scene-concepts", "to_state": "planning",
-                    "from_run_status": "passed", "to_run_status": "pending",
-                    "timestamp": "2026-07-12T00:11:00+00:00", "reason": "next-stage",
                     "evidence": ["artifacts/implementation-plan.yaml"],
                 },
                 {
                     "from_state": "planning", "to_state": "planning",
                     "from_run_status": "pending", "to_run_status": "running",
-                    "timestamp": "2026-07-12T00:12:00+00:00", "reason": "start",
+                    "timestamp": "2026-07-12T00:09:00+00:00", "reason": "start",
                     "evidence": ["tasks/planning.yaml"],
                 },
                 {
                     "from_state": "planning", "to_state": "planning",
                     "from_run_status": "running", "to_run_status": "passed",
-                    "timestamp": "2026-07-12T00:13:00+00:00", "reason": "verified",
+                    "timestamp": "2026-07-12T00:10:00+00:00", "reason": "verified",
                     "evidence": ["artifacts/implementation-plan.yaml"],
                 },
                 {
@@ -156,7 +138,7 @@ class InvalidateArtifactsTests(unittest.TestCase):
                     "depends_on": ["visual"],
                     "status": "passed",
                     "path": "art/concepts/lobby.png",
-                    "stage": "scene-concepts",
+                    "stage": "production",
                     "task_ids": ["concept-task"],
                 },
                 "unrelated": {
