@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 定义技术设计"
+  short_description: "生成可审核的架构与 ADR 技术蓝图"
+  default_prompt: "Use $cocos-define-technical-design to create an approval-ready Cocos technical design from approved requirements and systems."

@@ -31,6 +31,8 @@ REQUIRED_DIRECTORIES = (
 MAIN_STATES = {
     "bootstrap",
     "requirements",
+    "systems-design",
+    "technical-design",
     "visual-direction",
     "scene-concepts",
     "planning",
@@ -44,6 +46,8 @@ MAIN_STATES = {
 MAIN_STATE_SEQUENCE = (
     "bootstrap",
     "requirements",
+    "systems-design",
+    "technical-design",
     "visual-direction",
     "scene-concepts",
     "planning",
@@ -126,6 +130,7 @@ def _validate_profile(profile: Mapping[str, Any], path: Path) -> list[Validation
         "capture_profiles": list,
         "fit_policy": Mapping,
         "safe_area": Mapping,
+        "review_mode": str,
         "project_root": str,
         "cocos_project_file": str,
         "status": str,
@@ -147,6 +152,8 @@ def _validate_profile(profile: Mapping[str, Any], path: Path) -> list[Validation
 
     if profile.get("platform") != "web-mobile":
         issues.append(_issue("invalid-platform", path, "目标平台必须为 web-mobile"))
+    if profile.get("review_mode") not in {"full", "lean"}:
+        issues.append(_issue("invalid-review-mode", path, "review_mode 仅支持 full 或 lean，硬门禁不得跳过"))
 
     if not isinstance(profile.get("approved_by"), str) or not profile.get("approved_by", "").strip():
         issues.append(_issue("missing-approval", path, "approved_by 不得为空"))
@@ -414,6 +421,8 @@ def _validate_quality_gates(gates: Mapping[str, Any], path: Path) -> list[Valida
         has_waiver = has_waiver or "waivable_by" in p0
         if has_waiver:
             issues.append(_issue("p0-waiver-forbidden", path, "P0 质量门禁不得配置豁免"))
+        if p0.get("require_vertical_slice") is not True:
+            issues.append(_issue("vertical-slice-required", path, "P0.require_vertical_slice 必须为 true"))
     return issues
 
 
@@ -424,6 +433,8 @@ SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 # 阶段离开后必须保留可复算的工件和与该工件哈希绑定的总控门禁。
 STAGE_ARTIFACTS = (
     ("requirements", "requirements", "requirements.yaml", "approved", "requirements_version"),
+    ("systems-design", "systems-design", "artifacts/systems-design.yaml", "approved", "systems_design_version"),
+    ("technical-design", "technical-design", "artifacts/technical-design.yaml", "approved", "technical_design_version"),
     ("visual-direction", "visual-direction", "artifacts/visual-direction.yaml", "frozen", "visual_direction_version"),
     ("scene-concepts", "scene-concepts", "artifacts/scene-concepts.yaml", "approved", None),
     ("planning", "implementation-plan", "artifacts/implementation-plan.yaml", "approved", "plan_version"),
@@ -533,7 +544,7 @@ def _validate_stage_artifacts(
         if not valid:
             issues.append(_issue("invalid-stage-artifact", artifact_path, f"{state} 工件的 schema、状态或内容哈希无效"))
 
-        if state in {"requirements", "visual-direction", "scene-concepts", "planning", "production"}:
+        if state in {"requirements", "systems-design", "technical-design", "visual-direction", "scene-concepts", "planning", "production"}:
             approval = artifact.get("approval")
             approved_status = "approved"
             valid_approval = (
@@ -570,6 +581,66 @@ def _validate_stage_artifacts(
                 or visual.get("content_hash") != artifact.get("content_hash")
             ):
                 issues.append(_issue("visual-direction-mismatch", state_dir / "workflow.yaml", "总控视觉方向与冻结工件不一致"))
+    return issues
+
+
+def _validate_vertical_slice_gate(
+    workflow: Mapping[str, Any], state_dir: Path
+) -> list[ValidationIssue]:
+    """确保离开 production 后保留可复算且人工批准的垂直切片证据。"""
+    if not _stage_is_complete(workflow, "production"):
+        return []
+
+    artifact_path = state_dir / "artifacts" / "vertical-slice.yaml"
+    if not artifact_path.is_file():
+        return [_issue("missing-vertical-slice", artifact_path, "离开 production 前必须通过垂直切片门禁")]
+    try:
+        artifact = read_yaml(artifact_path)
+    except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
+        return [_issue("invalid-state-file", artifact_path, str(error))]
+
+    plan_path = state_dir / "artifacts" / "implementation-plan.yaml"
+    try:
+        plan = read_yaml(plan_path)
+    except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
+        return [_issue("invalid-vertical-slice-plan", plan_path, f"无法校验垂直切片计划绑定：{error}")]
+
+    approval = artifact.get("approval")
+    valid_artifact = (
+        type(artifact.get("schema_version")) is int
+        and artifact.get("status") == "passed"
+        and isinstance(artifact.get("content_hash"), str)
+        and bool(SHA256_PATTERN.fullmatch(artifact["content_hash"]))
+        and artifact.get("content_hash") == content_hash(_artifact_hash_source(artifact))
+        and artifact.get("implementation_plan_hash") == plan.get("content_hash")
+    )
+    valid_approval = (
+        isinstance(approval, Mapping)
+        and approval.get("status") == "approved"
+        and isinstance(approval.get("approved_by"), str)
+        and bool(approval.get("approved_by", "").strip())
+        and isinstance(approval.get("approved_at"), str)
+        and bool(approval.get("approved_at", "").strip())
+        and approval.get("subject_hash") == artifact.get("content_hash")
+    )
+    gates = workflow.get("approval_gates")
+    gate = gates.get("vertical-slice") if isinstance(gates, Mapping) else None
+    valid_gate = (
+        isinstance(gate, Mapping)
+        and gate.get("status") == "passed"
+        and gate.get("subject_hash") == artifact.get("content_hash")
+        and isinstance(gate.get("approved_by"), str)
+        and bool(gate.get("approved_by", "").strip())
+        and isinstance(gate.get("approved_at"), str)
+        and bool(gate.get("approved_at", "").strip())
+    )
+    issues: list[ValidationIssue] = []
+    if not valid_artifact:
+        issues.append(_issue("invalid-vertical-slice", artifact_path, "垂直切片工件状态、计划绑定或内容哈希无效"))
+    if not valid_approval:
+        issues.append(_issue("invalid-vertical-slice-approval", artifact_path, "垂直切片人工批准未绑定当前内容哈希"))
+    if not valid_gate:
+        issues.append(_issue("vertical-slice-gate-mismatch", state_dir / "workflow.yaml", "垂直切片总控门禁未绑定当前工件哈希"))
     return issues
 
 
@@ -747,6 +818,7 @@ def validate_workflow(project_root: Path) -> list[ValidationIssue]:
                 )
             )
         issues.extend(_validate_stage_artifacts(workflow, project_root, state_dir))
+        issues.extend(_validate_vertical_slice_gate(workflow, state_dir))
         issues.extend(_validate_tasks(workflow, project_root, state_dir))
 
     if profile is not None:

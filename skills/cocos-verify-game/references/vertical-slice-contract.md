@@ -1,0 +1,25 @@
+# 垂直切片验证契约
+
+垂直切片工件固定为 `.cocos-workflow/artifacts/vertical-slice.yaml`，由 `cocos-verify-game` 在 `verification_mode: vertical-slice` 时生成。它是生产阶段的子门禁，不替代最终 `verification.yaml`。
+
+```yaml
+schema_version: 1
+status: pending # pending | blocked | passed | stale
+implementation_plan_hash: sha256:<approved implementation plan>
+requirements_hash: sha256:<approved requirements>
+systems_design_hash: sha256:<approved systems design>
+technical_design_hash: sha256:<approved technical design>
+scene_loop_ids: []
+core_loop_evidence:
+  start: reports/chrome/mobile-standard/slice-start.png
+  challenge: reports/chrome/mobile-standard/slice-challenge.png
+  resolution: reports/chrome/mobile-standard/slice-resolution.png
+profiles: []
+playtest_evidence: []
+approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
+content_hash: sha256:<normalized content excluding content_hash and approval.subject_hash>
+```
+
+- 所有冻结 mobile profile 都必须有可重放的核心循环证据；`start`、`challenge`、`resolution` 均须存在于项目内路径。
+- 必须同时通过 P0/P1、像素差阈值和人工审阅，才可写入 `status: passed`；批准主题哈希必须等于 `content_hash`。
+- 需求、系统设计、技术设计、计划、代码或切片资源变化时必须置为 `stale`，总控阻止释放非切片场景循环。

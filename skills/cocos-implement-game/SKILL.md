@@ -13,6 +13,7 @@ Write TypeScript, tests, and a binding manifest from an approved plan. This is a
 2. Verify `project_profile_hash`, `requirements_hash`, visual-direction `version` and `content_hash`, and plan `content_hash` against current frozen inputs. On mismatch, mark the result `stale` and do not change code.
 3. Code-only tasks may execute in parallel with asset generation. Before writing any binding entry with a nonempty `asset_ids`, read `artifacts/game-assets.yaml` and require `status: approved`, a valid human approval whose `subject_hash` equals its `content_hash`, and exact asset IDs. Otherwise leave that binding task `blocked`; do not insert placeholder IDs or unapproved assets.
 4. Execute the sole `kind: global_scaffold` task immediately after approved module decomposition. Do not start scene-specific `kind: code` tasks until its app bootstrap, routing, global state/events, configuration, resource service, error boundary, and acceptance checks pass. Then claim only code tasks whose `allowed_paths` belong to this worker and whose `module_ids` are in approved `module_decomposition`. Return path overlaps, undeclared modules, missing `global_scaffold` dependency, or cyclic `dependency_graph` entries to the orchestrator; do not partition or take ownership unilaterally.
+5. Read `implementation-plan.vertical_slice`. A task outside its `scene_loop_ids` is blocked until `artifacts/vertical-slice.yaml` is `passed`, contains a hash-bound human approval, and matches the current plan hash. `review_mode` cannot waive this production sub-gate.
 
 ## Implement
 
@@ -30,4 +31,4 @@ Write TypeScript, tests, and a binding manifest from an approved plan. This is a
 
 ## Invalidation
 
-If requirements, frozen visual direction, scene concepts, implementation plan, or asset IDs change, mark code results and the binding manifest `stale`. Do not continue with a patch until a matching plan is reissued. Every `passed` result must satisfy the orchestrator result contract with nonempty compile and test evidence.
+If requirements, systems design, technical design, frozen visual direction, scene concepts, implementation plan, or asset IDs change, mark code results and the binding manifest `stale`. Do not continue with a patch until a matching plan is reissued. Every `passed` result must satisfy the orchestrator result contract with nonempty compile and test evidence.

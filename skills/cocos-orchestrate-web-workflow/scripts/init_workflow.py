@@ -46,6 +46,7 @@ def _default_quality_gates() -> dict[str, Any]:
             "require_first_scene_loaded": True,
             "require_delivery_manifest": True,
             "require_checksum": True,
+            "require_vertical_slice": True,
         },
         "P1": {
             "waivable_by": "human",
@@ -92,6 +93,7 @@ def initialize_workflow(
     *,
     creator_version: str,
     approved_by: str,
+    review_mode: Literal["full", "lean"] = "lean",
     design_width: int | None = None,
     design_height: int | None = None,
 ) -> Path:
@@ -107,6 +109,8 @@ def initialize_workflow(
         raise WorkflowError("Creator 版本必须为正式三段版本且不低于 3.8.6")
     if not isinstance(approved_by, str) or not approved_by.strip():
         raise WorkflowError("人工批准者不得为空")
+    if review_mode not in {"full", "lean"}:
+        raise WorkflowError("审阅强度仅支持 full 或 lean；硬门禁不可跳过")
     if orientation not in {"landscape", "portrait"}:
         raise WorkflowError(f"不支持的屏幕方向: {orientation}")
     if (design_width is None) != (design_height is None):
@@ -157,6 +161,8 @@ def initialize_workflow(
         "capture_profiles": _capture_profiles(orientation),
         "fit_policy": {"mode": "show-all", "allow_letterbox": True},
         "safe_area": {"enabled": True},
+        # 审阅强度只影响补充审查频率，不能绕过任何人工批准或 P0 门禁。
+        "review_mode": review_mode,
         "project_root": str(resolved_root),
         "cocos_project_file": "project.json",
         "initial_scene": None,
@@ -230,6 +236,7 @@ def main() -> None:
     parser.add_argument("--orientation", required=True, choices=("landscape", "portrait"))
     parser.add_argument("--creator-version", required=True)
     parser.add_argument("--approved-by", required=True)
+    parser.add_argument("--review-mode", choices=("full", "lean"), default="lean")
     parser.add_argument("--design-width", type=int)
     parser.add_argument("--design-height", type=int)
     args = parser.parse_args()
@@ -238,6 +245,7 @@ def main() -> None:
         args.orientation,
         creator_version=args.creator_version,
         approved_by=args.approved_by,
+        review_mode=args.review_mode,
         design_width=args.design_width,
         design_height=args.design_height,
     )

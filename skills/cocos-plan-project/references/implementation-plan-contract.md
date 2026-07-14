@@ -8,6 +8,8 @@ plan_version: 1
 status: draft # draft | blocked | approved | stale
 project_profile_hash: sha256:<当前 project-profile>
 requirements_hash: sha256:<当前 requirements>
+systems_design_hash: sha256:<当前已批准 systems design>
+technical_design_hash: sha256:<当前已批准 technical design>
 visual_direction:
   version: 1
   content_hash: sha256:<当前冻结视觉方向>
@@ -38,6 +40,12 @@ scene_loops:
     depends_on: [module-decomposition, global-scaffold]
     task_ids: [] # asset-preparation → code → integration → verification → review
     exit_checks: [] # 每项含 id、kind、evidence_path
+vertical_slice:
+  status: pending # pending | passed | stale
+  scene_loop_ids: [] # 覆盖最小 start → challenge → resolution MVP 路径
+  task_ids: [] # 资源 → 代码 → 串行集成 → Chrome 验证 → 人工审阅
+  required_profiles: [mobile-small, mobile-standard, mobile-large]
+  approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
 asset_dependencies: []
 tasks: []
 path_ownership:
@@ -61,6 +69,14 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 ## 场景小循环
 
 `scene_loops` 必须覆盖每个可交付 `scene_id`。每项包含稳定 `id`、`scene_id`、`depends_on`、按资源→代码→串行集成→Chrome 验证→人工复核排列的 `task_ids`，以及非空 `exit_checks`。只有本循环 exit_checks 的项目内证据全部通过，才可启动下一场景循环；共享模块必须在首个消费者循环前完成。任何两个 scene_loop 不得并发拥有 Cocos MCP 写权。
+
+## 垂直切片门禁
+
+`vertical_slice` 必须覆盖一个可从开始到挑战再到解决的最小 MVP 路径，且 `scene_loop_ids`、`task_ids` 均非空。切片任务必须包括真实资源、代码、串行 Cocos 集成、`mobile-small`、`mobile-standard`、`mobile-large` 三档 Chrome 回放、截图/像素差证据和人工审阅。
+
+- `approval.subject_hash` 必须绑定 `.cocos-workflow/artifacts/vertical-slice.yaml` 的 `content_hash`，而不是实施计划自身哈希。
+- 未获得 `passed` 垂直切片工件及人工批准前，任何不在 `vertical_slice.scene_loop_ids` 内的场景循环不得启动资源准备、代码、Cocos 写入或验证任务。
+- 垂直切片失败、过期或上游哈希变化时，状态为 `stale`，其余场景循环维持 `blocked`；`review_mode` 不得豁免此规则。
 
 ## Capture manifest
 
@@ -98,10 +114,10 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 - `prefabs` 每项含 `id`、`path`、`purpose`、`node_tree`、`component_bindings`、`asset_ids`、`acceptance_ids`。
 - `scripts` 每项含 `id`、`path`、`class_name`、`responsibility`、`exports`、`depends_on`、`test_path`、`acceptance_ids`。脚本不包含编辑器写入步骤。
 - `asset_dependencies` 每项含 `id`、`source_path`、`target_path`、`asset_type`、`license_status`、`consumers`、`depends_on`。未知许可证阻塞。
-- `tasks` 每项遵守总控任务契约并额外含 `kind`（`code | asset-preparation | integration`）。`integration` 必须按 `batch_index` 串行。
+- `tasks` 每项遵守总控任务契约并额外含 `kind`（`code | asset-preparation | integration | vertical-slice-review`）。`integration` 必须按 `batch_index` 串行。
 - `path_ownership.production_writers` 中每个任务的可写路径不得重叠；`cocos_writer` 必须是非空单个任务 ID，且所有 integration 任务均引用它。
 - `integration_batches` 每项含 `batch_index`、`task_ids`、`readback_checks`；批次序号连续，每批结束均要读回验证。
 
 ## 批准与哈希
 
-只有无未决问题、所有依赖可解析、资源许可完整、路径不冲突、仅一个编辑器写者且人工明确批准时，才允许 `status: approved`。`content_hash` 对除自身外的规范化内容求 SHA-256；任何输入或计划内容变化都使批准失效。
+只有无未决问题、所有依赖可解析、资源许可完整、路径不冲突、仅一个编辑器写者、垂直切片定义完整且人工明确批准时，才允许 `status: approved`。`content_hash` 对除自身外的规范化内容求 SHA-256；任何输入或计划内容变化都使批准失效。

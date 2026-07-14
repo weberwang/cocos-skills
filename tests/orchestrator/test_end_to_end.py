@@ -59,13 +59,26 @@ class OrchestratorEndToEndTests(unittest.TestCase):
         ):
             self.assertNotIn(obsolete, text)
         for expected in (
-            "$cocos-define-game", "$cocos-freeze-visual-direction",
+            "$cocos-define-game", "$cocos-design-game-systems", "$cocos-define-technical-design",
+            "$cocos-freeze-visual-direction",
             "$cocos-create-visual-concept", "$cocos-plan-project",
             "$cocos-generate-game-assets", "$cocos-implement-game",
             "$cocos-integrate-assets", "$cocos-verify-game", "$cocos-deliver-web",
             "entry_mode=build", "entry_mode=package",
         ):
             self.assertIn(expected, text)
+
+    def test_new_design_skills_and_vertical_slice_contract_exist(self) -> None:
+        """验证新增设计阶段与垂直切片门禁均具有可调用契约。"""
+        root = Path(__file__).parents[2] / "skills"
+        for relative in (
+            "cocos-design-game-systems/SKILL.md",
+            "cocos-design-game-systems/references/systems-design-contract.md",
+            "cocos-define-technical-design/SKILL.md",
+            "cocos-define-technical-design/references/technical-design-contract.md",
+            "cocos-verify-game/references/vertical-slice-contract.md",
+        ):
+            self.assertTrue((root / relative).is_file(), relative)
 
 
 if __name__ == "__main__":

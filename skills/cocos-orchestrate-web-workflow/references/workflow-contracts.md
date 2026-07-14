@@ -58,6 +58,7 @@
 - `capture_profiles`
 - `fit_policy`
 - `safe_area`
+- `review_mode`，仅可为 `full | lean`；只控制补充审查频率，不能跳过硬门禁
 - `project_root`
 - `cocos_project_file`
 - `initial_scene`：`bootstrap` 且 `run_status` 为 `pending | running | blocked` 时可为 `null`；`bootstrap/passed` 或任何非 `bootstrap` 状态必须是非空、项目相对、无 `..` 且以 `.scene` 结尾的路径
@@ -75,6 +76,8 @@
 - `P0` 不可豁免；任一失败都停止当前阶段与下游动作。
 - `P1` 默认阻塞；只有字段完整、由人类明确批准且仍有效的结构化豁免才可继续。
 - `P2` 默认仅报告；可由项目配置升级为阻塞指标。
+
+`P0.require_vertical_slice` 必须为 `true`；它要求 production 释放非切片场景循环前已有已批准的垂直切片工件。
 
 ### `ownership.yaml`
 
@@ -127,6 +130,8 @@
 | 完成阶段 | 工件路径 | 工件状态 | 门禁键 |
 | --- | --- | --- | --- |
 | requirements | `requirements.yaml` | `approved` | `requirements` |
+| systems-design | `artifacts/systems-design.yaml` | `approved` | `systems-design` |
+| technical-design | `artifacts/technical-design.yaml` | `approved` | `technical-design` |
 | visual-direction | `artifacts/visual-direction.yaml` | `frozen` | `visual-direction` |
 | scene-concepts | `artifacts/scene-concepts.yaml` | `approved` | `scene-concepts` |
 | planning | `artifacts/implementation-plan.yaml` | `approved` | `implementation-plan` |
@@ -151,6 +156,7 @@ design_resolution: {width: 1080, height: 1920, source: approved-default}
 capture_profiles: []
 fit_policy: {mode: show-all, allow_letterbox: true}
 safe_area: {enabled: true}
+review_mode: lean
 project_root: D:/games/portrait-demo
 cocos_project_file: project.json
 initial_scene: null

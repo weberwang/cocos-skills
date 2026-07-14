@@ -27,6 +27,8 @@ Never accept a child-agent result that only says completion; require artifacts, 
 | --- | --- |
 | `bootstrap` | 总控自身完成目录初始化、项目配置门禁和 MCP 能力发现，不派发阶段 Skill |
 | `requirements` | `$cocos-define-game` |
+| `systems-design` | `$cocos-design-game-systems` |
+| `technical-design` | `$cocos-define-technical-design` |
 | `visual-direction` | `$cocos-freeze-visual-direction` |
 | `scene-concepts` | `$cocos-create-visual-concept` |
 | `planning` | `$cocos-plan-project` |
@@ -41,7 +43,9 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 ## 人工门禁
 
-在项目配置、需求、视觉方向、场景效果图、实施计划、视觉验证和交付各门禁处记录明确的人工批准及其版本。Never advance past an approval gate without explicit human approval.
+在项目配置、需求、系统设计、技术设计、视觉方向、场景效果图、实施计划、垂直切片、视觉验证和交付各门禁处记录明确的人工批准及其版本。Never advance past an approval gate without explicit human approval.
+
+项目配置的 `review_mode` 仅可为 `full` 或 `lean`：`full` 在每次设计、技术、视觉与生产交接时追加领域审查；`lean` 只在阶段交接时追加审查。两者都不得跳过哈希绑定的人工审批、P0 或垂直切片门禁，禁止 `solo` 模式。
 
 ## 子代理规则
 

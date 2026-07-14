@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 设计游戏系统"
+  short_description: "将需求拆为可审核的 MVP 游戏系统"
+  default_prompt: "Use $cocos-design-game-systems to turn approved Cocos requirements into an approval-ready MVP systems design."

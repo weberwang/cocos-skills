@@ -96,6 +96,23 @@ class InitializeWorkflowTests(unittest.TestCase):
                 {"width": 1600, "height": 900, "source": "approved-custom"},
             )
 
+    def test_review_mode_is_frozen_and_rejects_solo_bypass(self) -> None:
+        """验证审阅强度可配置但不能关闭工作流硬门禁。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            state = initialize_workflow(
+                Path(tmp), "portrait", creator_version="3.8.6", approved_by="tester", review_mode="full"
+            )
+            profile = read_yaml(state / "project-profile.yaml")
+            gates = read_yaml(state / "quality-gates.yaml")
+            self.assertEqual(profile["review_mode"], "full")
+            self.assertTrue(gates["P0"]["require_vertical_slice"])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(WorkflowError):
+                initialize_workflow(
+                    Path(tmp), "portrait", creator_version="3.8.6", approved_by="tester", review_mode="solo"
+                )
+
     def test_custom_resolution_must_match_frozen_orientation(self) -> None:
         """验证初始化立即拒绝与已选屏幕方向相反的自定义分辨率。"""
         invalid_profiles = (

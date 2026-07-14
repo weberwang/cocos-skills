@@ -11,6 +11,8 @@ from workflow_common import WorkflowError, read_yaml, utc_now, workflow_dir, wri
 MAIN_STATE_SEQUENCE = (
     "bootstrap",
     "requirements",
+    "systems-design",
+    "technical-design",
     "visual-direction",
     "scene-concepts",
     "planning",
@@ -23,6 +25,10 @@ MAIN_STATE_SEQUENCE = (
 )
 ARTIFACT_STAGE_ALIASES = {
     "requirements": "requirements",
+    "systems": "systems-design",
+    "systems-design": "systems-design",
+    "technical": "technical-design",
+    "technical-design": "technical-design",
     "visual": "visual-direction",
     "visual-direction": "visual-direction",
     "concept": "scene-concepts",
@@ -32,6 +38,7 @@ ARTIFACT_STAGE_ALIASES = {
     "assets": "production",
     "game-assets": "production",
     "code": "production",
+    "vertical-slice": "production",
     "integration": "integration",
     "verification": "verification",
     "build": "building",

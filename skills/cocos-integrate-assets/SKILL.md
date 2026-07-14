@@ -14,6 +14,7 @@ Perform the only Cocos MCP write phase in an approved plan. Serially import asse
 3. Call `/health` and `tools/list` or `/capabilities` and save the current capability snapshot. Block if required import, query, node or component write, or save capability is not explicitly present. Never guess tool names or parameters.
 4. Require `ownership.yaml.active_cocos_writers` to contain only this task and require plan `cocos_writer` to name this task. Reject another active writer, parallel batches, and path ownership conflicts.
 5. Reject default overwrite, deletion, movement, project-settings change, editor restart or exit, and unauthorized tools. Allow `overwrite: true` only with human approval that names the target, reason, and evidence; otherwise block that item.
+6. Read `implementation-plan.vertical_slice`. If the assigned `scene_loop_id` is outside the declared slice, require a current `artifacts/vertical-slice.yaml` with `status: passed`, plan-hash match and hash-bound human approval before any editor query or write. This gate is mandatory in both `full` and `lean` review modes.
 
 ## Serial integration protocol
 
