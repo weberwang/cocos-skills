@@ -2,6 +2,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import hashlib
 from pathlib import Path
 
 SCRIPTS = Path(__file__).parents[2] / "skills" / "cocos-orchestrate-web-workflow" / "scripts"
@@ -9,7 +10,12 @@ sys.path.insert(0, str(SCRIPTS))
 
 from init_workflow import initialize_workflow
 from workflow_common import content_hash, read_yaml, write_yaml
-from validate_workflow import validate_workflow
+from validate_workflow import (
+    _validate_scene_concept_design_evidence,
+    _validate_implementation_plan_tasks,
+    _validate_visual_reference_effect_images,
+    validate_workflow,
+)
 
 
 def _sync_profile_hash_and_gate(state: Path) -> None:
@@ -75,6 +81,101 @@ class ValidateWorkflowTests(unittest.TestCase):
             root = Path(tmp)
             initialize_workflow(root, "portrait", creator_version="3.8.6", approved_by="tester")
             self.assertEqual(validate_workflow(root), [])
+
+    def test_visual_direction_requires_two_approved_reference_effect_images(self) -> None:
+        """冻结视觉方向必须包含恰好两张已批准且可追溯的参考效果图。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            reference_dir = state / "art/visual-references"
+            reference_dir.mkdir(parents=True)
+            first = reference_dir / "style-a.png"
+            second = reference_dir / "style-b.png"
+            first.write_bytes(b"style-a")
+            second.write_bytes(b"style-b")
+            image = {
+                "path": "art/visual-references/style-a.png",
+                "purpose": "主界面风格参考",
+                "prompt_hash": f"sha256:{'a' * 64}",
+                "generator": {"tool": "imagegen"},
+                "content_hash": f"sha256:{hashlib.sha256(first.read_bytes()).hexdigest()}",
+                "review_status": "approved",
+            }
+            second_image = {
+                **image,
+                "path": "art/visual-references/style-b.png",
+                "content_hash": f"sha256:{hashlib.sha256(second.read_bytes()).hexdigest()}",
+            }
+            valid_artifact = {"reference_effect_images": [image, second_image]}
+
+            self.assertEqual(_validate_visual_reference_effect_images(valid_artifact, Path("visual-direction.yaml"), state), [])
+            self.assertEqual(
+                [issue.code for issue in _validate_visual_reference_effect_images({"reference_effect_images": [image]}, Path("visual-direction.yaml"), state)],
+                ["invalid-visual-reference-images"],
+            )
+
+            rejected_artifact = {"reference_effect_images": [image, {**second_image, "review_status": "rejected"}]}
+            self.assertEqual(
+                [issue.code for issue in _validate_visual_reference_effect_images(rejected_artifact, Path("visual-direction.yaml"), state)],
+                ["invalid-visual-reference-image"],
+            )
+
+    def test_scene_concept_requires_approved_pencil_draft_and_frozen_references(self) -> None:
+        """场景高保真图必须继承已批准草图及冻结的两张全局参考效果图。"""
+        frozen_direction = {
+            "visual_direction_version": 2,
+            "content_hash": f"sha256:{'a' * 64}",
+            "reference_effect_images": [
+                {"path": "art/visual-references/style-a.png", "content_hash": f"sha256:{'b' * 64}"},
+                {"path": "art/visual-references/style-b.png", "content_hash": f"sha256:{'c' * 64}"},
+            ],
+        }
+        draft_hash = f"sha256:{'d' * 64}"
+        artifact = {
+            "visual_direction_version": 2,
+            "visual_direction_hash": frozen_direction["content_hash"],
+            "frozen_reference_effect_images": frozen_direction["reference_effect_images"],
+            "scenes": [
+                {
+                    "pencil_draft": {
+                        "path": "art/concepts/home/pencil-draft.pen",
+                        "content_hash": draft_hash,
+                        "review": {"status": "approved", "subject_hash": draft_hash},
+                    }
+                }
+            ],
+        }
+
+        self.assertEqual(
+            _validate_scene_concept_design_evidence(artifact, Path("scene-concepts.yaml"), frozen_direction),
+            [],
+        )
+        artifact["scenes"][0]["pencil_draft"]["review"]["status"] = "pending"
+        self.assertEqual(
+            [
+                issue.code
+                for issue in _validate_scene_concept_design_evidence(
+                    artifact, Path("scene-concepts.yaml"), frozen_direction
+                )
+            ],
+            ["invalid-scene-pencil-draft"],
+        )
+
+    def test_plan_code_task_requires_scene_design_dependencies(self) -> None:
+        """计划不得允许代码任务跳过同场景草图和高保真设计任务。"""
+        tasks = [
+            {"task_id": "modules", "kind": "module_decomposition", "depends_on": []},
+            {"task_id": "scaffold", "kind": "global_scaffold", "depends_on": ["modules"]},
+            {"task_id": "pencil", "kind": "pencil-draft", "scene_id": "home", "depends_on": ["scaffold"]},
+            {"task_id": "concept", "kind": "visual-concept", "scene_id": "home", "depends_on": ["pencil"]},
+            {"task_id": "assets", "kind": "asset-preparation", "scene_id": "home", "depends_on": ["concept"]},
+            {"task_id": "code", "kind": "code", "scene_id": "home", "depends_on": ["concept", "modules", "scaffold"]},
+        ]
+        self.assertEqual(_validate_implementation_plan_tasks({"tasks": tasks}, Path("implementation-plan.yaml")), [])
+        tasks[-1]["depends_on"] = ["modules", "scaffold"]
+        self.assertIn(
+            "missing-visual-concept-dependency",
+            {issue.code for issue in _validate_implementation_plan_tasks({"tasks": tasks}, Path("implementation-plan.yaml"))},
+        )
 
     def test_initial_scene_rules_follow_bootstrap_phase(self) -> None:
         """验证初始场景在 bootstrap 初期可空，离开后必须是安全相对 scene 路径。"""

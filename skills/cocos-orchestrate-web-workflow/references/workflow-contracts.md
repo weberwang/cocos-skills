@@ -133,7 +133,6 @@
 | systems-design | `artifacts/systems-design.yaml` | `approved` | `systems-design` |
 | technical-design | `artifacts/technical-design.yaml` | `approved` | `technical-design` |
 | visual-direction | `artifacts/visual-direction.yaml` | `frozen` | `visual-direction` |
-| scene-concepts | `artifacts/scene-concepts.yaml` | `approved` | `scene-concepts` |
 | planning | `artifacts/implementation-plan.yaml` | `approved` | `implementation-plan` |
 | production | `artifacts/game-assets.yaml` | `approved` | `game-assets` |
 | verification | `artifacts/verification.yaml` | `passed` | `verification` |

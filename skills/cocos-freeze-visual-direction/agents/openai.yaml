@@ -1,4 +1,4 @@
 interface:
   display_name: "Cocos 冻结视觉方向"
-  short_description: "Freeze visual style with human approval"
-  default_prompt: "Use $cocos-freeze-visual-direction to freeze an approved visual direction for this Cocos project."
+  short_description: "Freeze visual style with two reference images"
+  default_prompt: "Use $cocos-freeze-visual-direction to generate exactly two reference effect images and freeze the approved visual direction for this Cocos project."

@@ -5,10 +5,12 @@
 ```text
 Create one finished 2D mobile game screen concept for [scene_id]: [page purpose].
 Canvas: [orientation], exact design resolution [width]x[height]; use the approved mobile safe-area and fit policy.
+Approved Pencil layout (preserve exactly): [pencil_draft_path] / [pencil_draft_hash]. Keep its structure, primary action, UI hierarchy, navigation, and interaction regions unchanged.
 Global visual direction (copy verbatim): [keywords]; palette [palette]; typography [typography]; shape/layout [shape_and_layout]; icon/illustration [icon_and_illustration]; motion cues [motion_cues].
+Frozen global reference-effect images (match both): [reference_effect_image_1_path] / [reference_effect_image_1_hash]; [reference_effect_image_2_path] / [reference_effect_image_2_hash].
 Scene content: [game context], player action [player action], primary UI [primary_ui], hierarchy [hierarchy].
 Accessibility: [accessibility_rules].
-Exclude: [prohibited]. No phone frame, no device mockup, no watermark, no multi-screen collage, no unrelated brand, and no illegible placeholder copy.
+Exclude: [prohibited]. Do not introduce a new palette, typography, icon style, material, lighting, or motion language. No phone frame, no device mockup, no watermark, no multi-screen collage, no unrelated brand, and no illegible placeholder copy.
 Deliver a single flat screen-effect image for review, not a sprite sheet or Cocos scene.
 ```
 
@@ -22,6 +24,10 @@ requirements_hash: sha256:<hash>
 project_profile_hash: sha256:<hash>
 visual_direction_version: 3
 visual_direction_hash: sha256:<hash>
+pencil_draft: {path: art/concepts/home/pencil-draft.pen, content_hash: sha256:<approved Pencil draft hash>}
+frozen_reference_effect_images:
+  - {path: art/visual-references/<reference_id>.png, content_hash: sha256:<hash>}
+  - {path: art/visual-references/<reference_id>.png, content_hash: sha256:<hash>}
 orientation: portrait
 design_resolution: {width: 1080, height: 1920, source: approved-default}
 prompt: <final prompt>

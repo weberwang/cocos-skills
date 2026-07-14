@@ -3,3 +3,4 @@ __pycache__/
 .worktrees/
 .superpowers/
 .firecrawl/
+node_modules/

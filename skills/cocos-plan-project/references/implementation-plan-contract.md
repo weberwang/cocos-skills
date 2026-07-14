@@ -13,9 +13,10 @@ technical_design_hash: sha256:<当前已批准 technical design>
 visual_direction:
   version: 1
   content_hash: sha256:<当前冻结视觉方向>
-scene_concepts:
+scene_design_tasks:
   - scene_id: menu
-    content_hash: sha256:<已批准效果图>
+    pencil_draft_task_id: menu-pencil-draft
+    visual_concept_task_id: menu-visual-concept
 approval:
   status: pending # pending | approved
   approved_by: null
@@ -38,12 +39,12 @@ scene_loops:
   - id: scene-loop-menu
     scene_id: menu
     depends_on: [module-decomposition, global-scaffold]
-    task_ids: [] # asset-preparation → code → integration → verification → review
+    task_ids: [] # pencil-draft → visual-concept → asset-preparation → code → integration → verification → review
     exit_checks: [] # 每项含 id、kind、evidence_path
 vertical_slice:
   status: pending # pending | passed | stale
   scene_loop_ids: [] # 覆盖最小 start → challenge → resolution MVP 路径
-  task_ids: [] # 资源 → 代码 → 串行集成 → Chrome 验证 → 人工审阅
+  task_ids: [] # Pencil 草图 → 效果图 → 资源 → 代码 → 串行集成 → Chrome 验证 → 人工审阅
   required_profiles: [mobile-small, mobile-standard, mobile-large]
   approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
 asset_dependencies: []
@@ -68,14 +69,14 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 
 ## 场景小循环
 
-`scene_loops` 必须覆盖每个可交付 `scene_id`。每项包含稳定 `id`、`scene_id`、`depends_on`、按资源→代码→串行集成→Chrome 验证→人工复核排列的 `task_ids`，以及非空 `exit_checks`。只有本循环 exit_checks 的项目内证据全部通过，才可启动下一场景循环；共享模块必须在首个消费者循环前完成。任何两个 scene_loop 不得并发拥有 Cocos MCP 写权。
+`scene_loops` 必须覆盖每个可交付 `scene_id`。每项包含稳定 `id`、`scene_id`、`depends_on`、按 `pencil-draft → visual-concept → asset-preparation → code → 串行 integration → Chrome verification → human-review` 排列的 `task_ids`，以及非空 `exit_checks`。`pencil-draft` 必须记录人工批准的草图哈希；`visual-concept` 必须依赖该草图，并逐项绑定全局视觉冻结的版本、内容哈希与两张参考效果图。没有这两项通过证据不得启动本场景的资源准备或代码任务。只有本循环 exit_checks 的项目内证据全部通过，才可启动下一场景循环；共享模块必须在首个消费者循环前完成。任何两个 scene_loop 不得并发拥有 Cocos MCP 写权。
 
 ## 垂直切片门禁
 
-`vertical_slice` 必须覆盖一个可从开始到挑战再到解决的最小 MVP 路径，且 `scene_loop_ids`、`task_ids` 均非空。切片任务必须包括真实资源、代码、串行 Cocos 集成、`mobile-small`、`mobile-standard`、`mobile-large` 三档 Chrome 回放、截图/像素差证据和人工审阅。
+`vertical_slice` 必须覆盖一个可从开始到挑战再到解决的最小 MVP 路径，且 `scene_loop_ids`、`task_ids` 均非空。切片任务必须包括 Pencil 草图、高保真效果图、真实资源、代码、串行 Cocos 集成、`mobile-small`、`mobile-standard`、`mobile-large` 三档 Chrome 回放、截图/像素差证据和人工审阅。
 
 - `approval.subject_hash` 必须绑定 `.cocos-workflow/artifacts/vertical-slice.yaml` 的 `content_hash`，而不是实施计划自身哈希。
-- 未获得 `passed` 垂直切片工件及人工批准前，任何不在 `vertical_slice.scene_loop_ids` 内的场景循环不得启动资源准备、代码、Cocos 写入或验证任务。
+- 未获得 `passed` 垂直切片工件及人工批准前，任何不在 `vertical_slice.scene_loop_ids` 内的场景循环不得启动草图、效果图、资源准备、代码、Cocos 写入或验证任务。
 - 垂直切片失败、过期或上游哈希变化时，状态为 `stale`，其余场景循环维持 `blocked`；`review_mode` 不得豁免此规则。
 
 ## Capture manifest
@@ -114,7 +115,8 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 - `prefabs` 每项含 `id`、`path`、`purpose`、`node_tree`、`component_bindings`、`asset_ids`、`acceptance_ids`。
 - `scripts` 每项含 `id`、`path`、`class_name`、`responsibility`、`exports`、`depends_on`、`test_path`、`acceptance_ids`。脚本不包含编辑器写入步骤。
 - `asset_dependencies` 每项含 `id`、`source_path`、`target_path`、`asset_type`、`license_status`、`consumers`、`depends_on`。未知许可证阻塞。
-- `tasks` 每项遵守总控任务契约并额外含 `kind`（`code | asset-preparation | integration | vertical-slice-review`）。`integration` 必须按 `batch_index` 串行。
+- `tasks` 每项遵守总控任务契约并额外含 `kind`（`module_decomposition | global_scaffold | pencil-draft | visual-concept | code | asset-preparation | integration | vertical-slice-review`）。所有任务必须有唯一 `task_id`、非空 `depends_on`（模块拆分任务除外）和 `allowed_paths`。
+- 每个 `pencil-draft`、`visual-concept`、`code` 与 `asset-preparation` 任务必须声明 `scene_id`。`visual-concept` 必须依赖同场景 `pencil-draft`，其通过结果必须包含 `scene_concept_artifact`；`code` 与 `asset-preparation` 必须依赖同场景 `visual-concept`，并在 `inputs` 中记录同一 Pencil/高保真批准哈希、全局视觉版本、内容哈希及两张参考效果图。每个 `code` 还必须依赖 `module_decomposition` 与 `global_scaffold`。`integration` 必须按 `batch_index` 串行。
 - `path_ownership.production_writers` 中每个任务的可写路径不得重叠；`cocos_writer` 必须是非空单个任务 ID，且所有 integration 任务均引用它。
 - `integration_batches` 每项含 `batch_index`、`task_ids`、`readback_checks`；批次序号连续，每批结束均要读回验证。
 
