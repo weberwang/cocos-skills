@@ -13,6 +13,7 @@ Convert approved inputs into the sole `.cocos-workflow/artifacts/implementation-
 2. Read `.cocos-workflow/project-profile.yaml`, `requirements.yaml`, approved systems and technical design artifacts, the frozen visual-direction artifact, and approved scene concepts. Require approved project configuration, requirements, systems design, technical design, visual direction, and concepts.
 3. Compare the current requirements, systems-design, and technical-design hashes, `visual_direction.version`, `visual_direction.content_hash`, and concept hashes to their approval records. On any missing or mismatched input, return `blocked` or `stale`; do not create an executable plan.
 4. Accept only orchestrator-authorized plan, result, and report paths. The orchestrator is the only writer of `workflow.yaml`.
+5. When the task declares a decision-changing update to an approved plan, require a `$grilling` confirmation whose stage and subject hash match `decision_change`; on a missing or mismatched confirmation, return `blocked` and do not create a replacement plan.
 
 ## Create the plan
 
@@ -31,6 +32,7 @@ Convert approved inputs into the sole `.cocos-workflow/artifacts/implementation-
 ## Block and invalidate
 
 - If requirements, systems design, technical design, visual direction, project-profile hashes, or any completed scene Pencil/high-fidelity design evidence changes, reject plan reuse and mark the plan and downstream outputs `stale`.
+- A decision-changing update to an approved plan without a matching `$grilling` confirmation is `blocked`; never infer that confirmation from an implementation-plan approval.
 - Block on missing initial scene, requirements criteria, asset license, concept approval, path ownership, or single-writer declaration.
 - A plan never replaces a human gate; keep `approval.status` `pending` until explicit approval.
 

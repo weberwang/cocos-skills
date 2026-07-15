@@ -1,0 +1,4 @@
+interface:
+  display_name: "计划拷问"
+  short_description: "逐项追问计划或 PRD，厘清决策、依赖、风险与验收标准"
+  default_prompt: "Use $grilling to pressure-test my plan one decision at a time before implementation."

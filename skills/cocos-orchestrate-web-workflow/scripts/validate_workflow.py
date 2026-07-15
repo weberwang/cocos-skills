@@ -841,9 +841,75 @@ def _visual_dependency_is_frozen(dependency: Any) -> bool:
     )
 
 
+def _validate_decision_change_gate(
+    task_id: str,
+    task: Mapping[str, Any],
+    workflow: Mapping[str, Any],
+    task_path: Path,
+    project_root: Path,
+    state_dir: Path,
+) -> list[ValidationIssue]:
+    """校验决策性返工的拷问确认与总控门禁绑定，避免跳过用户确认。"""
+    change = task.get("decision_change")
+    if change is None:
+        return []
+    if not isinstance(change, Mapping):
+        return [_issue("invalid-decision-change", task_path, f"任务 {task_id} 的 decision_change 必须为映射")]
+
+    stage = change.get("stage")
+    subject_hash = change.get("subject_hash")
+    valid_change = (
+        stage in {"requirements", "systems-design", "technical-design", "planning"}
+        and isinstance(subject_hash, str)
+        and bool(SHA256_PATTERN.fullmatch(subject_hash))
+    )
+    if not valid_change:
+        return [_issue("invalid-decision-change", task_path, f"任务 {task_id} 的决策变更阶段或主题哈希无效")]
+    if task.get("role") == "grilling":
+        return []
+
+    confirmation = task.get("grilling_confirmation")
+    valid_confirmation = (
+        isinstance(confirmation, Mapping)
+        and confirmation.get("status") == "confirmed"
+        and confirmation.get("stage") == stage
+        and confirmation.get("subject_hash") == subject_hash
+        and isinstance(confirmation.get("confirmed_by"), str)
+        and bool(confirmation.get("confirmed_by", "").strip())
+        and isinstance(confirmation.get("confirmed_at"), str)
+        and bool(confirmation.get("confirmed_at", "").strip())
+        and isinstance(confirmation.get("evidence"), list)
+        and bool(confirmation.get("evidence"))
+    )
+    if not valid_confirmation:
+        return [_issue("missing-grilling-confirmation", task_path, f"任务 {task_id} 缺少匹配的拷问确认")]
+
+    gates = workflow.get("approval_gates")
+    gate = gates.get(f"grilling-{stage}") if isinstance(gates, Mapping) else None
+    valid_gate = (
+        isinstance(gate, Mapping)
+        and gate.get("status") == "passed"
+        and gate.get("subject_hash") == subject_hash
+        and gate.get("approved_by") == confirmation.get("confirmed_by")
+        and gate.get("approved_at") == confirmation.get("confirmed_at")
+        and gate.get("evidence") == confirmation.get("evidence")
+    )
+    if not valid_gate:
+        return [_issue("missing-grilling-gate", task_path, f"任务 {task_id} 缺少匹配的总控拷问门禁")]
+    return _validate_existing_paths(
+        confirmation["evidence"],
+        project_root=project_root,
+        state_dir=state_dir,
+        path=task_path,
+        field="grilling_confirmation.evidence",
+        missing_code="missing-grilling-evidence",
+    )
+
+
 def _validate_task(
     task_id: str,
     task: Any,
+    workflow: Mapping[str, Any],
     task_path: Path,
     project_root: Path,
     state_dir: Path,
@@ -852,6 +918,7 @@ def _validate_task(
     if not isinstance(task, Mapping):
         return []
     issues: list[ValidationIssue] = []
+    issues.extend(_validate_decision_change_gate(task_id, task, workflow, task_path, project_root, state_dir))
     status = task.get("status", task.get("state"))
     evidence = task.get("evidence")
     if status == "passed" and not evidence:
@@ -952,10 +1019,10 @@ def _validate_tasks(
                 checked_results.add(result_path)
                 try:
                     result = read_yaml(result_path)
-                    issues.extend(_validate_task(str(task_id), result, result_path, project_root, state_dir))
+                    issues.extend(_validate_task(str(task_id), result, workflow, result_path, project_root, state_dir))
                 except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
                     issues.append(_issue("invalid-state-file", result_path, str(error)))
-            issues.extend(_validate_task(str(task_id), task, state_dir / "workflow.yaml", project_root, state_dir))
+            issues.extend(_validate_task(str(task_id), task, workflow, state_dir / "workflow.yaml", project_root, state_dir))
 
     tasks_dir = state_dir / "tasks"
     for task_path in sorted(tasks_dir.glob("*.yaml")) if tasks_dir.is_dir() else ():
@@ -970,10 +1037,10 @@ def _validate_tasks(
             checked_results.add(result_path)
             try:
                 result = read_yaml(result_path)
-                issues.extend(_validate_task(task_id, result, result_path, project_root, state_dir))
+                issues.extend(_validate_task(task_id, result, workflow, result_path, project_root, state_dir))
             except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
                 issues.append(_issue("invalid-state-file", result_path, str(error)))
-        issues.extend(_validate_task(task_id, task, task_path, project_root, state_dir))
+        issues.extend(_validate_task(task_id, task, workflow, task_path, project_root, state_dir))
 
     results_dir = state_dir / "results"
     for result_path in sorted(results_dir.glob("*.yaml")) if results_dir.is_dir() else ():
@@ -984,7 +1051,7 @@ def _validate_tasks(
         except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
             issues.append(_issue("invalid-state-file", result_path, str(error)))
             continue
-        issues.extend(_validate_task(result_path.stem, result, result_path, project_root, state_dir))
+        issues.extend(_validate_task(result_path.stem, result, workflow, result_path, project_root, state_dir))
     return issues
 
 

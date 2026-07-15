@@ -104,6 +104,7 @@
 - `output_paths`：预期输出路径。
 - `depends_on`：必须先通过的任务 ID。
 - `acceptance_checks`：总控必须复核的确定性检查。
+- `decision_change`：可选映射；仅用于已批准 `requirements | systems-design | technical-design | planning` 的决策性返工，必须包含目标 `stage` 与变更材料的 `sha256:` `subject_hash`。事实勘误、文案、资产、实现、验证与交付任务不得声明它。
 - `state`、`attempt`、`created_at`。
 
 递归扫描 `inputs` 时，映射键 `visual`、`visual_direction`、`scene_concept`，以及列表项 `type=visual|visual-direction|scene-concept` 都是视觉依赖。每个视觉依赖必须包含非空 `version` 和 `sha256:` `content_hash`；缺失时拒绝派发或验收。
@@ -122,6 +123,12 @@
 - `handoff_notes`：给下游的约束与上下文。
 
 `passed` 结果必须包含非空证据。`changed_paths` 越界、证据缺失、冻结版本不匹配或 P0 失败时拒绝验收。P1 只有绑定具体检查与工件哈希的有效人工豁免才可继续；P2 默认仅报告。
+
+## 决策拷问门禁
+
+派发 `$grilling` 的只读任务使用 `role: grilling` 并携带 `decision_change`，不需要预先确认。重派发目标阶段时，任务必须保留同一 `decision_change` 并附带 `$grilling` 的 `grilling_confirmation`。确认记录必须包含 `status: confirmed`、`stage`、`subject_hash`、`confirmed_by`、`confirmed_at` 与至少一个项目内 `evidence` 路径；`stage` 和 `subject_hash` 必须分别等于任务的 `decision_change.stage` 与 `decision_change.subject_hash`。
+
+总控验证确认记录后，写入 `workflow.yaml.approval_gates.grilling-<stage>`。该门禁使用 `status: passed`、`approved_by`、`approved_at`、`subject_hash` 和 `evidence`；其阶段和主题哈希必须与 `decision_change` 一致。未通过时，目标阶段保持 `blocked`，不得创建、接受或批准新的阶段工件。总控是唯一可写入该门禁和 `workflow.yaml` 的角色。
 
 ## 阶段工件与审批门禁
 

@@ -15,7 +15,7 @@ Read the frozen screen orientation, design resolution, and adaptation strategy f
 
 ## Procedure
 
-1. Read the orchestrator's `workflow-contracts.md`, `state-machine.md`, and `mcp-safety-policy.md`; then read `project-profile.yaml` and [requirements-contract.md](references/requirements-contract.md). Confirm the assigned task, allowed paths, and inputs.
+1. Read the orchestrator's `workflow-contracts.md`, `state-machine.md`, and `mcp-safety-policy.md`; then read `project-profile.yaml` and [requirements-contract.md](references/requirements-contract.md). Confirm the assigned task, allowed paths, and inputs. When no PRD exists, or an approved requirements document has a decision-changing `decision_change`, require the hash-bound `$grilling` confirmation before writing requirements; otherwise return `blocked`.
 2. Preserve the original text requirement and each reference image's path, purpose, and license status. Extract title, genre, audience, verifiable core loop, player goal, mobile controls, scope, page flow, and acceptance criteria.
 3. Write scope, playability, or license gaps and conflicts to `unresolved_questions`. Do not assume omitted gameplay, audience, pages, win/loss conditions, or licenses. Write `draft` or `blocked` and list the answers needed to unblock.
 4. Before approval, check complete scope, at least one playable core loop, all page-flow fields, and all acceptance-criteria fields. Present only contract-complete content for review.
@@ -24,4 +24,4 @@ Read the frozen screen orientation, design resolution, and adaptation strategy f
 
 ## Blocking Rules
 
-Keep the document `blocked` or `draft` if the frozen `project-profile.yaml` is missing or its hash mismatches; the scope conflicts; the core loop is unverifiable; page or acceptance criteria are incomplete; a reference-image license is unknown; unresolved questions remain; or explicit human approval is missing. Never invent functionality, approvers, timestamps, or hashes to bypass a gate.
+Keep the document `blocked` or `draft` if the frozen `project-profile.yaml` is missing or its hash mismatches; a required `$grilling` confirmation is missing or mismatched; the scope conflicts; the core loop is unverifiable; page or acceptance criteria are incomplete; a reference-image license is unknown; unresolved questions remain; or explicit human approval is missing. Never invent functionality, approvers, timestamps, or hashes to bypass a gate.

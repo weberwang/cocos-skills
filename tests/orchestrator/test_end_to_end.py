@@ -80,6 +80,20 @@ class OrchestratorEndToEndTests(unittest.TestCase):
         ):
             self.assertTrue((root / relative).is_file(), relative)
 
+    def test_decision_change_grilling_gate_is_limited_to_selected_stages(self) -> None:
+        """验证拷问门禁只约束四个决策性阶段，且总控负责写入门禁。"""
+        root = Path(__file__).parents[2] / "skills"
+        orchestrator = SKILL.read_text(encoding="utf-8")
+        contracts = (
+            root / "cocos-orchestrate-web-workflow" / "references" / "workflow-contracts.md"
+        ).read_text(encoding="utf-8")
+
+        for stage in ("requirements", "systems-design", "technical-design", "planning"):
+            self.assertIn(stage, orchestrator)
+        self.assertIn("$grilling", orchestrator)
+        self.assertIn("grilling-<stage>", contracts)
+        self.assertIn("总控是唯一可写入", contracts)
+
 
 if __name__ == "__main__":
     unittest.main()

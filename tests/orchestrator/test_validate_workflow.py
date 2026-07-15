@@ -774,3 +774,51 @@ class ValidateWorkflowTests(unittest.TestCase):
             codes = {issue.code for issue in validate_workflow(root)}
             self.assertIn("unsafe-path", codes)
             self.assertIn("missing-output-path", codes)
+
+    def test_decision_change_requires_matching_grilling_confirmation(self) -> None:
+        """决策性返工没有用户拷问确认时，总控校验必须拒绝该任务。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = initialize_workflow(
+                root, "portrait", creator_version="3.8.6", approved_by="tester"
+            )
+            workflow = read_yaml(state / "workflow.yaml")
+            workflow["task_status"] = {
+                "requirements-rework": {
+                    "role": "requirements",
+                    "decision_change": {
+                        "stage": "requirements",
+                        "subject_hash": f"sha256:{'a' * 64}",
+                    },
+                }
+            }
+            write_yaml(state / "workflow.yaml", workflow)
+
+            self.assertIn(
+                "missing-grilling-confirmation",
+                {issue.code for issue in validate_workflow(root)},
+            )
+
+            proof = state / "reports" / "grilling-proof.log"
+            proof.write_text("confirmed", encoding="utf-8")
+            confirmation = {
+                "status": "confirmed",
+                "stage": "requirements",
+                "subject_hash": f"sha256:{'a' * 64}",
+                "confirmed_by": "tester",
+                "confirmed_at": "2026-07-15T00:00:00+08:00",
+                "evidence": ["reports/grilling-proof.log"],
+            }
+            workflow["task_status"]["requirements-rework"]["grilling_confirmation"] = confirmation
+            workflow["approval_gates"]["grilling-requirements"] = {
+                "status": "passed",
+                "approved_by": confirmation["confirmed_by"],
+                "approved_at": confirmation["confirmed_at"],
+                "subject_hash": confirmation["subject_hash"],
+                "evidence": confirmation["evidence"],
+            }
+            write_yaml(state / "workflow.yaml", workflow)
+
+            codes = {issue.code for issue in validate_workflow(root)}
+            self.assertNotIn("missing-grilling-confirmation", codes)
+            self.assertNotIn("missing-grilling-gate", codes)

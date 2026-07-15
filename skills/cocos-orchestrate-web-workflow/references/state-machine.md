@@ -15,6 +15,12 @@ blocked → pending | running
 
 正常主状态只前进一个阶段；同一主状态使用运行状态迁移。每条迁移必须包含 `from_state`、`to_state`、`from_run_status`、`to_run_status`、`timestamp`、`reason`、`evidence`，与上一条连续，最后一条等于当前状态。
 
+## 决策变更拷问门禁
+
+`grilling` 不是主状态。仅在已批准的 `requirements`、`systems-design`、`technical-design` 或 `planning` 发生决策性返工时，总控将该阶段置为 `blocked` 并派发只读 `$grilling` 任务。事实勘误、文案、资产、实现、验证与交付不适用。
+
+`$grilling` 返回与 `decision_change` 同阶段、同 `subject_hash` 的明确用户确认后，总控才可写入 `approval_gates.grilling-<stage>`，并按 `blocked → pending` 重派发目标阶段。门禁缺失、未确认或哈希不匹配时，不得进入 `running`，也不得接受目标阶段工件。该门禁不替代阶段工件的哈希绑定人工审批。
+
 ## 上游失效回退
 
 非 `completed` 阶段发现上游变化时，总控必须调用 `invalidate_artifacts.py`，不得把旧结果继续标为 `passed`：

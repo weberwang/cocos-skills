@@ -13,7 +13,7 @@ description: Use when an approved Cocos Creator 2D Web Mobile game brief must be
 
 ## 流程
 
-1. 校验项目配置与需求的批准状态及内容哈希；缺失、过期或不匹配时返回 `blocked` 或 `stale`。
+1. 校验项目配置与需求的批准状态及内容哈希；缺失、过期或不匹配时返回 `blocked` 或 `stale`。若任务声明会修改已批准系统设计的 `decision_change`，还必须校验同阶段、同主题哈希的 `$grilling` 确认；缺失或不匹配时返回 `blocked`。
 2. 提炼 3 至 5 条可证伪的 `design_pillars`，每条都必须提供可用于取舍的 `decision_test`，不得以空泛形容词替代。
 3. 把可玩核心循环拆为最小 MVP 系统。每个系统说明玩家输入、状态变化、反馈、失败/恢复边界、依赖和可验证验收项；禁止把未确认玩法补成实现细节。
 4. 对系统依赖排序，拒绝循环依赖；将 Alpha 或完整愿景内容明确放入 `out_of_scope`，避免混入 MVP。
@@ -22,5 +22,6 @@ description: Use when an approved Cocos Creator 2D Web Mobile game brief must be
 ## 硬门禁
 
 - 未获得人工批准的系统设计，不得进入技术设计或视觉方向阶段。
+- 已批准系统设计的决策性返工未通过 `$grilling` 门禁时，不得写入或提交新的系统设计工件。
 - 每个 MVP 系统都必须映射至少一个需求验收项，核心循环不得存在未归属步骤。
 - 不调用 Cocos MCP，不创建运行时文件，也不改写 `workflow.yaml`。
