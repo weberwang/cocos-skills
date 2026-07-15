@@ -1,6 +1,6 @@
 # 技术设计契约
 
-工件固定为 `.cocos-workflow/artifacts/technical-design.yaml`。
+工件固定为 `.cocos-workflow/artifacts/technical-design.md`，以 YAML front matter 保存结构化字段，并用 Markdown 正文说明架构决策、风险和验证方式。
 
 ```yaml
 schema_version: 1

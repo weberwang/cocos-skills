@@ -9,7 +9,7 @@ description: Use when an approved Cocos Creator 2D Web Mobile game brief must be
 
 ## 输入与边界
 
-只可写入任务分配的 `.cocos-workflow/artifacts/systems-design.yaml`、报告和结果路径。先读取总控的 `workflow-contracts.md`、`state-machine.md`、冻结 `project-profile.yaml`、已批准 `requirements.yaml` 及 [系统设计契约](references/systems-design-contract.md)。
+只可写入任务分配的 `.cocos-workflow/artifacts/systems-design.md`、报告和结果路径。先读取总控的 `workflow-contracts.md`、`state-machine.md`、冻结 `project-profile.yaml`、已批准 `requirements.md` 及 [系统设计契约](references/systems-design-contract.md)。
 
 ## 流程
 

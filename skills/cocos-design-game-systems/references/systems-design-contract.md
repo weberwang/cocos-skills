@@ -1,6 +1,6 @@
 # 游戏系统设计契约
 
-工件固定为 `.cocos-workflow/artifacts/systems-design.yaml`。
+工件固定为 `.cocos-workflow/artifacts/systems-design.md`，以 YAML front matter 保存结构化字段，并用 Markdown 正文说明设计支柱、系统边界和验收映射。
 
 ```yaml
 schema_version: 1

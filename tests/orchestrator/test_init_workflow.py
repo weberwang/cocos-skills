@@ -8,7 +8,15 @@ from pathlib import Path
 SCRIPTS = Path(__file__).parents[2] / "skills" / "cocos-orchestrate-web-workflow" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from workflow_common import WorkflowError, content_hash, read_yaml, write_yaml
+from workflow_common import (
+    WorkflowError,
+    content_hash,
+    document_content_hash,
+    read_markdown,
+    read_yaml,
+    write_markdown,
+    write_yaml,
+)
 from init_workflow import initialize_workflow
 
 
@@ -35,6 +43,24 @@ class WorkflowCommonTests(unittest.TestCase):
 
             with self.assertRaises(WorkflowError):
                 read_yaml(path)
+
+    def test_markdown_round_trip_hashes_front_matter_and_body(self) -> None:
+        """Markdown 工件正文变更必须使内容哈希失效。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "requirements.md"
+            metadata = {"schema_version": 1, "content_hash": ""}
+            body = "# 游戏需求\n\n定义最小核心循环。\n"
+            metadata["content_hash"] = document_content_hash(metadata, body)
+            write_markdown(path, metadata, body)
+
+            stored, stored_body = read_markdown(path)
+            self.assertEqual(stored, metadata)
+            self.assertEqual(stored_body, body)
+            self.assertEqual(document_content_hash(stored, stored_body), metadata["content_hash"])
+            self.assertNotEqual(
+                document_content_hash(stored, "# 游戏需求\n\n修改了正文。\n"),
+                metadata["content_hash"],
+            )
 
     def test_content_hash_accepts_generic_mapping(self) -> None:
         """验证通用映射与等价普通字典生成相同内容哈希。"""

@@ -1,6 +1,6 @@
 # 垂直切片验证契约
 
-垂直切片工件固定为 `.cocos-workflow/artifacts/vertical-slice.yaml`，由 `cocos-verify-game` 在 `verification_mode: vertical-slice` 时生成。它是生产阶段的子门禁，不替代最终 `verification.yaml`。
+垂直切片工件固定为 `.cocos-workflow/artifacts/vertical-slice.md`，以 YAML front matter 保存门禁元数据，并用 Markdown 正文说明可玩路径与验证证据；由 `cocos-verify-game` 在 `verification_mode: vertical-slice` 时生成。它是生产阶段的子门禁，不替代最终 `verification.md`。
 
 ```yaml
 schema_version: 1

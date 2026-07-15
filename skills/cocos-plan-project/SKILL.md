@@ -1,16 +1,16 @@
 ---
 name: cocos-plan-project
-description: Use when an approved Cocos Creator Web Mobile game's requirements and frozen visual direction must be turned into a human-approved implementation-plan.yaml with per-scene Pencil/high-fidelity design tasks, scene, prefab, TypeScript, asset-dependency, path-ownership, and single-editor-writer tasks.
+description: Use when an approved Cocos Creator Web Mobile game's requirements and frozen visual direction must be turned into a human-approved implementation-plan.md with per-scene Pencil/high-fidelity design tasks, scene, prefab, TypeScript, asset-dependency, path-ownership, and single-editor-writer tasks.
 ---
 
 # Cocos Project Planning
 
-Convert approved inputs into the sole `.cocos-workflow/artifacts/implementation-plan.yaml` consumed by production and integration. Plan only: do not generate assets, write game code, call Cocos MCP, or modify `workflow.yaml`.
+Convert approved inputs into the sole `.cocos-workflow/artifacts/implementation-plan.md` consumed by production and integration. Plan only: do not generate assets, write game code, call Cocos MCP, or modify `workflow.yaml`.
 
 ## Validate inputs
 
 1. Read the orchestrator `workflow-contracts.md`, `state-machine.md`, `mcp-safety-policy.md`, and [the plan contract](references/implementation-plan-contract.md).
-2. Read `.cocos-workflow/project-profile.yaml`, `requirements.yaml`, approved systems and technical design artifacts, the frozen visual-direction artifact, and approved scene concepts. Require approved project configuration, requirements, systems design, technical design, visual direction, and concepts.
+2. Read `.cocos-workflow/project-profile.yaml`, `requirements.md`, approved systems and technical design artifacts, the frozen visual-direction artifact, and approved scene concepts. Require approved project configuration, requirements, systems design, technical design, visual direction, and concepts.
 3. Compare the current requirements, systems-design, and technical-design hashes, `visual_direction.version`, `visual_direction.content_hash`, and concept hashes to their approval records. On any missing or mismatched input, return `blocked` or `stale`; do not create an executable plan.
 4. Accept only orchestrator-authorized plan, result, and report paths. The orchestrator is the only writer of `workflow.yaml`.
 5. When the task declares a decision-changing update to an approved plan, require a `$grilling` confirmation whose stage and subject hash match `decision_change`; on a missing or mismatched confirmation, return `blocked` and do not create a replacement plan.
@@ -38,7 +38,7 @@ Convert approved inputs into the sole `.cocos-workflow/artifacts/implementation-
 
 ## Output requirements
 
-- `implementation-plan.yaml` must carry frozen input versions and `sha256:` hashes and define scenes, prefabs, scripts, approved Pencil-draft and high-fidelity-concept dependencies, asset dependencies, `module_decomposition`, `dependency_graph`, `scene_loops`, `vertical_slice`, tasks, ownership, the asset-approval join gate, and the one Cocos writer.
+- `implementation-plan.md` must carry frozen input versions and `sha256:` hashes in YAML front matter and explain scenes, prefabs, scripts, approved Pencil-draft and high-fidelity-concept dependencies, asset dependencies, `module_decomposition`, `dependency_graph`, `scene_loops`, `vertical_slice`, tasks, ownership, the asset-approval join gate, and the one Cocos writer in its body.
 - `capture-manifest.yaml` is a planning artifact, not a verification report. It must bind the frozen profile and visual-direction hashes and enumerate all frozen mobile profiles before baseline capture begins.
 - Every production or integration task must have `allowed_paths`, `depends_on`, `acceptance_checks`, and expected outputs.
 - Follow the orchestrator result contract: a `passed` result has nonempty evidence, returns only authorized paths, and cannot waive P0 failure.

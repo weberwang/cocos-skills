@@ -15,7 +15,7 @@ Read the installed `$cocos-orchestrate-web-workflow` `workflow-contracts.md` and
 
 ## Procedure
 
-1. Read the assigned task, approved implementation asset plan, the approved per-scene `artifacts/scene-concepts/<scene_id>.yaml` and referenced Pencil-draft artifact, frozen `visual-direction.yaml`, and frozen `project-profile.yaml`. Block when any required approval, Pencil-draft hash, frozen-reference image hash, visual version/hash, profile hash, orientation, or design resolution does not match.
+1. Read the assigned task, approved implementation asset plan, the approved per-scene `artifacts/scene-concepts/<scene_id>.md` and referenced Pencil-draft artifact, frozen `visual-direction.md`, and frozen `project-profile.yaml`. Block when any required approval, Pencil-draft hash, frozen-reference image hash, visual version/hash, profile hash, orientation, or design resolution does not match.
 2. Decompose each approved scene into a declared asset list. One `asset_id` has one intended runtime purpose and one independent output image; do not emit a screen crop, asset atlas, or mixed-purpose sheet unless the approved plan explicitly requires it.
 3. Build each asset prompt from the approved concept and frozen direction. Use the asset plan's exact output dimensions; preserve palette, style, and prohibited list from the visual direction and do not introduce a local visual variation. Generate with `$imagegen`; request transparent background only when the declared asset purpose requires it.
 4. Save each output and metadata under `.cocos-workflow/art/assets/<asset_id>/`. Record source concept path/hash, source reference licenses, generator metadata, final prompt hash, dimensions, alpha/background requirement, and binary SHA-256.

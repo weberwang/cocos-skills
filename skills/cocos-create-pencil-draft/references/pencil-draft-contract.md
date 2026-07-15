@@ -1,6 +1,6 @@
 # Pencil 草图契约
 
-每个场景/UI 草图工件位于 `.cocos-workflow/artifacts/pencil-drafts/<scene_id>.yaml`。
+每个场景/UI 草图工件位于 `.cocos-workflow/artifacts/pencil-drafts/<scene_id>.md`，以 YAML front matter 保存审批元数据，并用 Markdown 正文说明布局与交互结构。
 
 ```yaml
 schema_version: 1

@@ -8,6 +8,12 @@
 ├── project-profile.yaml
 ├── quality-gates.yaml
 ├── ownership.yaml
+├── requirements.md
+├── artifacts/
+│   ├── systems-design.md
+│   ├── technical-design.md
+│   ├── visual-direction.md
+│   └── implementation-plan.md
 ├── tasks/
 ├── results/
 ├── art/
@@ -132,18 +138,20 @@
 
 ## 阶段工件与审批门禁
 
-阶段离开后，总控必须同时校验实际存在的工件及 `workflow.yaml.approval_gates` 中的同名门禁。唯一视觉方向工件路径为 `artifacts/visual-direction.yaml`，不得使用 `art/visual-direction.yaml`。
+阶段离开后，总控必须同时校验实际存在的工件及 `workflow.yaml.approval_gates` 中的同名门禁。人可审阅的阶段工件必须保存为 Markdown：文件以 YAML front matter 开始，正文使用 Markdown 标题、段落和列表清晰表达工件内容。唯一视觉方向工件路径为 `artifacts/visual-direction.md`，不得使用 `art/visual-direction.yaml`。
+
+Markdown 工件的 front matter 承载 `schema_version`、状态、版本、冻结输入、审批和 `content_hash` 等结构化元数据；正文不得为空。`content_hash` 对不含自身及 `approval.subject_hash` 的 front matter 与完整正文共同计算，因此任何正文修改都会使已有批准失效。机器状态、任务、结果，以及资产、捕获和绑定清单继续使用 YAML。
 
 | 完成阶段 | 工件路径 | 工件状态 | 门禁键 |
 | --- | --- | --- | --- |
-| requirements | `requirements.yaml` | `approved` | `requirements` |
-| systems-design | `artifacts/systems-design.yaml` | `approved` | `systems-design` |
-| technical-design | `artifacts/technical-design.yaml` | `approved` | `technical-design` |
-| visual-direction | `artifacts/visual-direction.yaml` | `frozen` | `visual-direction` |
-| planning | `artifacts/implementation-plan.yaml` | `approved` | `implementation-plan` |
+| requirements | `requirements.md` | `approved` | `requirements` |
+| systems-design | `artifacts/systems-design.md` | `approved` | `systems-design` |
+| technical-design | `artifacts/technical-design.md` | `approved` | `technical-design` |
+| visual-direction | `artifacts/visual-direction.md` | `frozen` | `visual-direction` |
+| planning | `artifacts/implementation-plan.md` | `approved` | `implementation-plan` |
 | production | `artifacts/game-assets.yaml` | `approved` | `game-assets` |
-| verification | `artifacts/verification.yaml` | `passed` | `verification` |
-| delivery | `artifacts/delivery.yaml` | `passed` | `delivery` |
+| verification | `artifacts/verification.md` | `passed` | `verification` |
+| delivery | `artifacts/delivery.md` | `passed` | `delivery` |
 
 每个已完成阶段的工件必须具有有效 `schema_version`、`content_hash` 和阶段要求的状态；需要人工批准的工件还必须具有 `approval.status`、`approved_by`、`approved_at` 与等于 `content_hash` 的 `approval.subject_hash`。门禁必须严格使用 `status: passed`、非空 `approved_by`、非空 `approved_at` 和等于同一工件 `content_hash` 的 `subject_hash`。为避免审批哈希自引用，工件的 `content_hash` 计算排除顶层 `content_hash` 以及 `approval.subject_hash`。
 

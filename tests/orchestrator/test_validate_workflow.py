@@ -9,7 +9,7 @@ SCRIPTS = Path(__file__).parents[2] / "skills" / "cocos-orchestrate-web-workflow
 sys.path.insert(0, str(SCRIPTS))
 
 from init_workflow import initialize_workflow
-from workflow_common import content_hash, read_yaml, write_yaml
+from workflow_common import content_hash, document_content_hash, read_yaml, write_markdown, write_yaml
 from validate_workflow import (
     _validate_scene_concept_design_evidence,
     _validate_implementation_plan_tasks,
@@ -107,15 +107,15 @@ class ValidateWorkflowTests(unittest.TestCase):
             }
             valid_artifact = {"reference_effect_images": [image, second_image]}
 
-            self.assertEqual(_validate_visual_reference_effect_images(valid_artifact, Path("visual-direction.yaml"), state), [])
+            self.assertEqual(_validate_visual_reference_effect_images(valid_artifact, Path("visual-direction.md"), state), [])
             self.assertEqual(
-                [issue.code for issue in _validate_visual_reference_effect_images({"reference_effect_images": [image]}, Path("visual-direction.yaml"), state)],
+                [issue.code for issue in _validate_visual_reference_effect_images({"reference_effect_images": [image]}, Path("visual-direction.md"), state)],
                 ["invalid-visual-reference-images"],
             )
 
             rejected_artifact = {"reference_effect_images": [image, {**second_image, "review_status": "rejected"}]}
             self.assertEqual(
-                [issue.code for issue in _validate_visual_reference_effect_images(rejected_artifact, Path("visual-direction.yaml"), state)],
+                [issue.code for issue in _validate_visual_reference_effect_images(rejected_artifact, Path("visual-direction.md"), state)],
                 ["invalid-visual-reference-image"],
             )
 
@@ -170,11 +170,11 @@ class ValidateWorkflowTests(unittest.TestCase):
             {"task_id": "assets", "kind": "asset-preparation", "scene_id": "home", "depends_on": ["concept"]},
             {"task_id": "code", "kind": "code", "scene_id": "home", "depends_on": ["concept", "modules", "scaffold"]},
         ]
-        self.assertEqual(_validate_implementation_plan_tasks({"tasks": tasks}, Path("implementation-plan.yaml")), [])
+        self.assertEqual(_validate_implementation_plan_tasks({"tasks": tasks}, Path("implementation-plan.md")), [])
         tasks[-1]["depends_on"] = ["modules", "scaffold"]
         self.assertIn(
             "missing-visual-concept-dependency",
-            {issue.code for issue in _validate_implementation_plan_tasks({"tasks": tasks}, Path("implementation-plan.yaml"))},
+            {issue.code for issue in _validate_implementation_plan_tasks({"tasks": tasks}, Path("implementation-plan.md"))},
         )
 
     def test_initial_scene_rules_follow_bootstrap_phase(self) -> None:
@@ -738,16 +738,32 @@ class ValidateWorkflowTests(unittest.TestCase):
                     "subject_hash": None,
                 },
             }
-            requirements["content_hash"] = content_hash(requirements)
+            body = "# 需求\n\n已批准的最小可玩需求。\n"
+            requirements["content_hash"] = document_content_hash(requirements, body)
             requirements["approval"]["subject_hash"] = requirements["content_hash"]
-            requirements["content_hash"] = content_hash(
-                {key: value for key, value in requirements.items() if key != "content_hash"}
-            )
-            requirements["approval"]["subject_hash"] = requirements["content_hash"]
-            write_yaml(state / "requirements.yaml", requirements)
+            write_markdown(state / "requirements.md", requirements, body)
 
             self.assertIn(
                 "missing-stage-approval-gate",
+                {issue.code for issue in validate_workflow(root)},
+            )
+
+            workflow = read_yaml(state / "workflow.yaml")
+            workflow["approval_gates"]["requirements"] = {
+                "status": "passed",
+                "approved_by": "tester",
+                "approved_at": "2026-07-12T00:04:00+00:00",
+                "subject_hash": requirements["content_hash"],
+            }
+            write_yaml(state / "workflow.yaml", workflow)
+            self.assertNotIn(
+                "invalid-stage-artifact",
+                {issue.code for issue in validate_workflow(root)},
+            )
+
+            write_markdown(state / "requirements.md", requirements, "# 需求\n\n正文被改写。\n")
+            self.assertIn(
+                "invalid-stage-artifact",
                 {issue.code for issue in validate_workflow(root)},
             )
 

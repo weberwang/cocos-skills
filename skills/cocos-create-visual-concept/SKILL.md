@@ -9,13 +9,13 @@ For each approved scene or UI page, confirm its Pencil layout draft, then genera
 
 ## Boundary
 
-Write only task-assigned paths under `.cocos-workflow/art/concepts/`, `.cocos-workflow/artifacts/scene-concepts/<scene_id>.yaml`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, Cocos scenes, runtime assets, scripts, or project configuration. Do not call Cocos MCP write operations.
+Write only task-assigned paths under `.cocos-workflow/art/concepts/`, `.cocos-workflow/artifacts/scene-concepts/<scene_id>.md`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, Cocos scenes, runtime assets, scripts, or project configuration. Do not call Cocos MCP write operations.
 
 Read the installed `$cocos-orchestrate-web-workflow` `workflow-contracts.md` and `state-machine.md` before work. Use `$imagegen` for every generated effect image; do not substitute an unrecorded generator.
 
 ## Procedure
 
-1. Read the assigned task, approved `implementation-plan.yaml`, approved requirements, frozen `visual-direction.yaml`, frozen `project-profile.yaml`, approved Pencil draft for each in-scope scene or UI page, and [scene-concept contract](references/scene-concept-contract.md). Reject an input unless the plan task/dependency, draft approval/hash, visual version/hash, profile hash, orientation, and resolution all match.
+1. Read the assigned task, approved `implementation-plan.md`, approved requirements, frozen `visual-direction.md`, frozen `project-profile.yaml`, approved Pencil draft for each in-scope scene or UI page, and [scene-concept contract](references/scene-concept-contract.md). Reject an input unless the plan task/dependency, draft approval/hash, visual version/hash, profile hash, orientation, and resolution all match.
 2. Treat each approved Pencil draft as the fixed layout contract: preserve its page structure, primary action, UI hierarchy, navigation, and interaction regions. Pencil does not authorize a new palette, typography, icon style, material, lighting, or motion language.
 3. Derive a stable `scene_id` from each in-scope requirement page. Write a prompt record for each scene using [the prompt template](references/mobile-scene-prompt-template.md). Copy the frozen direction vocabulary, two frozen reference-effect images, and exact mobile resolution verbatim; only add content that is already present in the approved Pencil draft and requirement page.
 4. Generate an effect image for each scene with `$imagegen` only after its Pencil draft is explicitly approved. Do not use phone hardware frames, device mockups, unreadable fake text, unrelated watermarks, or a collage of multiple screens unless the approved requirement explicitly asks for them.

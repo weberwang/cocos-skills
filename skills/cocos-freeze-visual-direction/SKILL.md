@@ -9,13 +9,13 @@ Create one reviewable visual-direction contract and exactly two reference effect
 
 ## Boundary
 
-Write only the task-assigned `.cocos-workflow/artifacts/visual-direction.yaml`, exactly two task-assigned generated reference images under `.cocos-workflow/art/visual-references/`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, scenes, runtime assets, scripts, project configuration, or Cocos Editor state. Do not call a Cocos MCP write operation.
+Write only the task-assigned `.cocos-workflow/artifacts/visual-direction.md`, exactly two task-assigned generated reference images under `.cocos-workflow/art/visual-references/`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, scenes, runtime assets, scripts, project configuration, or Cocos Editor state. Do not call a Cocos MCP write operation.
 
 Read the installed `$cocos-orchestrate-web-workflow` references `workflow-contracts.md` and `state-machine.md` before work. Follow its task ownership and result contract exactly.
 
 ## Procedure
 
-1. Read the assigned task, approved `.cocos-workflow/requirements.yaml`, approved systems and technical design artifacts, frozen `.cocos-workflow/project-profile.yaml`, and [visual-direction contract](references/visual-direction-contract.md). Block if any required hash, approval, orientation, or design resolution is missing or mismatched.
+1. Read the assigned task, approved `.cocos-workflow/requirements.md`, approved systems and technical design artifacts, frozen `.cocos-workflow/project-profile.yaml`, and [visual-direction contract](references/visual-direction-contract.md). Block if any required hash, approval, orientation, or design resolution is missing or mismatched.
 2. Build a global visual-direction proposal: audience fit, visual keywords, palette, typography, shapes, composition, icon treatment, motion cues, accessibility contrast rules, prohibited styles, and traceable source-reference usage. Preserve every source-reference path, purpose, source, and license status.
 3. Copy the project profile's `orientation` and complete `design_resolution` into the proposal without alteration. Bind the current requirements, systems-design, technical-design, and project-profile hashes. The proposal must respect the approved design pillars, performance budget, and accessibility constraints; do not infer a different device orientation, canvas size, or adaptation strategy.
 4. Use `$imagegen` to generate exactly two mobile-oriented reference effect images from the proposal. Use the frozen orientation and design resolution, record each image's purpose, prompt hash, generator metadata, binary SHA-256, and review status, and do not generate scene-specific screens in this phase.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Cocos 定义游戏"
   short_description: "将移动游戏需求整理为可人工审批的范围、页面及验收条件"
-  default_prompt: "Use $cocos-define-game to convert initialized Cocos project inputs into a pending requirements.yaml."
+  default_prompt: "Use $cocos-define-game to convert initialized Cocos project inputs into a pending requirements.md."

@@ -3,7 +3,7 @@
 ## 前置输入
 
 - `.cocos-workflow/project-profile.yaml`：`status: frozen`，并包含当前 `content_hash`、`orientation`、`design_resolution` 与全部 `capture_profiles`。
-- `.cocos-workflow/artifacts/visual-direction.yaml`：`status: frozen`、非空 `version` 和 `sha256:` `content_hash`。
+- `.cocos-workflow/artifacts/visual-direction.md`：front matter 中 `status: frozen`、非空 `version` 和 `sha256:` `content_hash`。
 - `.cocos-workflow/artifacts/capture-manifest.yaml`：`status: approved`，且 `approval.subject_hash == content_hash`；完整覆盖冻结的 `mobile-small`、`mobile-standard`、`mobile-large` profile、基线、遮罩与像素差阈值。
 - 编排任务的 `baseline_revision`、视觉依赖版本/哈希、集成结果和需求验收项。
 

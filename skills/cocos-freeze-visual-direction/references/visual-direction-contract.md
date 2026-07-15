@@ -1,6 +1,6 @@
 # 视觉方向契约
 
-产物为 `.cocos-workflow/artifacts/visual-direction.yaml`。`workflow.yaml.visual_direction` 仅由总控在验收后更新。
+产物为 `.cocos-workflow/artifacts/visual-direction.md`，以 YAML front matter 保存冻结元数据，并用 Markdown 正文说明视觉规范。`workflow.yaml.visual_direction` 仅由总控在验收后更新。
 
 ```yaml
 schema_version: 1

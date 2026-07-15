@@ -56,7 +56,7 @@ class InvalidateArtifactsTests(unittest.TestCase):
                     "from_state": "bootstrap", "to_state": "requirements",
                     "from_run_status": "passed", "to_run_status": "pending",
                     "timestamp": "2026-07-12T00:02:00+00:00", "reason": "next-stage",
-                    "evidence": ["artifacts/requirements.yaml"],
+                    "evidence": ["requirements.md"],
                 },
                 {
                     "from_state": "requirements", "to_state": "requirements",
@@ -68,13 +68,13 @@ class InvalidateArtifactsTests(unittest.TestCase):
                     "from_state": "requirements", "to_state": "requirements",
                     "from_run_status": "running", "to_run_status": "passed",
                     "timestamp": "2026-07-12T00:04:00+00:00", "reason": "verified",
-                    "evidence": ["artifacts/requirements.yaml"],
+                    "evidence": ["requirements.md"],
                 },
                 {
                     "from_state": "requirements", "to_state": "visual-direction",
                     "from_run_status": "passed", "to_run_status": "pending",
                     "timestamp": "2026-07-12T00:05:00+00:00", "reason": "next-stage",
-                    "evidence": ["artifacts/visual-direction.yaml"],
+                    "evidence": ["artifacts/visual-direction.md"],
                 },
                 {
                     "from_state": "visual-direction", "to_state": "visual-direction",
@@ -86,13 +86,13 @@ class InvalidateArtifactsTests(unittest.TestCase):
                     "from_state": "visual-direction", "to_state": "visual-direction",
                     "from_run_status": "running", "to_run_status": "passed",
                     "timestamp": "2026-07-12T00:07:00+00:00", "reason": "verified",
-                    "evidence": ["artifacts/visual-direction.yaml"],
+                    "evidence": ["artifacts/visual-direction.md"],
                 },
                 {
                     "from_state": "visual-direction", "to_state": "planning",
                     "from_run_status": "passed", "to_run_status": "pending",
                     "timestamp": "2026-07-12T00:08:00+00:00", "reason": "next-stage",
-                    "evidence": ["artifacts/implementation-plan.yaml"],
+                    "evidence": ["artifacts/implementation-plan.md"],
                 },
                 {
                     "from_state": "planning", "to_state": "planning",
@@ -104,7 +104,7 @@ class InvalidateArtifactsTests(unittest.TestCase):
                     "from_state": "planning", "to_state": "planning",
                     "from_run_status": "running", "to_run_status": "passed",
                     "timestamp": "2026-07-12T00:10:00+00:00", "reason": "verified",
-                    "evidence": ["artifacts/implementation-plan.yaml"],
+                    "evidence": ["artifacts/implementation-plan.md"],
                 },
                 {
                     "from_state": "planning", "to_state": "production",
@@ -129,7 +129,7 @@ class InvalidateArtifactsTests(unittest.TestCase):
                 "visual": {
                     "depends_on": [],
                     "status": "passed",
-                    "path": "artifacts/visual-direction.yaml",
+                    "path": "artifacts/visual-direction.md",
                     "stage": "visual-direction",
                     "approval_gate": "visual-direction",
                     "task_ids": ["visual-task"],

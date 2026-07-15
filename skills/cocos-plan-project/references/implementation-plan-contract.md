@@ -1,6 +1,6 @@
 # 实施计划契约
 
-计划固定写入 `.cocos-workflow/artifacts/implementation-plan.yaml`。从 planning 到 production 的每个消费者都必须先验证 `status`、批准记录及全部冻结输入哈希。
+计划固定写入 `.cocos-workflow/artifacts/implementation-plan.md`。文件以 YAML front matter 保存可校验计划字段，以 Markdown 正文说明执行顺序与取舍；从 planning 到 production 的每个消费者都必须先验证 `status`、批准记录及全部冻结输入哈希。
 
 ```yaml
 schema_version: 1
@@ -61,7 +61,7 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 
 ## 模块拆分任务
 
-`module_decomposition` 是 `implementation-plan.yaml` 的必需工件：每个模块必须声明 `id`、责任、公开接口、拥有路径、依赖和测试边界。`dependency_graph` 只能指向已声明模块，禁止循环依赖。每个 `kind: code` 任务必须在 `depends_on` 中引用已批准的模块拆分任务，并声明非空 `module_ids`；未批准的模块拆分结果不得进入实现阶段。
+`module_decomposition` 是 `implementation-plan.md` 的必需内容：每个模块必须声明 `id`、责任、公开接口、拥有路径、依赖和测试边界。`dependency_graph` 只能指向已声明模块，禁止循环依赖。每个 `kind: code` 任务必须在 `depends_on` 中引用已批准的模块拆分任务，并声明非空 `module_ids`；未批准的模块拆分结果不得进入实现阶段。
 
 ## 全局骨架代码
 
@@ -75,7 +75,7 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 
 `vertical_slice` 必须覆盖一个可从开始到挑战再到解决的最小 MVP 路径，且 `scene_loop_ids`、`task_ids` 均非空。切片任务必须包括 Pencil 草图、高保真效果图、真实资源、代码、串行 Cocos 集成、`mobile-small`、`mobile-standard`、`mobile-large` 三档 Chrome 回放、截图/像素差证据和人工审阅。
 
-- `approval.subject_hash` 必须绑定 `.cocos-workflow/artifacts/vertical-slice.yaml` 的 `content_hash`，而不是实施计划自身哈希。
+- `approval.subject_hash` 必须绑定 `.cocos-workflow/artifacts/vertical-slice.md` 的 `content_hash`，而不是实施计划自身哈希。
 - 未获得 `passed` 垂直切片工件及人工批准前，任何不在 `vertical_slice.scene_loop_ids` 内的场景循环不得启动草图、效果图、资源准备、代码、Cocos 写入或验证任务。
 - 垂直切片失败、过期或上游哈希变化时，状态为 `stale`，其余场景循环维持 `blocked`；`review_mode` 不得豁免此规则。
 

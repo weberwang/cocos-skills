@@ -9,7 +9,7 @@ description: Use when approved Cocos Creator 2D Web Mobile requirements and game
 
 ## 输入与边界
 
-只可写入任务分配的 `.cocos-workflow/artifacts/technical-design.yaml`、报告和结果路径。读取总控契约、冻结项目配置、已批准需求、已批准 `systems-design.yaml` 及 [技术设计契约](references/technical-design-contract.md)。
+只可写入任务分配的 `.cocos-workflow/artifacts/technical-design.md`、报告和结果路径。读取总控契约、冻结项目配置、已批准需求、已批准 `systems-design.md` 及 [技术设计契约](references/technical-design-contract.md)。
 
 ## 流程
 

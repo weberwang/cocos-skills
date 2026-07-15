@@ -9,7 +9,7 @@ Create one structural Pencil draft for one assigned `scene_loop_id`. This task c
 
 ## Boundary
 
-Write only task-assigned paths under `.cocos-workflow/art/concepts/<scene_id>/`, `.cocos-workflow/artifacts/pencil-drafts/<scene_id>.yaml`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, Cocos scenes, assets, scripts, project configuration, or Editor state.
+Write only task-assigned paths under `.cocos-workflow/art/concepts/<scene_id>/`, `.cocos-workflow/artifacts/pencil-drafts/<scene_id>.md`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, Cocos scenes, assets, scripts, project configuration, or Editor state.
 
 Read the orchestrator contracts and [Pencil draft contract](references/pencil-draft-contract.md) before work.
 

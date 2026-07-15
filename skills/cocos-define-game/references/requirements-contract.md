@@ -1,8 +1,9 @@
 # Requirements 契约
 
-产物固定为目标项目的 `.cocos-workflow/requirements.yaml`。开始前必须读取 `.cocos-workflow/project-profile.yaml`；它的冻结内容哈希写入 `project_profile_hash`，本阶段不得改写该配置。
+产物固定为目标项目的 `.cocos-workflow/requirements.md`。文件以 YAML front matter 保存下列元数据，正文使用 Markdown 说明游戏、范围、页面、验收和未决问题。开始前必须读取 `.cocos-workflow/project-profile.yaml`；它的冻结内容哈希写入 `project_profile_hash`，本阶段不得改写该配置。
 
-```yaml
+```markdown
+---
 schema_version: 1
 requirements_version: 1
 status: draft # 仅可为 draft、blocked、approved
@@ -28,7 +29,20 @@ approval:
   status: pending
   approved_by: null
   approved_at: null
-content_hash: sha256:<不含 content_hash 自身的规范化内容哈希>
+content_hash: sha256:<front matter 与正文的规范化内容哈希>
+---
+
+# <游戏标题>
+
+## 核心循环
+
+## 范围
+
+## 页面与流程
+
+## 验收标准
+
+## 未决问题
 ```
 
 ## 字段规则
@@ -43,7 +57,7 @@ content_hash: sha256:<不含 content_hash 自身的规范化内容哈希>
 - `acceptance_criteria` 每项至少含稳定 `id`、`priority`、`given`、`when`、`then` 和 `evidence_type`，并能对应范围内的可玩核心循环或页面行为。
 - `unresolved_questions` 必须列出所有影响范围、可玩性或版权的问题。只有其为空且范围完整、存在至少一个可玩核心循环后，才可申请审批。
 - `approval.status` 在未批准时为 `pending`；仅在显式人工批准后写入 `approved_by`、`approved_at` 并将 `status` 设为 `approved`。不得填造批准信息。
-- `content_hash` 是不含 `content_hash` 字段自身的规范化 YAML 内容的 `sha256:` 哈希。任何受哈希覆盖字段变化都必须重新计算，并使旧批准失效。
+- `content_hash` 是不含自身及 `approval.subject_hash` 的 front matter 与完整 Markdown 正文共同计算的 `sha256:` 哈希。任何元数据或正文变化都必须重新计算，并使旧批准失效。
 
 ## 审批前检查
 

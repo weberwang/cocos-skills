@@ -1,6 +1,6 @@
 # 集成契约
 
-集成任务由已批准 `implementation-plan.yaml` 的 `integration_batches` 派生。它必须在一个时间只拥有一个 Cocos 编辑器写者，且在每个批次完成后保存读回证据。
+集成任务由已批准 `implementation-plan.md` front matter 中的 `integration_batches` 派生。它必须在一个时间只拥有一个 Cocos 编辑器写者，且在每个批次完成后保存读回证据。
 
 ```yaml
 schema_version: 1

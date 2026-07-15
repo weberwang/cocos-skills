@@ -25,7 +25,7 @@ description: Use when a verified Cocos Creator 2D Web Mobile project needs a loc
 3. 使用已安装且任务允许的 Cocos Creator 构建入口构建 **Web Mobile**。记录 Creator 版本、完整命令/方法、配置、开始/结束时间、退出码和构建日志。构建失败、入口文件缺失或静态资源缺失均为 P0。
 4. 为构建目录中的每个文件计算 SHA-256，生成稳定排序的 `build-manifest.json` 和 `checksums.sha256`。清单至少含相对路径、字节数和哈希，且不得包含构建目录外文件。
 5. 启动仅绑定本机回环地址的本地静态服务，记录地址、端口、启动命令和停止方式。使用 Chrome 进行本地冒烟：入口可加载、首场景可达、必需静态资源可访问、控制台无新增未批准错误。保存日志和截图；服务结束后清理。
-6. 在 `build` 模式输出构建报告并返回总控。在 `package` 模式先复核构建报告和哈希，再创建 `web-build.zip`，重新计算压缩包 SHA-256，写入交付报告、`artifacts/delivery.yaml` 和已知问题；将最终人工门禁保持为 `pending`，交由总控请求人工批准。
+6. 在 `build` 模式输出构建报告并返回总控。在 `package` 模式先复核构建报告和哈希，再创建 `web-build.zip`，重新计算压缩包 SHA-256，写入交付报告、`artifacts/delivery.md` 和已知问题；将最终人工门禁保持为 `pending`，交由总控请求人工批准。
 
 ## 禁止事项
 

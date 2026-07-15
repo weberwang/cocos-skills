@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +37,52 @@ def write_yaml(path: Path, data: Mapping[str, Any]) -> None:
     temp_path = path.with_suffix(f"{path.suffix}.tmp")
     temp_path.write_text(payload, encoding="utf-8")
     temp_path.replace(path)
+
+
+def read_markdown(path: Path) -> tuple[dict[str, Any], str]:
+    """读取带 YAML front matter 的 Markdown 工件及其正文。"""
+    if not path.is_file():
+        raise WorkflowError(f"缺少 Markdown 工件: {path}")
+    match = re.fullmatch(r"---\r?\n(.*?)\r?\n---\r?\n(.*)", path.read_text(encoding="utf-8"), re.DOTALL)
+    if match is None:
+        raise WorkflowError(f"Markdown 工件必须以 YAML front matter 开始: {path}")
+    metadata = yaml.safe_load(match.group(1))
+    if not isinstance(metadata, dict):
+        raise WorkflowError(f"Markdown front matter 根节点必须是映射: {path}")
+    body = match.group(2)
+    if not body.strip():
+        raise WorkflowError(f"Markdown 工件正文不得为空: {path}")
+    return metadata, body
+
+
+def write_markdown(path: Path, metadata: Mapping[str, Any], body: str) -> None:
+    """原子写入带 YAML front matter 的 Markdown 工件。"""
+    if not body.strip():
+        raise WorkflowError("Markdown 工件正文不得为空")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    front_matter = yaml.safe_dump(dict(metadata), allow_unicode=True, sort_keys=True).rstrip()
+    payload = f"---\n{front_matter}\n---\n{body}"
+    temp_path = path.with_suffix(f"{path.suffix}.tmp")
+    temp_path.write_text(payload, encoding="utf-8")
+    temp_path.replace(path)
+
+
+def document_content_hash(metadata: Mapping[str, Any], body: str) -> str:
+    """计算 Markdown 工件元数据和正文的稳定内容哈希。"""
+    source = dict(metadata)
+    source.pop("content_hash", None)
+    approval = source.get("approval")
+    if isinstance(approval, Mapping):
+        normalized_approval = dict(approval)
+        normalized_approval.pop("subject_hash", None)
+        source["approval"] = normalized_approval
+    payload = json.dumps(
+        {"metadata": source, "body": body},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return f"sha256:{hashlib.sha256(payload.encode('utf-8')).hexdigest()}"
 
 
 def content_hash(data: Mapping[str, Any]) -> str:

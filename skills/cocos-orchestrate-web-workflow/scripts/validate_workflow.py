@@ -11,7 +11,14 @@ from typing import Any
 
 import yaml
 
-from workflow_common import WorkflowError, content_hash, read_yaml, workflow_dir
+from workflow_common import (
+    WorkflowError,
+    content_hash,
+    document_content_hash,
+    read_markdown,
+    read_yaml,
+    workflow_dir,
+)
 
 
 REQUIRED_FILES = (
@@ -433,15 +440,15 @@ SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
 
 # 阶段离开后必须保留可复算的工件和与该工件哈希绑定的总控门禁。
 STAGE_ARTIFACTS = (
-    ("requirements", "requirements", "requirements.yaml", "approved", "requirements_version"),
-    ("systems-design", "systems-design", "artifacts/systems-design.yaml", "approved", "systems_design_version"),
-    ("technical-design", "technical-design", "artifacts/technical-design.yaml", "approved", "technical_design_version"),
-    ("visual-direction", "visual-direction", "artifacts/visual-direction.yaml", "frozen", "visual_direction_version"),
-    ("scene-concepts", "scene-concepts", "artifacts/scene-concepts.yaml", "approved", None),
-    ("planning", "implementation-plan", "artifacts/implementation-plan.yaml", "approved", "plan_version"),
+    ("requirements", "requirements", "requirements.md", "approved", "requirements_version"),
+    ("systems-design", "systems-design", "artifacts/systems-design.md", "approved", "systems_design_version"),
+    ("technical-design", "technical-design", "artifacts/technical-design.md", "approved", "technical_design_version"),
+    ("visual-direction", "visual-direction", "artifacts/visual-direction.md", "frozen", "visual_direction_version"),
+    ("scene-concepts", "scene-concepts", "artifacts/scene-concepts.md", "approved", None),
+    ("planning", "implementation-plan", "artifacts/implementation-plan.md", "approved", "plan_version"),
     ("production", "game-assets", "artifacts/game-assets.yaml", "approved", "asset_set_version"),
-    ("verification", "verification", "artifacts/verification.yaml", "passed", None),
-    ("delivery", "delivery", "artifacts/delivery.yaml", "passed", None),
+    ("verification", "verification", "artifacts/verification.md", "passed", None),
+    ("delivery", "delivery", "artifacts/delivery.md", "passed", None),
 )
 
 
@@ -457,6 +464,24 @@ def _artifact_hash_source(artifact: Mapping[str, Any]) -> dict[str, Any]:
     return source
 
 
+def _read_artifact(path: Path) -> tuple[dict[str, Any], str | None]:
+    """按工件格式读取元数据；Markdown 的正文参与哈希校验。"""
+    if path.suffix == ".md":
+        return read_markdown(path)
+    return read_yaml(path), None
+
+
+def _artifact_hash_matches(artifact: Mapping[str, Any], body: str | None) -> bool:
+    """校验工件哈希，避免 Markdown 正文变更绕过批准门禁。"""
+    stored_hash = artifact.get("content_hash")
+    expected_hash = (
+        document_content_hash(artifact, body)
+        if body is not None
+        else content_hash(_artifact_hash_source(artifact))
+    )
+    return isinstance(stored_hash, str) and bool(SHA256_PATTERN.fullmatch(stored_hash)) and stored_hash == expected_hash
+
+
 def _is_safe_relative_path(project_root: Path, state_dir: Path, value: Any) -> tuple[Path | None, str | None]:
     """解析项目内路径并阻止绝对路径、穿越和链接逃逸。"""
     if not isinstance(value, str) or not value.strip():
@@ -469,7 +494,7 @@ def _is_safe_relative_path(project_root: Path, state_dir: Path, value: Any) -> t
 
     # 工作流工件使用 .cocos-workflow 相对路径，其余变更仍以项目根目录为基准。
     workflow_prefixes = {"art", "artifacts", "reports", "tasks", "results"}
-    workflow_files = {"requirements.yaml", "project-profile.yaml", "quality-gates.yaml", "ownership.yaml", "workflow.yaml"}
+    workflow_files = {"requirements.md", "project-profile.yaml", "quality-gates.yaml", "ownership.yaml", "workflow.yaml"}
     base = state_dir if candidate.parts[0] in workflow_prefixes or value in workflow_files else project_root
     resolved_root = project_root.resolve()
     resolved_path = (base / Path(*candidate.parts)).resolve()
@@ -690,7 +715,7 @@ def _validate_stage_artifacts(
             issues.append(_issue("missing-stage-artifact", artifact_path, f"{state} 阶段缺少必需工件"))
             continue
         try:
-            artifact = read_yaml(artifact_path)
+            artifact, body = _read_artifact(artifact_path)
         except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
             issues.append(_issue("invalid-state-file", artifact_path, str(error)))
             continue
@@ -698,9 +723,7 @@ def _validate_stage_artifacts(
         valid = (
             type(artifact.get("schema_version")) is int
             and artifact.get("status") == expected_status
-            and isinstance(artifact.get("content_hash"), str)
-            and bool(SHA256_PATTERN.fullmatch(artifact["content_hash"]))
-            and artifact.get("content_hash") == content_hash(_artifact_hash_source(artifact))
+            and _artifact_hash_matches(artifact, body)
         )
         if version_field is not None:
             valid = valid and bool(artifact.get(version_field))
@@ -759,17 +782,17 @@ def _validate_vertical_slice_gate(
     if not _stage_is_complete(workflow, "production"):
         return []
 
-    artifact_path = state_dir / "artifacts" / "vertical-slice.yaml"
+    artifact_path = state_dir / "artifacts" / "vertical-slice.md"
     if not artifact_path.is_file():
         return [_issue("missing-vertical-slice", artifact_path, "离开 production 前必须通过垂直切片门禁")]
     try:
-        artifact = read_yaml(artifact_path)
+        artifact, body = _read_artifact(artifact_path)
     except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
         return [_issue("invalid-state-file", artifact_path, str(error))]
 
-    plan_path = state_dir / "artifacts" / "implementation-plan.yaml"
+    plan_path = state_dir / "artifacts" / "implementation-plan.md"
     try:
-        plan = read_yaml(plan_path)
+        plan, _ = _read_artifact(plan_path)
     except (WorkflowError, yaml.YAMLError, UnicodeError, OSError) as error:
         return [_issue("invalid-vertical-slice-plan", plan_path, f"无法校验垂直切片计划绑定：{error}")]
 
@@ -777,9 +800,7 @@ def _validate_vertical_slice_gate(
     valid_artifact = (
         type(artifact.get("schema_version")) is int
         and artifact.get("status") == "passed"
-        and isinstance(artifact.get("content_hash"), str)
-        and bool(SHA256_PATTERN.fullmatch(artifact["content_hash"]))
-        and artifact.get("content_hash") == content_hash(_artifact_hash_source(artifact))
+        and _artifact_hash_matches(artifact, body)
         and artifact.get("implementation_plan_hash") == plan.get("content_hash")
     )
     valid_approval = (
@@ -979,8 +1000,8 @@ def _validate_task(
             issues.append(_issue("missing-scene-concept-artifact", task_path, f"任务 {task_id} 缺少场景效果图工件"))
         else:
             try:
-                concept = read_yaml(state_dir / concept_path)
-                frozen = read_yaml(state_dir / "artifacts" / "visual-direction.yaml")
+                concept, _ = _read_artifact(state_dir / concept_path)
+                frozen, _ = _read_artifact(state_dir / "artifacts" / "visual-direction.md")
                 expected_references = [
                     {"path": item.get("path"), "content_hash": item.get("content_hash")}
                     for item in frozen.get("reference_effect_images", [])

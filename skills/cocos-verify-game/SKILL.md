@@ -14,7 +14,7 @@ description: Use when a Cocos Creator 2D Web Mobile project needs Chrome-based r
 开始前必须读取并校验：
 
 1. `.cocos-workflow/project-profile.yaml` 的冻结哈希、方向、设计分辨率与全部 `capture_profiles`，以及当前 `scene_loop_id`。验证只消费该场景小循环声明的路径、交互和 `exit_checks`；未通过前不得启动下一场景循环。
-2. `.cocos-workflow/artifacts/visual-direction.yaml` 的冻结版本与 SHA-256 哈希。
+2. `.cocos-workflow/artifacts/visual-direction.md` 的冻结版本与 SHA-256 哈希。
 3. `.cocos-workflow/artifacts/capture-manifest.yaml` 的 `status: approved`、批准主体哈希、基线修订和全 profile 覆盖。
 4. 编排任务的 `baseline_revision`、允许路径、集成结果、需求验收项及视觉依赖。
 
@@ -30,7 +30,7 @@ description: Use when a Cocos Creator 2D Web Mobile project needs Chrome-based r
 
 ## 垂直切片子门禁
 
-当 `verification_mode: vertical-slice` 时，仅验证实施计划 `vertical_slice.scene_loop_ids` 中的最小 MVP 路径，并额外要求玩家可完成 `start → challenge → resolution`。为全部冻结手机 profile 记录可回放操作、三段截图、像素差、运行日志和至少一次人工实际试玩证据；将结果写入 `artifacts/vertical-slice.yaml`。
+当 `verification_mode: vertical-slice` 时，仅验证实施计划 `vertical_slice.scene_loop_ids` 中的最小 MVP 路径，并额外要求玩家可完成 `start → challenge → resolution`。为全部冻结手机 profile 记录可回放操作、三段截图、像素差、运行日志和至少一次人工实际试玩证据；将结果写入 `artifacts/vertical-slice.md`。
 
 工件在未获得明确人工批准前保持 `pending`。只有 P0/P1、三档 profile、核心循环和试玩证据全部通过，且 `approval.subject_hash` 绑定当前 `content_hash` 时，才可设为 `passed`。总控在接收该工件前不得调度非切片场景循环；最终验证仍需覆盖整个游戏，不能由切片替代。
 

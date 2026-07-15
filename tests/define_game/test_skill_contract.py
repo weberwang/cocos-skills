@@ -30,7 +30,7 @@ class DefineGameSkillContractTest(unittest.TestCase):
         skill = SKILL_PATH.read_text(encoding="utf-8")
 
         self.assertIn("cocos-orchestrate-web-workflow", skill)
-        self.assertIn(".cocos-workflow/requirements.yaml", skill)
+        self.assertIn(".cocos-workflow/requirements.md", skill)
         self.assertIn("workflow.yaml", skill)
         self.assertIn("forbidden", skill)
         self.assertIn("Cocos MCP", skill)
