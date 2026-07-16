@@ -546,6 +546,15 @@ class ValidateWorkflowTests(unittest.TestCase):
             codes = {issue.code for issue in validate_workflow(root)}
             self.assertIn("p0-waiver-forbidden", codes)
 
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = initialize_workflow(root, "portrait", creator_version="3.8.6", approved_by="tester")
+            gates = read_yaml(state / "quality-gates.yaml")
+            gates["P0"]["visual_design_quality"] = False
+            write_yaml(state / "quality-gates.yaml", gates)
+            codes = {issue.code for issue in validate_workflow(root)}
+            self.assertIn("visual-design-quality-required", codes)
+
     def test_task_evidence_and_visual_freeze_are_required(self) -> None:
         """验证 passed 任务证据和视觉依赖版本、哈希均不可缺失。"""
         with tempfile.TemporaryDirectory() as tmp:

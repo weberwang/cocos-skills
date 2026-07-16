@@ -1,4 +1,4 @@
 interface:
-  display_name: "Cocos ´´½¨ Pencil ²İÍ¼"
-  short_description: "Create auditable Pencil scene and UI drafts"
-  default_prompt: "Use -create-pencil-draft to create and approve a Pencil layout draft for an assigned Cocos scene or UI."
+  display_name: "Cocos åˆ›å»º Pencil è‰å›¾"
+  short_description: "Create auditable game-scene and UI wireframes"
+  default_prompt: "Use $cocos-create-pencil-draft to create and approve a precise Pencil layout draft for an assigned Cocos scene or UI."

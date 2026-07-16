@@ -85,6 +85,8 @@
 
 `P0.require_vertical_slice` 必须为 `true`；它要求 production **先**完成核心玩法原型并获得已批准的垂直切片工件，之后才允许模块拆分、全局骨架与正式场景循环；推进到核心玩法正式场景时必须按正式版本实现，不得以原型替代交付。
 
+`P0.visual_design_quality` 必须为 `true`。它要求冻结视觉方向同时提供可执行的游戏原画规范与 UI 系统；每个正式场景效果图至少有三个实质不同的原画候选、评审记录、可编辑 UI 源、真实文案、一次缺陷驱动精修和全部捕获视口证据。十项质量评分必须全部不低于 4/5、平均分不低于 4.5/5，且最终人工批准绑定最终图哈希。该门槛不可豁免。
+
 ### `ownership.yaml`
 
 必须逐项包含：
@@ -117,6 +119,8 @@
 递归扫描 `inputs` 时，映射键 `visual`、`visual_direction`、`scene_concept`，以及列表项 `type=visual|visual-direction|scene-concept` 都是视觉依赖。每个视觉依赖必须包含非空 `version` 和 `sha256:` `content_hash`；缺失时拒绝派发或验收。
 
 production 开始后，总控必须先完成 `vertical_slice` 核心玩法原型任务并获得人工批准，然后才可派发 `module_decomposition`、`global_scaffold` 与正式场景任务。其后仅派发最低未完成 `business_flow_level` 的任务。同级可在路径无冲突且依赖已满足时并行；后一等级任务必须直接依赖前一等级所有 `completion_task_ids`，并在这些任务的 `passed` 结果、证据和验收检查全部有效后才可派发。`is_core_gameplay: true` 的正式循环必须走完整 Pencil → 效果图 → 资源 → 代码路径。
+
+正式 `visual-concept` 任务必须遵守 `1 task : 1 scene_id : 1 final image`，并按实施计划 `scene_loops` 的顺序串行派发。任意时刻 `active_task_ids` 中最多存在一个 `visual-concept`；当前场景的 `final-human-review` 未通过前，不得派发下一场景的候选生成。验收检查必须包含 `single-scene-scope`、`candidate-count`、`candidate-review`、`editable-ui-source`、`exact-copy`、`refinement-round`、`visual-quality-scores`、`capture-profile-legibility` 和 `final-human-review`。缺失任一项时不得接受结果或启动下一个场景。
 
 ## 代理返回契约
 

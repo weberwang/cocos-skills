@@ -421,7 +421,6 @@ def _validate_quality_gates(gates: Mapping[str, Any], path: Path) -> list[Valida
     for severity in ("P0", "P1", "P2"):
         if not isinstance(gates.get(severity), Mapping):
             issues.append(_issue("missing-quality-level", path, f"缺少 {severity} 质量门禁"))
-
     p0 = gates.get("P0")
     if isinstance(p0, Mapping):
         # P0 可以显式声明不可豁免，但任何启用豁免的字段都会破坏硬门禁。
@@ -431,8 +430,9 @@ def _validate_quality_gates(gates: Mapping[str, Any], path: Path) -> list[Valida
             issues.append(_issue("p0-waiver-forbidden", path, "P0 质量门禁不得配置豁免"))
         if p0.get("require_vertical_slice") is not True:
             issues.append(_issue("vertical-slice-required", path, "P0.require_vertical_slice 必须为 true"))
+        if p0.get("visual_design_quality") is not True:
+            issues.append(_issue("visual-design-quality-required", path, "P0.visual_design_quality 必须为 true"))
     return issues
-
 
 VISUAL_KEYS = {"visual", "visual_direction", "scene_concept"}
 VISUAL_TYPES = {"visual", "visual-direction", "scene-concept"}

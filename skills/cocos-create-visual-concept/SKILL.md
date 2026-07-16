@@ -1,37 +1,45 @@
 ---
 name: cocos-create-visual-concept
-description: Use when an approved Cocos Creator Web Mobile implementation plan assigns a scene or UI with a human-approved Pencil layout draft and needs a reviewable high-fidelity mobile effect image that is strictly bound to the frozen global visual direction before asset or code implementation.
+description: Use when an approved Cocos Creator Web Mobile implementation plan assigns exactly one game scene or UI page with a human-approved Pencil draft and needs art-directed game artwork, a precise UI design, and one reviewable final high-fidelity effect image before the workflow proceeds to another scene.
 ---
 
-# Cocos 创建场景效果图
+# Cocos 创建高保真游戏视觉方案
 
-For each approved scene or UI page, confirm its Pencil layout draft, then generate and review one mobile-oriented high-fidelity concept image. Pencil defines structure and interaction hierarchy only; every visual decision must preserve the frozen global visual inputs exactly. This Skill produces design evidence, not Cocos project changes.
+以“游戏原画设计 → UI 视觉设计 → 最终合成”的专业流程完成单个场景。一次任务只能处理一个 `scene_id`，当前场景完成质量审核和人工批准后，总控才可派发下一个场景的效果图任务。必须先探索、再评审、后精修；不得批量生成全部页面或多页面拼图。
 
-## Boundary
+## 边界
 
-Write only task-assigned paths under `.cocos-workflow/art/concepts/`, `.cocos-workflow/artifacts/scene-concepts/<scene_id>.md`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, Cocos scenes, runtime assets, scripts, or project configuration. Do not call Cocos MCP write operations.
+只写任务分配的 `.cocos-workflow/art/concepts/<scene_id>/`、`.cocos-workflow/artifacts/scene-concepts/<scene_id>.md` 和结果/报告路径。不得写 `workflow.yaml`、Cocos 场景、运行时资源、脚本或项目配置，不得调用 Cocos MCP 写操作。
 
-Read the installed `$cocos-orchestrate-web-workflow` `workflow-contracts.md` and `state-machine.md` before work. Use `$imagegen` for every generated effect image; do not substitute an unrecorded generator.
+工作前读取总控的 `workflow-contracts.md`、`state-machine.md`、冻结视觉方向、已批准 Pencil 草图、[场景效果图契约](references/scene-concept-contract.md) 和 [高质量提示词模板](references/mobile-scene-prompt-template.md)。所有生成的游戏原画层都必须使用 `$imagegen`。
 
-## Procedure
+## 专业分工
 
-1. Read the assigned task, approved `implementation-plan.md`, approved requirements, frozen `visual-direction.md`, frozen `project-profile.yaml`, approved Pencil draft for each in-scope scene or UI page, and [scene-concept contract](references/scene-concept-contract.md). Reject an input unless the plan task/dependency, draft approval/hash, visual version/hash, profile hash, orientation, and resolution all match.
-2. Treat each approved Pencil draft as the fixed layout contract: preserve its page structure, primary action, UI hierarchy, navigation, and interaction regions. Pencil does not authorize a new palette, typography, icon style, material, lighting, or motion language.
-3. Derive a stable `scene_id` from each in-scope requirement page. Write a prompt record for each scene using [the prompt template](references/mobile-scene-prompt-template.md). Copy the frozen direction vocabulary, two frozen reference-effect images, and exact mobile resolution verbatim; only add content that is already present in the approved Pencil draft and requirement page.
-4. Generate an effect image for each scene with `$imagegen` only after its Pencil draft is explicitly approved. Do not use phone hardware frames, device mockups, unreadable fake text, unrelated watermarks, or a collage of multiple screens unless the approved requirement explicitly asks for them.
-5. Store the image, Pencil-draft path/hash and approval, prompt record, generator metadata, frozen-reference image hashes, source hashes, and binary SHA-256 in that scene directory. Record visual defects, text limitations, and any manual-edit need rather than silently claiming fidelity.
-6. Run the contract checks for every scene: Pencil-structure consistency, exact visual version/hash binding, and a human comparison against both frozen reference-effect images. Present the complete set for human review. Until explicit approval, keep each review and the manifest pending; a rejected scene remains failed or blocked and is regenerated under the same frozen inputs.
-7. After explicit per-scene approval, set the per-scene artifact to `approved`, bind its hash to the visual version/hash, and return `scene_concept_artifact`, checks, screenshots/preview evidence, Pencil approval evidence, and approval evidence to the orchestrator.
+- **游戏原画设计师**：负责叙事焦点、角色姿态与剪影、场景纵深、透视、材质、光影、色彩节奏、氛围和特效层次；不得让 UI 遮挡或替代关键玩法信息。
+- **UI 设计师**：负责栅格、间距、文字层级、组件状态、图标一致性、HUD 信息密度、安全区、触控尺寸、对比度和可读性；使用真实文案，不接受生成图中的伪文字。
+- **视觉总监**：对候选方案进行对比评审，检查其与冻结原画规范、UI 系统和两张全局参考图的一致性，只允许通过质量门槛的方案进入最终合成。
 
-## Hard Gates
+## 流程
 
-- Direction, orientation, and resolution originate only from the frozen artifacts. A mismatch is `stale`, not a prompt-edit opportunity.
-- Do not generate a high-fidelity image without an approved Pencil draft whose content hash is recorded in the scene entry.
-- A scene or UI concept must not add or override global visual-direction fields. Any required visual change returns to `$cocos-freeze-visual-direction` for a new frozen version; it is never approved locally.
-- Do not call ImageGen before the global visual direction is frozen.
-- Do not move to production on a pending, rejected, missing, or unreviewed scene concept.
-- Do not reuse a concept after the frozen visual version, project profile, or requirements page changes; request orchestration invalidation instead.
+1. 校验任务只声明一个 `scene_id`、一个 `scene_loop_id`、一个 Pencil 草图和一个最终图输出路径；发现多个场景、页面数组、共享最终图或批量页面提示词时立即拒绝。随后校验实施计划、需求、项目配置、视觉方向和 Pencil 草图的状态、批准主题哈希、方向及分辨率，任一不匹配均返回 `stale`。
+2. 编写单场景设计简报，明确叙事时刻、玩家视觉动线、前/中/后景、角色与环境关系、UI 信息优先级、真实文案、组件状态、触控与安全区约束。只使用已批准内容。
+3. 先制作游戏原画层。用 `$imagegen` 生成至少 3 个构图真正不同的候选，不得只改颜色或随机种子；候选分别探索焦点、镜头、纵深和光影，但必须保持冻结风格。原画层不得包含 UI、伪文字、设备框、拼贴或水印。
+4. 对候选执行盲评式设计审查并保存评分与缺陷：构图叙事、造型与剪影、透视纵深、材质光影、色彩控制、风格一致性各 1–5 分。淘汰任何单项低于 4 分的候选，记录入选理由；若无候选通过，必须重新生成，不得进入合成。
+5. 基于已批准 Pencil 源文件制作精确 UI 视觉层。保持结构和交互区域不变，应用冻结 UI 系统，使用真实文案、明确的正常/按下/禁用/选中状态和一致图标栅格。正文不得依赖生成图片中的文字；最终文字和关键图标必须由可编辑设计元素组成。
+6. 合成一张无设备外框的最终平面效果图，并至少进行 1 轮针对性精修。精修只能解决已记录缺陷，不得改变批准结构或冻结方向。保存原画层、UI 层、候选图、评审记录和最终图，不得用候选图冒充最终图。
+7. 执行质量门槛：冻结一致性、Pencil 结构、构图叙事、原画完成度、UI 层级、文字可读性、组件状态、触控与安全区、视觉噪声、资产可拆分性。每项 1–5 分，全部不低于 4 且平均分不低于 4.5；另外在 100% 尺寸和三个捕获视口检查真实文案无乱码、截断、重叠或低对比。未达标必须定向修正并重新评审，禁止以人工豁免绕过。
+8. 将最终图与两张冻结参考效果图并排呈现给人工审核。只有明确批准且 `review.subject_hash == final_image_hash` 时，才将场景工件设为 `approved`；被拒绝的场景在相同冻结输入下继续迭代。
+9. 返回工件、最终预览、候选与精修证据、Pencil 批准证据、完整评分、冻结绑定和人工批准证据。总控负责后续状态变更。
 
-## Handoff
+## 硬门槛
 
-Pass only approved scene entries with their `scene_id`, Pencil-draft path/hash and approval, image path, content hash, prompt hash, two frozen-reference image hashes, visual version/hash, profile hash, orientation, resolution, and human review. These are reference inputs; later phases must not treat them as Cocos-ready runtime assets.
+- 不得在视觉方向冻结或 Pencil 草图批准前生成正式候选。
+- 不得在一次任务、一次提示词或一张效果图中包含多个场景/页面；不得预生成尚未轮到的页面。
+- 不得只有一个候选、没有记录的评审、没有精修轮次或没有分层设计证据。
+- 不得把 ImageGen 生成的伪文字当作 UI 文案；关键文字和图标必须精确、可编辑、可实现。
+- 不得改变冻结的调色板、字体、造型、材质、光影、图标或动效语言；需要改变时返回视觉冻结阶段创建新版本。
+- 任一质量项低于 4、平均分低于 4.5、视口检查失败或人工未批准时，禁止进入资源与代码生产。
+
+## 交接
+
+只交接当前一个已批准场景的条目：`scene_id`、Pencil 路径/哈希、最终图路径/哈希、游戏原画层与 UI 层路径/哈希、候选和精修记录、提示词哈希、两张冻结参考图哈希、视觉版本/哈希、项目配置哈希、方向、分辨率、质量评分和人工审核。不得在交接中附带未审核页面的预生成图；后续阶段将其视为设计依据，不得视为已可直接导入 Cocos 的运行时资源。

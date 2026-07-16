@@ -3,7 +3,7 @@
 产物为 `.cocos-workflow/artifacts/visual-direction.md`，以 YAML front matter 保存冻结元数据，并用 Markdown 正文说明视觉规范。`workflow.yaml.visual_direction` 仅由总控在验收后更新。
 
 ```yaml
-schema_version: 1
+schema_version: 2
 status: draft # draft | blocked | frozen | superseded
 visual_direction_version: 1
 requirements_hash: sha256:<approved requirements hash>
@@ -22,16 +22,37 @@ direction:
   motion_cues: []
   accessibility_rules: []
   prohibited: []
+  game_art_system:
+    composition_and_storytelling: []
+    camera_and_perspective: []
+    character_proportion_pose_and_silhouette: []
+    environment_depth_and_scale: []
+    material_and_surface: []
+    lighting_and_color_script: []
+    vfx_and_atmosphere: []
+    detail_density_and_asset_boundaries: []
+  ui_system:
+    grid_and_spacing: {base_unit: 8, columns: 4, margins: 48, rules: []}
+    type_scale: [] # role、family、weight、size、line_height、contrast
+    components: [] # id、shape、padding、states、usage
+    icon_grid: {canvas: 24, stroke: 2, corner_rule: <rule>, optical_rules: []}
+    hud_information_priority: []
+    interaction_states: [normal, pressed, disabled, selected]
+    minimum_touch_target: {width: 88, height: 88}
+    copy_and_localization_rules: []
+    safe_area_rules: []
 references: [] # path, purpose, source, license_status, content_hash
 reference_effect_images: # 必须恰好两项；视觉冻结阶段生成的全局风格参考图，不是场景概念图
   - path: art/visual-references/<reference_id>.png
-    purpose: <global style reference purpose>
+    role: game-art-quality-anchor
+    purpose: <prove composition, material, lighting and production finish>
     prompt_hash: sha256:<generated prompt hash>
     generator: <recorded ImageGen metadata>
     content_hash: sha256:<image binary hash>
     review_status: pending # pending | approved | rejected
   - path: art/visual-references/<reference_id>.png
-    purpose: <global style reference purpose>
+    role: ui-system-quality-anchor
+    purpose: <prove hierarchy, components, icons and exact-copy legibility>
     prompt_hash: sha256:<generated prompt hash>
     generator: <recorded ImageGen metadata>
     content_hash: sha256:<image binary hash>
@@ -51,6 +72,8 @@ content_hash: sha256:<normalized content excluding content_hash>
 - `orientation` 与 `design_resolution` 必须逐字段复制自冻结 `project-profile.yaml`，包括 `source`；不允许模板默认值覆盖它们。
 - `references` 每项都必须有非空 `path`、`purpose`、`source`、`license_status` 和 `content_hash`。授权未知或不兼容时为 `blocked`。
 - `reference_effect_images` 必须恰好有两项，且每项的 `path`、`purpose`、`prompt_hash`、`generator`、`content_hash` 与 `review_status` 均非空。图像必须由 `$imagegen` 生成、位于 `art/visual-references/` 下，并与冻结的方向、方向和设计分辨率一致；缺少、额外、被拒绝或未批准的图像均不得冻结。
+- `reference_effect_images.role` 必须恰好包含一次 `game-art-quality-anchor` 和一次 `ui-system-quality-anchor`。UI 锚点必须使用真实文案，并保存可编辑文字与关键图标的设计源证据；禁止用生成伪文字证明 UI 质量。
+- `game_art_system` 与 `ui_system` 的每个字段均须非空且可执行。组件至少声明 normal、pressed、disabled、selected 四种状态；文字层级必须给出字号、行高和对比规则；触控尺寸必须可被项目视口验证。
 - 规范化哈希使用字段名排序的 UTF-8 JSON 表示；排除最外层 `content_hash`，不丢弃空数组或空映射。
 - `status: frozen` 时，`approval.status` 必须为 `approved`，且 `subject_hash` 等于 `content_hash`。其他状态不得伪造批准人、时间或主题哈希。
 

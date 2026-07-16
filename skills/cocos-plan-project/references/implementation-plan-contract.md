@@ -55,7 +55,7 @@ scene_loops:
     business_flow_level: 1
     is_core_gameplay: false # true 表示该循环是已确认核心玩法的正式版本实现
     depends_on: [vertical-slice-review, module-decomposition, global-scaffold]
-    task_ids: [] # pencil-draft → visual-concept → asset-preparation → code → integration → verification → review
+    task_ids: [] # pencil-draft → visual-concept（原画候选、精确 UI、精修与质量门槛）→ asset-preparation → code → integration → verification → review
     exit_checks: [] # 每项含 id、kind、evidence_path
 business_flow_levels:
   - level: 1
@@ -130,6 +130,8 @@ production 必须严格按以下顺序推进，不得并行跨越阶段：
 - 每个正式循环的 `depends_on` 必须包含垂直切片审阅任务、`module_decomposition` 与 `global_scaffold`。
 - `is_core_gameplay: true` 的循环对应已确认的核心玩法场景；推进到这些循环时必须按正式版本完整执行，不得跳过 Pencil/高保真/真实资源。
 - `pencil-draft` 必须记录人工批准的草图哈希；`visual-concept` 必须依赖该草图，并逐项绑定全局视觉冻结的版本、内容哈希与两张参考效果图。没有这两项通过证据不得启动本场景的资源准备或正式代码任务。
+- `visual-concept` 的 `acceptance_checks` 必须覆盖至少三个原画候选及评审、可编辑 UI 源、真实文案清单、至少一轮精修、十项质量评分、全部捕获视口可读性和最终图哈希绑定人工批准。任一质量项低于 4/5 或平均分低于 4.5/5 时循环不得退出。
+- 每个 `visual-concept` 任务只能声明一个 `scene_id` 和一个最终图输出路径，并包含 `single-scene-scope` 检查。效果图任务按 `scene_loops` 声明顺序串行：除首个场景外，每个场景的 `visual-concept` 必须直接依赖前一个场景的 `human-review`；不得在同一级并行生成多个页面效果图。
 - 只有本循环 exit_checks 的项目内证据全部通过，才可启动下一场景循环；共享模块必须在首个消费者循环前完成。任何两个 scene_loop 不得并发拥有 Cocos MCP 写权。
 
 ## Capture manifest

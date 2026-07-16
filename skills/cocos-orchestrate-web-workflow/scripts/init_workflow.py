@@ -47,6 +47,8 @@ def _default_quality_gates() -> dict[str, Any]:
             "require_delivery_manifest": True,
             "require_checksum": True,
             "require_vertical_slice": True,
+            # 视觉规范和单场景效果图必须通过不可豁免的专业设计门槛。
+            "visual_design_quality": True,
         },
         "P1": {
             "waivable_by": "human",
