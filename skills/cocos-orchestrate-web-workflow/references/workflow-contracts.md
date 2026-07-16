@@ -110,10 +110,13 @@
 - `output_paths`：预期输出路径。
 - `depends_on`：必须先通过的任务 ID。
 - `acceptance_checks`：总控必须复核的确定性检查。
+- `business_flow_level`：production、integration 或 verification 任务必填；必须等于已批准实施计划中模块或页面所属的业务流等级。
 - `decision_change`：可选映射；仅用于已批准 `requirements | systems-design | technical-design | planning` 的决策性返工，必须包含目标 `stage` 与变更材料的 `sha256:` `subject_hash`。事实勘误、文案、资产、实现、验证与交付任务不得声明它。
 - `state`、`attempt`、`created_at`。
 
 递归扫描 `inputs` 时，映射键 `visual`、`visual_direction`、`scene_concept`，以及列表项 `type=visual|visual-direction|scene-concept` 都是视觉依赖。每个视觉依赖必须包含非空 `version` 和 `sha256:` `content_hash`；缺失时拒绝派发或验收。
+
+production 开始后，总控仅派发最低未完成 `business_flow_level` 的任务。同级可在路径无冲突且依赖已满足时并行；后一等级任务必须直接依赖前一等级所有 `completion_task_ids`，并在这些任务的 `passed` 结果、证据和验收检查全部有效后才可派发。
 
 ## 代理返回契约
 

@@ -163,18 +163,54 @@ class ValidateWorkflowTests(unittest.TestCase):
     def test_plan_code_task_requires_scene_design_dependencies(self) -> None:
         """计划不得允许代码任务跳过同场景草图和高保真设计任务。"""
         tasks = [
-            {"task_id": "modules", "kind": "module_decomposition", "depends_on": []},
-            {"task_id": "scaffold", "kind": "global_scaffold", "depends_on": ["modules"]},
-            {"task_id": "pencil", "kind": "pencil-draft", "scene_id": "home", "depends_on": ["scaffold"]},
-            {"task_id": "concept", "kind": "visual-concept", "scene_id": "home", "depends_on": ["pencil"]},
-            {"task_id": "assets", "kind": "asset-preparation", "scene_id": "home", "depends_on": ["concept"]},
-            {"task_id": "code", "kind": "code", "scene_id": "home", "depends_on": ["concept", "modules", "scaffold"]},
+            {"task_id": "modules", "kind": "module_decomposition", "business_flow_level": 1, "depends_on": []},
+            {"task_id": "scaffold", "kind": "global_scaffold", "business_flow_level": 1, "depends_on": ["modules"]},
+            {"task_id": "pencil", "kind": "pencil-draft", "scene_id": "home", "business_flow_level": 1, "depends_on": ["scaffold"]},
+            {"task_id": "concept", "kind": "visual-concept", "scene_id": "home", "business_flow_level": 1, "depends_on": ["pencil"]},
+            {"task_id": "assets", "kind": "asset-preparation", "scene_id": "home", "business_flow_level": 1, "depends_on": ["concept"]},
+            {"task_id": "code", "kind": "code", "scene_id": "home", "module_ids": ["core"], "business_flow_level": 1, "depends_on": ["concept", "modules", "scaffold"]},
         ]
-        self.assertEqual(_validate_implementation_plan_tasks({"tasks": tasks}, Path("implementation-plan.md")), [])
+        plan = {
+            "tasks": tasks,
+            "module_decomposition": {"modules": [{"id": "core", "business_flow_level": 1}]},
+            "scene_loops": [{"id": "home-loop", "scene_id": "home", "business_flow_level": 1}],
+            "business_flow_levels": [
+                {"level": 1, "name": "开始", "module_ids": ["core"], "page_ids": ["home"], "completion_task_ids": ["code"]}
+            ],
+        }
+        self.assertEqual(_validate_implementation_plan_tasks(plan, Path("implementation-plan.md")), [])
         tasks[-1]["depends_on"] = ["modules", "scaffold"]
         self.assertIn(
             "missing-visual-concept-dependency",
-            {issue.code for issue in _validate_implementation_plan_tasks({"tasks": tasks}, Path("implementation-plan.md"))},
+            {issue.code for issue in _validate_implementation_plan_tasks(plan, Path("implementation-plan.md"))},
+        )
+
+    def test_business_flow_levels_block_higher_level_tasks(self) -> None:
+        """高等级任务必须等待前一等级的完成门禁，不能逆向依赖。"""
+        artifact = {
+            "tasks": [
+                {"task_id": "level-one-done", "kind": "module_decomposition", "business_flow_level": 1, "depends_on": []},
+                {"task_id": "level-two-work", "kind": "global_scaffold", "business_flow_level": 2, "depends_on": []},
+            ],
+            "module_decomposition": {
+                "modules": [
+                    {"id": "entry", "business_flow_level": 1},
+                    {"id": "result", "business_flow_level": 2},
+                ]
+            },
+            "scene_loops": [
+                {"id": "entry-loop", "scene_id": "entry", "business_flow_level": 1},
+                {"id": "result-loop", "scene_id": "result", "business_flow_level": 2},
+            ],
+            "business_flow_levels": [
+                {"level": 1, "name": "进入", "module_ids": ["entry"], "page_ids": ["entry"], "completion_task_ids": ["level-one-done"]},
+                {"level": 2, "name": "结果", "module_ids": ["result"], "page_ids": ["result"], "completion_task_ids": ["level-two-work"]},
+            ],
+        }
+
+        self.assertIn(
+            "missing-business-flow-gate",
+            {issue.code for issue in _validate_implementation_plan_tasks(artifact, Path("implementation-plan.md"))},
         )
 
     def test_initial_scene_rules_follow_bootstrap_phase(self) -> None:

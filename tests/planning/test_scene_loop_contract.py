@@ -20,6 +20,8 @@ class SceneLoopContractTest(unittest.TestCase):
         contract = PLAN_CONTRACT.read_text(encoding="utf-8")
         self.assertIn("scene_loops", contract)
         self.assertIn("scene_id", contract)
+        self.assertIn("business_flow_level", contract)
+        self.assertIn("business_flow_levels", contract)
         self.assertIn("exit_checks", contract)
         self.assertIn("global_scaffold", contract)
         self.assertIn("global_scaffold_task_id", contract)

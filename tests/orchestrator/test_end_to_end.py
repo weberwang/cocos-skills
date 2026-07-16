@@ -94,6 +94,18 @@ class OrchestratorEndToEndTests(unittest.TestCase):
         self.assertIn("grilling-<stage>", contracts)
         self.assertIn("总控是唯一可写入", contracts)
 
+    def test_orchestrator_dispatches_business_flow_levels_in_order(self) -> None:
+        """总控只能从低到高派发模块和页面实现任务。"""
+        root = Path(__file__).parents[2] / "skills"
+        orchestrator = SKILL.read_text(encoding="utf-8")
+        contracts = (
+            root / "cocos-orchestrate-web-workflow" / "references" / "workflow-contracts.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("业务流等级门禁", orchestrator)
+        self.assertIn("completion_task_ids", orchestrator)
+        self.assertIn("business_flow_level", contracts)
+
 
 if __name__ == "__main__":
     unittest.main()

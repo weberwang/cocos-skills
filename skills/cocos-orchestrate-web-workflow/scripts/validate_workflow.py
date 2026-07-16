@@ -653,6 +653,126 @@ def _validate_scene_concept_design_evidence(
     return issues
 
 
+def _validate_business_flow_order(
+    artifact: Mapping[str, Any], artifact_path: Path, task_map: Mapping[str, Mapping[str, Any]]
+) -> list[ValidationIssue]:
+    """校验模块和页面按连续业务流等级串行推进。"""
+    levels = artifact.get("business_flow_levels")
+    if not isinstance(levels, list) or not levels:
+        return [_issue("missing-business-flow-levels", artifact_path, "实施计划必须定义业务流等级")]
+
+    issues: list[ValidationIssue] = []
+    level_definitions: dict[int, Mapping[str, Any]] = {}
+    module_level: dict[str, int] = {}
+    page_level: dict[str, int] = {}
+    completion_by_level: dict[int, set[str]] = {}
+    for entry in levels:
+        if not isinstance(entry, Mapping):
+            issues.append(_issue("invalid-business-flow-level", artifact_path, "业务流等级必须为映射"))
+            continue
+        level = entry.get("level")
+        name = entry.get("name")
+        module_ids = entry.get("module_ids")
+        page_ids = entry.get("page_ids")
+        completion_task_ids = entry.get("completion_task_ids")
+        valid = (
+            type(level) is int
+            and level > 0
+            and isinstance(name, str)
+            and bool(name.strip())
+            and isinstance(module_ids, list)
+            and bool(module_ids)
+            and all(isinstance(item, str) and item.strip() for item in module_ids)
+            and isinstance(page_ids, list)
+            and bool(page_ids)
+            and all(isinstance(item, str) and item.strip() for item in page_ids)
+            and isinstance(completion_task_ids, list)
+            and bool(completion_task_ids)
+            and all(isinstance(item, str) and item.strip() for item in completion_task_ids)
+        )
+        if not valid or level in level_definitions:
+            issues.append(_issue("invalid-business-flow-level", artifact_path, "业务流等级字段缺失、重复或为空"))
+            continue
+        level_definitions[level] = entry
+        completion_by_level[level] = set(completion_task_ids)
+        for module_id in module_ids:
+            if module_id in module_level:
+                issues.append(_issue("duplicate-business-flow-module", artifact_path, f"模块 {module_id} 归属多个业务流等级"))
+            module_level[module_id] = level
+        for page_id in page_ids:
+            if page_id in page_level:
+                issues.append(_issue("duplicate-business-flow-page", artifact_path, f"页面 {page_id} 归属多个业务流等级"))
+            page_level[page_id] = level
+
+    expected_levels = set(range(1, len(level_definitions) + 1))
+    if set(level_definitions) != expected_levels:
+        issues.append(_issue("noncontiguous-business-flow-levels", artifact_path, "业务流等级必须从 1 连续递增"))
+
+    modules = artifact.get("module_decomposition", {}).get("modules") if isinstance(artifact.get("module_decomposition"), Mapping) else None
+    if not isinstance(modules, list):
+        issues.append(_issue("missing-business-flow-modules", artifact_path, "模块拆分必须声明模块业务流等级"))
+    else:
+        defined_modules: set[str] = set()
+        for module in modules:
+            module_id = module.get("id") if isinstance(module, Mapping) else None
+            level = module.get("business_flow_level") if isinstance(module, Mapping) else None
+            if not isinstance(module_id, str) or not module_id.strip() or module_level.get(module_id) != level:
+                issues.append(_issue("module-business-flow-mismatch", artifact_path, "模块未与业务流等级清单一致"))
+                continue
+            defined_modules.add(module_id)
+            depends_on = module.get("depends_on", [])
+            if not isinstance(depends_on, list) or any(
+                module_level.get(dependency_id) is None or module_level[dependency_id] > level
+                for dependency_id in depends_on
+            ):
+                issues.append(_issue("invalid-module-business-flow-dependency", artifact_path, f"模块 {module_id} 依赖未就绪模块"))
+        if defined_modules != set(module_level):
+            issues.append(_issue("incomplete-business-flow-modules", artifact_path, "业务流等级与模块拆分未一一对应"))
+
+    scene_loops = artifact.get("scene_loops")
+    if not isinstance(scene_loops, list):
+        issues.append(_issue("missing-business-flow-pages", artifact_path, "场景循环必须声明页面业务流等级"))
+    else:
+        defined_pages: set[str] = set()
+        for loop in scene_loops:
+            scene_id = loop.get("scene_id") if isinstance(loop, Mapping) else None
+            level = loop.get("business_flow_level") if isinstance(loop, Mapping) else None
+            if not isinstance(scene_id, str) or not scene_id.strip() or page_level.get(scene_id) != level:
+                issues.append(_issue("page-business-flow-mismatch", artifact_path, "页面未与业务流等级清单一致"))
+                continue
+            defined_pages.add(scene_id)
+        if defined_pages != set(page_level):
+            issues.append(_issue("incomplete-business-flow-pages", artifact_path, "业务流等级与页面循环未一一对应"))
+
+    for level, completion_task_ids in completion_by_level.items():
+        for task_id in completion_task_ids:
+            task = task_map.get(task_id)
+            if task is None or task.get("business_flow_level") != level:
+                issues.append(_issue("invalid-business-flow-completion", artifact_path, f"等级 {level} 的完成任务 {task_id} 无效"))
+
+    for task_id, task in task_map.items():
+        level = task.get("business_flow_level")
+        depends_on = task.get("depends_on", [])
+        if type(level) is not int or level not in level_definitions:
+            issues.append(_issue("missing-task-business-flow-level", artifact_path, f"任务 {task_id} 缺少有效业务流等级"))
+            continue
+        if not isinstance(depends_on, list):
+            continue
+        if level > 1 and not completion_by_level.get(level - 1, set()).issubset(set(depends_on)):
+            issues.append(_issue("missing-business-flow-gate", artifact_path, f"任务 {task_id} 未依赖前一业务流等级完成门禁"))
+        for dependency_id in depends_on:
+            dependency = task_map.get(dependency_id)
+            if dependency is not None and dependency.get("business_flow_level", level) > level:
+                issues.append(_issue("invalid-business-flow-dependency", artifact_path, f"任务 {task_id} 依赖更高业务流等级任务"))
+        scene_id = task.get("scene_id")
+        if isinstance(scene_id, str) and page_level.get(scene_id) != level:
+            issues.append(_issue("task-page-business-flow-mismatch", artifact_path, f"任务 {task_id} 与页面 {scene_id} 的业务流等级不一致"))
+        for module_id in task.get("module_ids", []):
+            if module_level.get(module_id) is None or module_level[module_id] > level:
+                issues.append(_issue("task-module-business-flow-mismatch", artifact_path, f"任务 {task_id} 引用了未就绪模块 {module_id}"))
+    return issues
+
+
 def _validate_implementation_plan_tasks(
     artifact: Mapping[str, Any], artifact_path: Path
 ) -> list[ValidationIssue]:
@@ -666,6 +786,7 @@ def _validate_implementation_plan_tasks(
         if isinstance(task, Mapping) and isinstance(task.get("task_id"), str)
     }
     issues: list[ValidationIssue] = []
+    issues.extend(_validate_business_flow_order(artifact, artifact_path, task_map))
     module_ids = {task_id for task_id, task in task_map.items() if task.get("kind") == "module_decomposition"}
     scaffold_ids = {task_id for task_id, task in task_map.items() if task.get("kind") == "global_scaffold"}
     by_scene: dict[str, dict[str, str]] = {}

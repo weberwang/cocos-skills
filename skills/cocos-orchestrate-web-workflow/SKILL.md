@@ -32,7 +32,7 @@ Never accept a child-agent result that only says completion; require artifacts, 
 | `visual-direction` | `$cocos-freeze-visual-direction` |
 | `scene-concepts` | `$cocos-create-visual-concept` |
 | `planning` | `$cocos-plan-project` |
-| `production` | 对每个 `scene_loop` 依次编排 `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game`；仅在已通过依赖且路径所有权无冲突时并行 |
+| `production` | 按 `business_flow_levels` 从低到高编排每个 `scene_loop` 的 `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game`；仅在当前等级、依赖已通过且路径所有权无冲突时并行 |
 | `integration` | `$cocos-integrate-assets` |
 | `verification` | `$cocos-verify-game` |
 | `building` | `$cocos-deliver-web`，传入 `entry_mode=build` |
@@ -51,6 +51,15 @@ Never accept a child-agent result that only says completion; require artifacts, 
 4. 缺少确认、确认记录与变更哈希不匹配，或用户继续提出未决决策时，保留 `blocked`；不得产出或接受目标阶段的新工件。
 
 该门禁不新增主状态，也不替代原有的人工审批门禁。它只约束上述四个阶段的决策性返工；首次没有 PRD 的需求澄清同样先派发 `$grilling`，随后才允许确认 PRD。
+
+## 业务流等级门禁
+
+进入 `production` 前读取已批准实施计划的 `business_flow_levels`。总控只派发当前最低未完成等级的任务，并将任务中的 `business_flow_level` 与计划一致地写入任务记录。
+
+1. 同一等级仅可派发无共享写路径且已满足显式依赖的任务；Cocos Editor 写入仍必须串行。
+2. 等级大于 `1` 时，必须先验证前一等级全部 `completion_task_ids` 的结果均为 `passed`，其证据、输入哈希和验收检查均有效。
+3. 前一等级有 `failed`、`blocked`、`stale`、缺失结果或未通过退出检查时，保留后续等级任务为 `blocked`，不得提前派发、接受结果或写入集成状态。
+4. 模块、页面/场景循环、任务等级或依赖与计划不一致时，拒绝该任务并将 planning 标记为 `stale`；不得靠调整任务顺序绕过等级门禁。
 
 ## 人工门禁
 

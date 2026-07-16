@@ -19,6 +19,8 @@ class ModuleDecompositionContractTest(unittest.TestCase):
         contract = CONTRACT.read_text(encoding="utf-8")
         self.assertIn("module_decomposition", contract)
         self.assertIn("module_ids", contract)
+        self.assertIn("business_flow_level", contract)
+        self.assertIn("business_flow_levels", contract)
         self.assertIn("dependency_graph", contract)
 
     def test_implementation_depends_on_approved_modules(self) -> None:
