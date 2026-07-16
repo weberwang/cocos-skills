@@ -32,7 +32,7 @@ Never accept a child-agent result that only says completion; require artifacts, 
 | `visual-direction` | `$cocos-freeze-visual-direction` |
 | `scene-concepts` | `$cocos-create-visual-concept` |
 | `planning` | `$cocos-plan-project` |
-| `production` | 按 `business_flow_levels` 从低到高编排每个 `scene_loop` 的 `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game`；仅在当前等级、依赖已通过且路径所有权无冲突时并行 |
+| `production` | 先派发核心玩法原型（`vertical_slice`：`$cocos-implement-game` 原型代码 → `$cocos-integrate-assets` → `$cocos-verify-game` vertical-slice → 人工确认）；确认后才派发 `$cocos-implement-game` 的模块拆分/全局骨架，再按 `business_flow_levels` 从低到高编排正式 `scene_loop` 的 `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game`；推进到 `is_core_gameplay` 场景时必须按正式版本实现；仅在当前等级、依赖已通过且路径所有权无冲突时并行 |
 | `integration` | `$cocos-integrate-assets` |
 | `verification` | `$cocos-verify-game` |
 | `building` | `$cocos-deliver-web`，传入 `entry_mode=build` |
@@ -52,20 +52,30 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 该门禁不新增主状态，也不替代原有的人工审批门禁。它只约束上述四个阶段的决策性返工；首次没有 PRD 的需求澄清同样先派发 `$grilling`，随后才允许确认 PRD。
 
+## 核心玩法优先门禁
+
+进入 `production` 后，总控必须**先**派发并完成实施计划中的 `vertical_slice` 原型任务（核心玩法可玩确认），再允许模块拆分与正式场景循环。
+
+1. 仅派发 `vertical_slice.task_ids` 中的原型任务：`core-gameplay-code` → 串行集成 → Chrome 垂直切片验证 → `vertical-slice-review`。
+2. 原型阶段不得要求 Pencil 草图、高保真效果图、模块拆分或全局骨架；占位/最小资源可接受。
+3. 未获得 `artifacts/vertical-slice.md` 的 `passed` 状态与哈希绑定人工批准前，禁止派发 `module_decomposition`、`global_scaffold` 及任何正式 `scene_loops` 任务。
+4. 核心玩法确认后，才进入模块划分与业务流等级推进；`review_mode` 不得豁免此顺序。
+
 ## 业务流等级门禁
 
-进入 `production` 前读取已批准实施计划的 `business_flow_levels`。总控只派发当前最低未完成等级的任务，并将任务中的 `business_flow_level` 与计划一致地写入任务记录。
+核心玩法确认通过后，读取已批准实施计划的 `business_flow_levels`。总控只派发当前最低未完成等级的任务，并将任务中的 `business_flow_level` 与计划一致地写入任务记录。
 
 1. 同一等级仅可派发无共享写路径且已满足显式依赖的任务；Cocos Editor 写入仍必须串行。
 2. 等级大于 `1` 时，必须先验证前一等级全部 `completion_task_ids` 的结果均为 `passed`，其证据、输入哈希和验收检查均有效。
 3. 前一等级有 `failed`、`blocked`、`stale`、缺失结果或未通过退出检查时，保留后续等级任务为 `blocked`，不得提前派发、接受结果或写入集成状态。
 4. 模块、页面/场景循环、任务等级或依赖与计划不一致时，拒绝该任务并将 planning 标记为 `stale`；不得靠调整任务顺序绕过等级门禁。
+5. 当派发到 `is_core_gameplay: true` 的正式场景循环时，必须按正式版本执行完整小循环，用正式实现替换原型，不得把原型当作交付物。
 
 ## 人工门禁
 
-在项目配置、需求、系统设计、技术设计、视觉方向、Pencil 场景/UI 草图、高保真场景效果图、实施计划、垂直切片、视觉验证和交付各门禁处记录明确的人工批准及其版本。生产阶段按单场景循环执行 `Pencil 草图 → 高保真效果图 → 资源/代码 → 集成 → 验证`，不得要求其他场景先完成设计。高保真图必须绑定冻结视觉版本、内容哈希和两张全局参考效果图，任何局部视觉变更均须返回视觉冻结。Never advance past an approval gate without explicit human approval.
+在项目配置、需求、系统设计、技术设计、视觉方向、Pencil 场景/UI 草图、高保真场景效果图、实施计划、核心玩法垂直切片、视觉验证和交付各门禁处记录明确的人工批准及其版本。生产阶段顺序为：先核心玩法原型确认，再模块拆分与全局骨架，再按单场景正式循环执行 `Pencil 草图 → 高保真效果图 → 资源/代码 → 集成 → 验证`；不得要求其他场景先完成设计，也不得在玩法未确认前启动正式模块划分。高保真图必须绑定冻结视觉版本、内容哈希和两张全局参考效果图，任何局部视觉变更均须返回视觉冻结。Never advance past an approval gate without explicit human approval.
 
-项目配置的 `review_mode` 仅可为 `full` 或 `lean`：`full` 在每次设计、技术、视觉与生产交接时追加领域审查；`lean` 只在阶段交接时追加审查。两者都不得跳过哈希绑定的人工审批、P0 或垂直切片门禁，禁止 `solo` 模式。
+项目配置的 `review_mode` 仅可为 `full` 或 `lean`：`full` 在每次设计、技术、视觉与生产交接时追加领域审查；`lean` 只在阶段交接时追加审查。两者都不得跳过哈希绑定的人工审批、P0 或核心玩法垂直切片门禁，禁止 `solo` 模式。
 
 ## 子代理规则
 

@@ -750,7 +750,18 @@ def _validate_business_flow_order(
             if task is None or task.get("business_flow_level") != level:
                 issues.append(_issue("invalid-business-flow-completion", artifact_path, f"等级 {level} 的完成任务 {task_id} 无效"))
 
+    slice_task_ids: set[str] = set()
+    slice_def = artifact.get("vertical_slice")
+    if isinstance(slice_def, Mapping) and isinstance(slice_def.get("task_ids"), list):
+        slice_task_ids = {
+            item for item in slice_def["task_ids"] if isinstance(item, str) and item.strip()
+        }
+
     for task_id, task in task_map.items():
+        kind = task.get("kind")
+        # 核心玩法原型任务不参与业务流等级串行门禁
+        if kind in {"core-gameplay-code", "vertical-slice-review"} or task_id in slice_task_ids:
+            continue
         level = task.get("business_flow_level")
         depends_on = task.get("depends_on", [])
         if type(level) is not int or level not in level_definitions:
@@ -776,7 +787,7 @@ def _validate_business_flow_order(
 def _validate_implementation_plan_tasks(
     artifact: Mapping[str, Any], artifact_path: Path
 ) -> list[ValidationIssue]:
-    """验证计划中的场景设计与代码任务依赖形成不可绕过的 DAG。"""
+    """验证计划中的核心玩法原型、模块拆分与正式场景设计/代码任务依赖形成不可绕过的 DAG。"""
     tasks = artifact.get("tasks")
     if not isinstance(tasks, list):
         return [_issue("invalid-plan-tasks", artifact_path, "实施计划必须包含 tasks 列表")]
@@ -787,8 +798,13 @@ def _validate_implementation_plan_tasks(
     }
     issues: list[ValidationIssue] = []
     issues.extend(_validate_business_flow_order(artifact, artifact_path, task_map))
+    issues.extend(_validate_core_gameplay_first(artifact, artifact_path, task_map))
+
     module_ids = {task_id for task_id, task in task_map.items() if task.get("kind") == "module_decomposition"}
     scaffold_ids = {task_id for task_id, task in task_map.items() if task.get("kind") == "global_scaffold"}
+    slice_review_ids = {
+        task_id for task_id, task in task_map.items() if task.get("kind") == "vertical-slice-review"
+    }
     by_scene: dict[str, dict[str, str]] = {}
     for task_id, task in task_map.items():
         kind = task.get("kind")
@@ -799,8 +815,26 @@ def _validate_implementation_plan_tasks(
                 continue
             by_scene.setdefault(scene_id, {})[str(kind)] = task_id
         depends_on = task.get("depends_on")
-        if kind != "module_decomposition" and (not isinstance(depends_on, list) or not depends_on):
+        # 核心玩法代码与首个垂直切片审阅任务允许空 depends_on；其余正式任务必须声明依赖
+        if kind not in {"core-gameplay-code", "vertical-slice-review"} and (
+            not isinstance(depends_on, list) or not depends_on
+        ):
             issues.append(_issue("missing-task-dependency", artifact_path, f"任务 {task_id} 缺少 depends_on"))
+
+    for task_id in module_ids | scaffold_ids:
+        depends_on = set(task_map[task_id].get("depends_on") or [])
+        if not slice_review_ids.intersection(depends_on) and not (
+            task_map[task_id].get("kind") == "global_scaffold" and module_ids.intersection(depends_on)
+        ):
+            # 全局骨架可通过依赖模块拆分间接依赖切片；模块拆分必须直接依赖切片审阅
+            if task_map[task_id].get("kind") == "module_decomposition":
+                issues.append(
+                    _issue(
+                        "missing-core-gameplay-gate",
+                        artifact_path,
+                        f"任务 {task_id} 未依赖核心玩法确认门禁",
+                    )
+                )
 
     for scene_id, task_ids in by_scene.items():
         pencil_id = task_ids.get("pencil-draft")
@@ -819,6 +853,100 @@ def _validate_implementation_plan_tasks(
                 issues.append(_issue("missing-visual-concept-dependency", artifact_path, f"场景 {scene_id} 的 {kind} 未依赖高保真图"))
             if kind == "code" and (not module_ids.intersection(depends_on) or not scaffold_ids.intersection(depends_on)):
                 issues.append(_issue("missing-code-foundation-dependency", artifact_path, f"场景 {scene_id} 代码任务缺少模块拆分或全局骨架依赖"))
+            if kind == "code" and slice_review_ids and not slice_review_ids.intersection(depends_on):
+                # 正式代码应直接或经由 scaffold/modules 依赖切片；要求显式依赖其一即可在 core_gameplay_first 校验
+                pass
+    return issues
+
+
+def _validate_core_gameplay_first(
+    artifact: Mapping[str, Any],
+    artifact_path: Path,
+    task_map: Mapping[str, Mapping[str, Any]],
+) -> list[ValidationIssue]:
+    """确保核心玩法原型优先于模块拆分与正式场景循环。"""
+    slice_def = artifact.get("vertical_slice")
+    if not isinstance(slice_def, Mapping):
+        return [_issue("missing-vertical-slice-definition", artifact_path, "实施计划必须定义核心玩法垂直切片")]
+
+    issues: list[ValidationIssue] = []
+    scene_ids = slice_def.get("scene_ids")
+    formal_loop_ids = slice_def.get("formal_scene_loop_ids")
+    task_ids = slice_def.get("task_ids")
+    mode = slice_def.get("implementation_mode")
+    if mode != "prototype":
+        issues.append(_issue("invalid-vertical-slice-mode", artifact_path, "核心玩法垂直切片必须为 prototype 模式"))
+    if not isinstance(scene_ids, list) or not scene_ids or not all(isinstance(item, str) and item.strip() for item in scene_ids):
+        issues.append(_issue("invalid-vertical-slice-scenes", artifact_path, "垂直切片必须声明非空 scene_ids"))
+    if not isinstance(formal_loop_ids, list) or not formal_loop_ids:
+        issues.append(_issue("invalid-vertical-slice-formal-loops", artifact_path, "垂直切片必须映射正式 scene_loop id"))
+    if not isinstance(task_ids, list) or not task_ids:
+        issues.append(_issue("invalid-vertical-slice-tasks", artifact_path, "垂直切片必须声明原型 task_ids"))
+
+    scene_loops = artifact.get("scene_loops")
+    loop_by_id = {
+        loop.get("id"): loop
+        for loop in scene_loops
+        if isinstance(scene_loops, list) and isinstance(loop, Mapping) and isinstance(loop.get("id"), str)
+    }
+    core_scenes_from_loops: set[str] = set()
+    if isinstance(formal_loop_ids, list):
+        for loop_id in formal_loop_ids:
+            loop = loop_by_id.get(loop_id)
+            if loop is None:
+                issues.append(_issue("missing-formal-core-scene-loop", artifact_path, f"正式玩法循环 {loop_id} 未定义"))
+                continue
+            if loop.get("is_core_gameplay") is not True:
+                issues.append(
+                    _issue(
+                        "formal-core-scene-not-marked",
+                        artifact_path,
+                        f"正式玩法循环 {loop_id} 必须标记 is_core_gameplay",
+                    )
+                )
+            scene_id = loop.get("scene_id")
+            if isinstance(scene_id, str):
+                core_scenes_from_loops.add(scene_id)
+            depends_on = loop.get("depends_on") or []
+            slice_review_ids = {
+                tid for tid, task in task_map.items() if task.get("kind") == "vertical-slice-review"
+            }
+            if isinstance(depends_on, list) and slice_review_ids and not slice_review_ids.intersection(depends_on):
+                issues.append(
+                    _issue(
+                        "formal-loop-missing-core-gate",
+                        artifact_path,
+                        f"正式玩法循环 {loop_id} 未依赖核心玩法确认门禁",
+                    )
+                )
+    if isinstance(scene_ids, list) and core_scenes_from_loops and set(scene_ids) != core_scenes_from_loops:
+        issues.append(
+            _issue(
+                "vertical-slice-formal-scene-mismatch",
+                artifact_path,
+                "vertical_slice.scene_ids 必须与正式玩法循环 scene_id 集合一致",
+            )
+        )
+
+    if isinstance(task_ids, list):
+        for task_id in task_ids:
+            task = task_map.get(task_id)
+            if task is None:
+                issues.append(_issue("missing-vertical-slice-task", artifact_path, f"垂直切片任务 {task_id} 未定义"))
+                continue
+            kind = task.get("kind")
+            if kind not in {"core-gameplay-code", "integration", "vertical-slice-review"} and not (
+                isinstance(kind, str) and kind.startswith("verification")
+            ):
+                # 允许验证类任务出现在切片路径；禁止正式设计任务混入原型
+                if kind in {"pencil-draft", "visual-concept", "module_decomposition", "global_scaffold", "code", "asset-preparation"}:
+                    issues.append(
+                        _issue(
+                            "formal-task-in-prototype-slice",
+                            artifact_path,
+                            f"正式任务 {task_id}（{kind}）不得进入核心玩法原型路径",
+                        )
+                    )
     return issues
 
 

@@ -28,11 +28,11 @@ description: Use when a Cocos Creator 2D Web Mobile project needs Chrome-based r
 4. 用 manifest 指定的批准基线、遮罩和阈值执行像素差比较。记录 changed ratio、pixel threshold、遮罩路径和比较结论；缺少任一项时不得返回 `passed`。
 5. 检查方向、裁切、比例、安全区、核心 UI 可读性、视觉方向一致性和需求验收项。将发现分为 P0、P1、P2；P0 立即阻塞，未获批准的 P1 默认阻塞，P2 默认仅报告。不得自行降级 P1 或创建批准。
 
-## 垂直切片子门禁
+## 垂直切片子门禁（核心玩法优先）
 
-当 `verification_mode: vertical-slice` 时，仅验证实施计划 `vertical_slice.scene_loop_ids` 中的最小 MVP 路径，并额外要求玩家可完成 `start → challenge → resolution`。为全部冻结手机 profile 记录可回放操作、三段截图、像素差、运行日志和至少一次人工实际试玩证据；将结果写入 `artifacts/vertical-slice.md`。
+当 `verification_mode: vertical-slice` 时，仅验证实施计划 `vertical_slice.scene_ids` 中的最小核心玩法路径，并额外要求玩家可完成 `start → challenge → resolution`。此验证针对**原型可玩确认**，不要求 Pencil/高保真正式设计证据。为全部冻结手机 profile 记录可回放操作、三段截图、像素差、运行日志和至少一次人工实际试玩证据；将结果写入 `artifacts/vertical-slice.md`。
 
-工件在未获得明确人工批准前保持 `pending`。只有 P0/P1、三档 profile、核心循环和试玩证据全部通过，且 `approval.subject_hash` 绑定当前 `content_hash` 时，才可设为 `passed`。总控在接收该工件前不得调度非切片场景循环；最终验证仍需覆盖整个游戏，不能由切片替代。
+工件在未获得明确人工批准前保持 `pending`。只有 P0/P1、三档 profile、核心循环和试玩证据全部通过，且 `approval.subject_hash` 绑定当前 `content_hash` 时，才可设为 `passed`。总控在接收该工件前不得调度模块拆分、全局骨架或正式场景循环；核心玩法场景在后续 `is_core_gameplay` 正式循环中仍须按正式版本重新实现与验证。最终验证仍需覆盖整个游戏，不能由切片替代。
 
 ## 结果与阻塞
 

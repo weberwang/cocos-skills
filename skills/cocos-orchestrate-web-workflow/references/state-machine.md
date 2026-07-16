@@ -44,7 +44,7 @@ blocked → pending | running
 | `visual-direction` | 需求、系统设计与技术设计已冻结 | `artifacts/visual-direction.md` 的版本、哈希、两张参考效果图和人工批准 |
 | `scene-concepts` | 视觉方向版本/哈希匹配 | 场景效果图、生成记录和人工批准 |
 | `planning` | 场景概念已批准 | `implementation-plan.md`、`capture-manifest.yaml`、每场景 Pencil/高保真任务、单编辑器写者和人工批准 |
-| `production` | 计划已批准且任务路径不冲突 | 首个 MVP 场景循环必须先获得垂直切片人工批准；每个 scene loop 的已批准 Pencil 草图与高保真效果图、代码产物和 `game-assets.yaml`；资源清单必须获人工批准才能进入绑定/导入 |
+| `production` | 计划已批准且任务路径不冲突 | 先完成核心玩法原型并获垂直切片人工批准，随后才允许模块拆分/全局骨架与正式 scene loops；每个正式 scene loop 的已批准 Pencil 草图与高保真效果图、代码产物和 `game-assets.yaml`；核心玩法场景推进到正式循环时必须按正式版本实现；资源清单必须获人工批准才能进入绑定/导入 |
 | `integration` | 生产汇合门禁通过 | 唯一 Cocos 写者的导入、绑定和读回证据 |
 | `verification` | 集成结果有效 | Chrome 对全部冻结 mobile profiles 的截图、交互、基线和像素差证据 |
 | `building` | 验证门禁已批准 | 成功构建日志、产物清单和哈希 |

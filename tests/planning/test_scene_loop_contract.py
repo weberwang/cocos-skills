@@ -35,8 +35,13 @@ class SceneLoopContractTest(unittest.TestCase):
         self.assertIn("scene_loop_id", VERIFY_SKILL.read_text(encoding="utf-8"))
 
     def test_global_scaffold_precedes_scene_loops(self) -> None:
-        """全局骨架须在任一场景循环前通过。"""
+        """全局骨架须在正式场景循环前通过，且核心玩法原型优先于模块划分。"""
         plan = PLAN_SKILL.read_text(encoding="utf-8")
+        contract = PLAN_CONTRACT.read_text(encoding="utf-8")
         self.assertIn("global scaffold code task", plan)
         self.assertIn("global_scaffold", plan)
         self.assertIn("pencil-draft → visual-concept", plan)
+        self.assertIn("core gameplay prototype", plan)
+        self.assertIn("核心玩法原型优先", contract)
+        self.assertIn("is_core_gameplay", contract)
+        self.assertIn("implementation_mode: prototype", contract)
