@@ -9,7 +9,7 @@ Turn approved concepts into individually usable image source assets. Keep every 
 
 ## Boundary
 
-Write only task-assigned paths under `.cocos-workflow/art/assets/`, `.cocos-workflow/artifacts/game-assets.yaml`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, `assets/` in the Cocos project, scenes, scripts, project configuration, or Editor state. Do not call a Cocos MCP write operation.
+Write only task-assigned paths under `.cocos-workflow/art/assets/`, `.cocos-workflow/artifacts/game-assets/<scene_id>.yaml`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, `assets/` in the Cocos project, scenes, scripts, project configuration, or Editor state. Do not call a Cocos MCP write operation.
 
 Read the installed `$cocos-orchestrate-web-workflow` `workflow-contracts.md` and `state-machine.md` before work. Use `$imagegen` for generated image assets. Read [game-assets contract](references/game-assets-contract.md) before writing manifests.
 

@@ -5,6 +5,7 @@
 ```yaml
 schema_version: 3
 status: pending # pending | blocked | rejected | approved | stale
+stage: production
 scene_id: home
 scene_loop_id: scene-loop-home
 requirements_hash: sha256:<hash>
@@ -24,7 +25,8 @@ viewport_previews:
 structural_checks: [] # page-structure、art-reserve、eye-flow、primary-action、ui-hierarchy、navigation-interaction、touch-target、copy-fit、safe-area
 functional_visual_checks: [] # primary-action-identifiable、interaction-regions、hierarchy、state-feedback、text-capacity
 approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
-content_hash: sha256:<normalized content excluding content_hash>
+review_evidence: {pencil_source_hash: sha256:<Pencil source binary hash>}
+content_hash: sha256:<normalized content excluding content_hash and approval.subject_hash>
 ```
 
 - 源文件与预览必须存在于任务分配的 `art/concepts/<scene_id>/`，且二进制 SHA-256 与记录一致。
@@ -32,4 +34,4 @@ content_hash: sha256:<normalized content excluding content_hash>
 - `structural_checks` 必须覆盖页面结构、原画保留区、视线动线、主操作、UI 层级、导航/交互区域、触控尺寸、文案适配和安全区。
 - `functional_visual_checks` 必须覆盖主操作可辨识、交互区域、信息层级、状态反馈位置和文本容量；缺少任一项不得进入高保真效果图阶段。
 - `viewport_previews` 必须覆盖项目配置中的全部捕获视口，至少包含 mobile-small、mobile-standard、mobile-large；任一截断、重叠或焦点遮挡均阻塞批准。
-- `status: approved` 时，全部结构检查通过，且 `approval.subject_hash == pencil_source_hash`。草图源文件、预览、结构或冻结输入变化均使该场景全部下游结果 `stale`。
+- `status: approved` 时，全部结构检查通过，且 `approval.subject_hash == content_hash`；`review_evidence.pencil_source_hash` 必须等于 `pencil_source_hash`。草图源文件、预览、结构或冻结输入变化均使该场景全部下游结果 `stale`。

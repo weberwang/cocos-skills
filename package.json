@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "files": ["skills/", "scripts/", "!**/__pycache__/**", "!**/*.pyc"],
+  "files": ["skills/", "scripts/"],
   "engines": { "node": ">=18" },
   "bin": { "cocos-skills": "scripts/install-skills.mjs" },
   "scripts": { "test": "node --test tests/install-skills.test.mjs" }

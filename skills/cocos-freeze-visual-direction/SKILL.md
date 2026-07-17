@@ -9,7 +9,7 @@ description: Use when approved Cocos Creator Web Mobile requirements, systems de
 
 ## Boundary
 
-Write only the task-assigned `.cocos-workflow/artifacts/visual-direction.md`, exactly two task-assigned generated reference images under `.cocos-workflow/art/visual-references/`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, scenes, runtime assets, scripts, project configuration, or Cocos Editor state. Do not call a Cocos MCP write operation.
+Write only the task-assigned `.cocos-workflow/artifacts/visual-direction.md`, exactly two task-assigned generated reference images and the UI anchor's editable source under `.cocos-workflow/art/visual-references/`, and assigned result/report paths. Never write `.cocos-workflow/workflow.yaml`, scenes, runtime assets, scripts, project configuration, or Cocos Editor state. Do not call a Cocos MCP write operation.
 
 Read the installed `$cocos-orchestrate-web-workflow` references `workflow-contracts.md` and `state-machine.md` before work. Follow its task ownership and result contract exactly.
 
@@ -18,11 +18,11 @@ Read the installed `$cocos-orchestrate-web-workflow` references `workflow-contra
 1. Read the assigned task, approved `.cocos-workflow/requirements.md`, approved systems and technical design artifacts, frozen `.cocos-workflow/project-profile.yaml`, and [visual-direction contract](references/visual-direction-contract.md). Block if any required hash, approval, orientation, or design resolution is missing or mismatched.
 2. 建立全局设计提案，并同时写清两套可生产规范：游戏原画规范覆盖构图叙事、镜头透视、角色比例与剪影、环境层次、材质、光影、色彩脚本、VFX 和细节密度；UI 系统覆盖栅格、间距、字体层级、组件造型与状态、图标栅格、HUD 规则、触控尺寸、安全区和可访问性。定义 3–5 个商业游戏的抽象设计基准、颜色 token 与用量规则、按页面类型冻结的克制/发散预算和功能 UI 规则。商业基准仅可分析可观察模式，禁止复制截图、品牌、角色、资源或页面布局。保留每项引用的路径、用途、来源和许可状态。
 3. Copy the project profile's `orientation` and complete `design_resolution` into the proposal without alteration. Bind the current requirements, systems-design, technical-design, and project-profile hashes. The proposal must respect the approved design pillars, performance budget, and accessibility constraints; do not infer a different device orientation, canvas size, or adaptation strategy.
-4. 使用 `$imagegen` 生成恰好两张移动端质量锚点：一张 `game-art-quality-anchor`，验证原画构图、材质、光影和完成度；一张 `ui-system-quality-anchor`，验证 UI 层级、组件、图标与真实文案的呈现。提示词必须包含颜色 token、克制/发散预算、焦点层级和商业基准的抽象模式。UI 锚点中的文字和关键图标必须以可编辑设计元素精确重建后导出，不接受生成伪文字。记录职责、提示词哈希、生成器元数据、二进制哈希和审核状态；此阶段不得生成具体业务场景成品。
+4. 使用 `$imagegen` 生成恰好两张移动端质量锚点：一张 `game-art-quality-anchor`，验证原画构图、材质、光影和完成度；一张 `ui-system-quality-anchor`，验证 UI 层级、组件、图标与真实文案的呈现。提示词必须包含颜色 token、克制/发散预算、焦点层级和商业基准的抽象模式。UI 锚点中的文字和关键图标必须以可编辑设计元素精确重建后导出，不接受生成伪文字。为 UI 锚点保存 `.pen` 或 `.svg` 可编辑源及其哈希，并记录职责、提示词哈希、生成器元数据、二进制哈希和审核状态；此阶段不得生成具体业务场景成品。
 5. Assign the next monotonic `visual_direction_version`. Calculate `content_hash` from normalized content excluding that field. Any covered-field change, including either reference effect image, requires a new version, hash, and fresh human approval; never edit a frozen version in place.
 6. 按质量量表为两张锚点评分。任一维度低于阈值、平均分不足、主操作或信息层级不清晰、颜色 token 超预算，或焦点数量/视觉强度违反克制/发散预算时必须重做，不得降低门槛。
 7. Keep `status: draft` or `blocked` until all required fields, source-reference licenses, both reference effect images, passed scored reviews, and explicit human approval are available. On approval, write only the actual approver and timestamp, then set `status: frozen`.
-8. Return the artifact path, two image paths and hashes, commercial benchmark, color system, restraint/expression budget, quality checks, approval evidence, and downstream invalidation request to the orchestrator. If a prior frozen version changed, request invalidation from `scene-concepts` through `completed`; only the orchestrator performs that write.
+8. Return the artifact path, two image paths and hashes, commercial benchmark, color system, restraint/expression budget, quality checks, approval evidence, and downstream invalidation request to the orchestrator. If a prior frozen version changed, request invalidation from `planning` through `completed`; only the orchestrator performs that write.
 
 ## Hard Gates
 

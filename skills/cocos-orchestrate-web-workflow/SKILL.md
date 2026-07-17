@@ -30,10 +30,9 @@ Never accept a child-agent result that only says completion; require artifacts, 
 | `systems-design` | `$cocos-design-game-systems` |
 | `technical-design` | `$cocos-define-technical-design` |
 | `visual-direction` | `$cocos-freeze-visual-direction` |
-| `scene-concepts` | `$cocos-create-visual-concept`：按“至少 3 个原画候选 → 精确可编辑 UI → 最终合成 → 质量门槛”执行 |
 | `planning` | `$cocos-plan-project` |
-| `production` | 先派发核心玩法原型（`vertical_slice`：`$cocos-implement-game` 原型代码 → `$cocos-integrate-assets` → `$cocos-verify-game` vertical-slice → 人工确认）；确认后才派发 `$cocos-implement-game` 的模块拆分/全局骨架，再按 `business_flow_levels` 从低到高编排正式 `scene_loop` 的 `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game`；推进到 `is_core_gameplay` 场景时必须按正式版本实现；同级无冲突任务可并行，但 `visual-concept` 始终逐场景串行 |
-| `integration` | `$cocos-integrate-assets` |
+| `production` | 先派发核心玩法原型（`vertical_slice`：`$cocos-implement-game` 原型代码 → `$cocos-integrate-assets`，传入 `integration_mode=prototype` → `$cocos-verify-game` vertical-slice → 人工确认）；确认后才派发 `$cocos-implement-game` 的模块拆分/全局骨架，再按 `business_flow_levels` 从低到高编排正式 `scene_loop` 的 `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game` → 人工评审；推进到 `is_core_gameplay` 场景时必须按正式版本实现；同级无冲突任务可并行，但 `visual-concept` 始终逐场景串行 |
+| `integration` | `$cocos-integrate-assets`，传入 `integration_mode=release`，并绑定全部已批准场景资源清单 |
 | `verification` | `$cocos-verify-game` |
 | `building` | `$cocos-deliver-web`，传入 `entry_mode=build` |
 | `delivery` | `$cocos-deliver-web`，传入 `entry_mode=package` |
@@ -56,7 +55,7 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 进入 `production` 后，总控必须**先**派发并完成实施计划中的 `vertical_slice` 原型任务（核心玩法可玩确认），再允许模块拆分与正式场景循环。
 
-1. 仅派发 `vertical_slice.task_ids` 中的原型任务：`core-gameplay-code` → 串行集成 → Chrome 垂直切片验证 → `vertical-slice-review`。
+1. 仅派发 `vertical_slice.task_ids` 中的原型任务：`core-gameplay-code` → `integration_mode=prototype` 串行集成 → Chrome 垂直切片验证 → `vertical-slice-review`。
 2. 原型阶段不得要求 Pencil 草图、高保真效果图、模块拆分或全局骨架；占位/最小资源可接受。
 3. 未获得 `artifacts/vertical-slice.md` 的 `passed` 状态与哈希绑定人工批准前，禁止派发 `module_decomposition`、`global_scaffold` 及任何正式 `scene_loops` 任务。
 4. 核心玩法确认后，才进入模块划分与业务流等级推进；`review_mode` 不得豁免此顺序。
@@ -81,7 +80,7 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 ## 人工门禁
 
-在项目配置、需求、系统设计、技术设计、视觉方向、Pencil 场景/UI 草图、高保真场景效果图、实施计划、核心玩法垂直切片、视觉验证和交付各门禁处记录明确的人工批准及其版本。生产阶段顺序为：先核心玩法原型确认，再模块拆分与全局骨架，再按单场景正式循环执行 `Pencil 草图 → 高保真效果图 → 资源/代码 → 集成 → 验证`；不得要求其他场景先完成设计，也不得在玩法未确认前启动正式模块划分。高保真图必须绑定冻结视觉版本、内容哈希、两张全局参考效果图、颜色 token、克制/发散 profile、功能 UI 规则和通过的质量评分；任一项缺失或超预算均不得进入资源/代码。任何局部视觉变更均须返回视觉冻结。Never advance past an approval gate without explicit human approval.
+在项目配置、需求、系统设计、技术设计、视觉方向、Pencil 场景/UI 草图、高保真场景效果图、实施计划、核心玩法垂直切片、视觉验证和交付各门禁处记录明确的人工批准及其版本。生产阶段顺序为：先核心玩法原型确认，再模块拆分与全局骨架，再按单场景正式循环执行 `Pencil 草图 → 高保真效果图 → 资源/代码 → 人工评审`，待全部循环完成后再执行全局 `集成 → 验证`；不得要求其他场景先完成设计，也不得在玩法未确认前启动正式模块划分。高保真图必须绑定冻结视觉版本、内容哈希、两张全局参考效果图、颜色 token、克制/发散 profile、功能 UI 规则和通过的质量评分；任一项缺失或超预算均不得进入资源/代码。任何局部视觉变更均须返回视觉冻结。Never advance past an approval gate without explicit human approval.
 
 项目配置的 `review_mode` 仅可为 `full` 或 `lean`：`full` 在每次设计、技术、视觉与生产交接时追加领域审查；`lean` 只在阶段交接时追加审查。两者都不得跳过哈希绑定的人工审批、视觉质量 P0、其他 P0 或核心玩法垂直切片门禁，禁止 `solo` 模式。
 

@@ -28,7 +28,7 @@ accessibility: {touch_target_css_px: 44, contrast_rules: [], motion_reduction: [
 control_manifest: {required_patterns: [], forbidden_patterns: []}
 unresolved_questions: []
 approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
-content_hash: sha256:<normalized content excluding content_hash>
+content_hash: sha256:<normalized content excluding content_hash and approval.subject_hash>
 ```
 
 - 三个输入哈希必须与当前已批准工件一致；`adrs` 的 `id` 唯一，每项均须含问题、备选项、决定、后果和验证方式。

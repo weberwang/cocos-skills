@@ -46,6 +46,10 @@ pencil_draft: {path: art/concepts/home/pencil-draft.pen, content_hash: sha256:<a
 frozen_reference_effect_images:
   - {role: game-art-quality-anchor, path: art/visual-references/game-art.png, content_hash: sha256:<hash>}
   - {role: ui-system-quality-anchor, path: art/visual-references/ui-system.png, content_hash: sha256:<hash>}
+generation_reference_images: # 实际传给 ImageGen 的两张冻结锚点，逐项与上方一致
+  - {role: game-art-quality-anchor, path: art/visual-references/game-art.png, content_hash: sha256:<hash>}
+  - {role: ui-system-quality-anchor, path: art/visual-references/ui-system.png, content_hash: sha256:<hash>}
+candidate_output: {path: art/concepts/home/game-art-candidate-01.png, content_hash: sha256:<output hash>}
 orientation: portrait
 design_resolution: {width: 1080, height: 1920, source: approved-default}
 game_art_candidate_prompts: []

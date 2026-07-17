@@ -12,7 +12,7 @@ visual_direction:
   version: 1
   content_hash: sha256:<当前冻结视觉方向>
 implementation_plan_hash: sha256:<当前 implementation-plan>
-approved_asset_manifest_hash: null # 无 asset_ids 时可为 null；否则为已批准 game-assets.yaml 的 content_hash
+approved_asset_manifests: [] # 无 asset_ids 时为空；否则为 {scene_id, path, content_hash}，指向已批准 game-assets/<scene_id>.yaml
 bindings:
   - binding_id: game-controller
     script_path: assets/scripts/GameController.ts
@@ -33,7 +33,7 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 
 - `implementation_mode: prototype` 仅用于 `vertical_slice` 核心玩法确认；`formal` 用于模块划分后的正式场景实现。推进到核心玩法正式场景时必须产出新的 `formal` 清单，不得把原型清单当作交付物。
 - 每个 `bindings` 项有唯一 `binding_id`、稳定节点 ID、组件类型、脚本路径和连续的 `binding_order`；缺少目标或断言时阻塞集成。
-- `properties` 每项含 `name`、`value_source`、`required`；`asset_ids` 只能引用计划内已许可且存在于 `status: approved` 的 `game-assets.yaml` 中的资源。存在任一 `asset_ids` 时，`approved_asset_manifest_hash` 必须等于该清单 `content_hash` 与其审批 `subject_hash`；否则 binding manifest 只能为 `blocked`，不得声称 `passed`。原型模式允许空 `asset_ids`。
+- `properties` 每项含 `name`、`value_source`、`required`；`asset_ids` 只能引用计划内已许可且存在于其 `target.scene_id` 对应、`status: approved` 的 `game-assets/<scene_id>.yaml` 中的资源。存在任一 `asset_ids` 时，`approved_asset_manifests` 必须包含该场景清单的路径和 `content_hash`，且其审批 `subject_hash` 等于该哈希；否则 binding manifest 只能为 `blocked`，不得声称 `passed`。原型模式允许空 `asset_ids`。
 - `tests` 每项含 `id`、`path`、`command`、`result`、`evidence_path`；必需测试失败时状态不是 `passed`。
 - `content_hash` 与所有冻结输入哈希一起写入任务结果。当前输入不同则结果为 `stale`，而不是沿用旧绑定。
 - 所有实际代码变更必须属于分配任务的 `allowed_paths`。脚本、测试与清单之外的变更需要总控重新派发。

@@ -26,7 +26,7 @@ systems:
 out_of_scope: []
 unresolved_questions: []
 approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
-content_hash: sha256:<normalized content excluding content_hash>
+content_hash: sha256:<normalized content excluding content_hash and approval.subject_hash>
 ```
 
 - `design_pillars` 必须有 3 至 5 项，`id` 唯一，且 `statement` 与 `decision_test` 均非空。

@@ -4,6 +4,7 @@
 
 ```yaml
 schema_version: 1
+stage: planning
 plan_version: 1
 status: draft # draft | blocked | approved | stale
 project_profile_hash: sha256:<当前 project-profile>
@@ -30,21 +31,17 @@ scripts: []
 # 3) business_flow_levels 从低到高的正式 scene_loops
 # 4) 推进到核心玩法场景时，按正式版本（pencil → visual → assets → code）实现
 vertical_slice:
-  status: pending # pending | passed | stale
   implementation_mode: prototype # 核心玩法优先以原型可玩确认；正式版走后续 scene_loops
   scene_ids: [] # 覆盖最小 start → challenge → resolution 的核心玩法场景
   formal_scene_loop_ids: [] # 同批场景在业务流等级中的正式 scene_loop id
-  task_ids: [] # 原型路径：core-gameplay-code → integration → Chrome → vertical-slice-review
+  task_ids: [] # 原型路径：core-gameplay-code → prototype integration → Chrome → vertical-slice-review
   required_profiles: [mobile-small, mobile-standard, mobile-large]
-  approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
 module_decomposition:
-  status: draft # draft | approved | stale
   depends_on_vertical_slice: true # 必须在核心玩法确认后才可执行
   modules: [] # id、business_flow_level、responsibility、public_interfaces、owned_paths、depends_on、test_boundaries
 dependency_graph: [] # from_module_id、to_module_id、reason；禁止循环依赖
 global_scaffold:
   task_id: global-scaffold
-  status: pending # pending | passed | stale
   allowed_paths: []
   provides: [app_bootstrap, scene_router, global_state, event_bus, config, resource_service, error_boundary]
   acceptance_checks: []
@@ -55,7 +52,7 @@ scene_loops:
     business_flow_level: 1
     is_core_gameplay: false # true 表示该循环是已确认核心玩法的正式版本实现
     depends_on: [vertical-slice-review, module-decomposition, global-scaffold]
-    task_ids: [] # pencil-draft → visual-concept（原画候选、精确 UI、精修与质量门槛）→ asset-preparation → code → integration → verification → review
+    task_ids: [] # pencil-draft → visual-concept（原画候选、精确 UI、精修与质量门槛）→ asset-preparation → code → human-review
     exit_checks: [] # 每项含 id、kind、evidence_path
 business_flow_levels:
   - level: 1
@@ -72,7 +69,7 @@ path_ownership:
 integration_batches: []
 acceptance_mapping: []
 unresolved_questions: []
-content_hash: sha256:<规范化内容，不含 content_hash>
+content_hash: sha256:<规范化内容，不含 content_hash 与 approval.subject_hash>
 ```
 
 ## 实现顺序（硬约束）
@@ -82,7 +79,7 @@ production 必须严格按以下顺序推进，不得并行跨越阶段：
 1. **核心玩法原型优先**：先实现 `vertical_slice` 覆盖的最小核心玩法场景，使玩家可完成 `start → challenge → resolution`，并获得人工确认。
 2. **确认后才进入模块划分**：`module_decomposition` 与 `global_scaffold` 必须依赖已通过的垂直切片（核心玩法确认）门禁；未确认前禁止模块拆分、全局骨架与正式场景循环。
 3. **再按业务流等级逐步推进**：从 `business_flow_levels` 等级 1 起串行推进正式 `scene_loops`。
-4. **推进到玩法场景时按正式版本实现**：若 `scene_loop.is_core_gameplay: true`（或其 `scene_id` 属于 `vertical_slice.scene_ids`），必须走完整正式小循环 `pencil-draft → visual-concept → asset-preparation → code → integration → Chrome verification → human-review`，用正式版替换原型，不得直接把原型当作交付物。
+4. **推进到玩法场景时按正式版本实现**：若 `scene_loop.is_core_gameplay: true`（或其 `scene_id` 属于 `vertical_slice.scene_ids`），必须走完整正式小循环 `pencil-draft → visual-concept → asset-preparation → code → human-review`，用正式版替换原型，不得直接把原型当作交付物。全局 `integration` 与 `verification` 只在全部正式循环通过后执行。
 
 ## 核心玩法原型门禁（vertical_slice）
 
@@ -97,7 +94,7 @@ production 必须严格按以下顺序推进，不得并行跨越阶段：
 
 规则：
 
-- `approval.subject_hash` 必须绑定 `.cocos-workflow/artifacts/vertical-slice.md` 的 `content_hash`，而不是实施计划自身哈希。
+- `vertical_slice` 仅声明原型范围和任务 ID；其执行状态与人工批准只记录在 `.cocos-workflow/artifacts/vertical-slice.md`，不得回写到已批准实施计划。
 - 未获得 `passed` 垂直切片工件及人工批准前，禁止启动 `module_decomposition`、`global_scaffold`，以及任何正式 `scene_loops`（含草图、效果图、资源准备、正式代码、Cocos 写入或验证）。
 - `formal_scene_loop_ids` 必须指向计划中 `is_core_gameplay: true` 的正式循环，且其 `scene_id` 集合等于 `scene_ids`。
 - 垂直切片失败、过期或上游哈希变化时，状态为 `stale`，模块划分与正式循环维持 `blocked`；`review_mode` 不得豁免此规则。
@@ -125,14 +122,14 @@ production 必须严格按以下顺序推进，不得并行跨越阶段：
 
 ## 正式场景小循环
 
-`scene_loops` 必须覆盖每个可交付 `scene_id`，且全部为正式版本实现。每项包含稳定 `id`、`scene_id`、`business_flow_level`、`is_core_gameplay`、`depends_on`、按 `pencil-draft → visual-concept → asset-preparation → code → 串行 integration → Chrome verification → human-review` 排列的 `task_ids`，以及非空 `exit_checks`。
+`scene_loops` 必须覆盖每个可交付 `scene_id`，且全部为正式版本实现。每项包含稳定 `id`、`scene_id`、`business_flow_level`、`is_core_gameplay`、`depends_on`、按 `pencil-draft → visual-concept → asset-preparation → code → human-review` 排列的 `task_ids`，以及非空 `exit_checks`。全局集成与 Chrome 验证不属于场景循环。
 
 - 每个正式循环的 `depends_on` 必须包含垂直切片审阅任务、`module_decomposition` 与 `global_scaffold`。
 - `is_core_gameplay: true` 的循环对应已确认的核心玩法场景；推进到这些循环时必须按正式版本完整执行，不得跳过 Pencil/高保真/真实资源。
 - `pencil-draft` 必须记录人工批准的草图哈希与功能视觉检查；`visual-concept` 必须依赖该草图，并逐项绑定全局视觉冻结的版本、内容哈希、两张参考效果图、颜色 token、克制/发散 profile、功能 UI 规则和通过的质量评分。没有这些通过证据不得启动本场景的资源准备或正式代码任务。
 - `visual-concept` 的 `acceptance_checks` 必须覆盖至少三个原画候选及评审、可编辑 UI 源、真实文案清单、至少一轮精修、十一项质量评分（包含克制/发散平衡）、全部捕获视口可读性和最终图哈希绑定人工批准。任一质量项低于 4/5 或平均分低于 4.5/5 时循环不得退出。
 - 每个 `visual-concept` 任务只能声明一个 `scene_id` 和一个最终图输出路径，并包含 `single-scene-scope` 检查。效果图任务按 `scene_loops` 声明顺序串行：除首个场景外，每个场景的 `visual-concept` 必须直接依赖前一个场景的 `human-review`；不得在同一级并行生成多个页面效果图。
-- 只有本循环 exit_checks 的项目内证据全部通过，才可启动下一场景循环；共享模块必须在首个消费者循环前完成。任何两个 scene_loop 不得并发拥有 Cocos MCP 写权。
+- 只有本循环 exit_checks 的项目内证据全部通过，才可启动下一场景循环；共享模块必须在首个消费者循环前完成。正式循环不得调用 Cocos MCP 写入；唯一 Cocos 写者仅在后续全局 integration 阶段执行。
 
 ## Capture manifest
 
@@ -140,6 +137,7 @@ production 必须严格按以下顺序推进，不得并行跨越阶段：
 
 ```yaml
 schema_version: 1
+stage: planning
 status: draft # draft | approved | stale
 project_profile_hash: sha256:<当前 project-profile>
 visual_direction: {version: 1, content_hash: sha256:<冻结视觉方向>}
@@ -157,7 +155,7 @@ profiles:
         mask_path: null
         pixel_diff: {max_changed_ratio: 0.005, pixel_threshold: 10}
 approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
-content_hash: sha256:<规范化内容，不含 content_hash>
+content_hash: sha256:<规范化内容，不含 content_hash 与 approval.subject_hash>
 ```
 
 - `profiles` 必须与 `project-profile.capture_profiles` 一一对应，且 `profile_id`、视口和方向完全相同；必须覆盖 `mobile-small`、`mobile-standard`、`mobile-large`。
@@ -170,12 +168,12 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 - `prefabs` 每项含 `id`、`path`、`purpose`、`node_tree`、`component_bindings`、`asset_ids`、`acceptance_ids`。
 - `scripts` 每项含 `id`、`path`、`class_name`、`responsibility`、`exports`、`depends_on`、`test_path`、`acceptance_ids`。脚本不包含编辑器写入步骤。
 - `asset_dependencies` 每项含 `id`、`source_path`、`target_path`、`asset_type`、`license_status`、`consumers`、`depends_on`。未知许可证阻塞。
-- `tasks` 每项遵守总控任务契约并额外含 `kind`（`core-gameplay-code | module_decomposition | global_scaffold | pencil-draft | visual-concept | code | asset-preparation | integration | vertical-slice-review`）与可选正整数 `business_flow_level`。所有任务必须有唯一 `task_id`、非空 `depends_on`（核心玩法代码与垂直切片审阅的首个任务除外）和 `allowed_paths`。
+- `tasks` 每项遵守总控任务契约并额外含 `kind`（`core-gameplay-code | module_decomposition | global_scaffold | pencil-draft | visual-concept | code | asset-preparation | human-review | integration | vertical-slice-review`）与可选正整数 `business_flow_level`。所有任务必须有唯一 `task_id`、非空 `depends_on`（核心玩法代码与垂直切片审阅的首个任务除外）和 `allowed_paths`。
 - 原型任务：`core-gameplay-code` 与其集成/验证任务必须声明 `scene_id` 且属于 `vertical_slice.scene_ids`；不得声明正式 `module_ids` 依赖。
-- 正式任务：每个 `pencil-draft`、`visual-concept`、`code` 与 `asset-preparation` 必须声明 `scene_id` 与 `business_flow_level`。`visual-concept` 必须依赖同场景 `pencil-draft`；`code` 与 `asset-preparation` 必须依赖同场景 `visual-concept`，并在 `inputs` 中记录同一 Pencil/高保真批准哈希、全局视觉版本、内容哈希及两张参考效果图。每个正式 `code` 还必须依赖 `module_decomposition` 与 `global_scaffold`。`integration` 必须按 `batch_index` 串行。
+- 正式任务：每个 `pencil-draft`、`visual-concept`、`code` 与 `asset-preparation` 必须声明 `scene_id` 与 `business_flow_level`。`visual-concept` 必须依赖同场景 `pencil-draft`；`code` 与 `asset-preparation` 必须依赖同场景 `visual-concept`，并在 `inputs` 中记录同一 Pencil/高保真批准哈希、全局视觉版本、内容哈希及两张参考效果图。每个正式 `code` 还必须依赖 `module_decomposition` 与 `global_scaffold`。每个正式循环必须以 `human-review` 收口。`integration` 只允许位于全局 integration 阶段，按 `batch_index` 串行并依赖全部 `business_flow_levels` 的完成门禁。
 - `path_ownership.production_writers` 中每个任务的可写路径不得重叠；`cocos_writer` 必须是非空单个任务 ID，且所有 integration 任务均引用它。
 - `integration_batches` 每项含 `batch_index`、`task_ids`、`readback_checks`；批次序号连续，每批结束均要读回验证。
 
 ## 批准与哈希
 
-只有无未决问题、核心玩法原型定义完整、业务流等级连续且依赖顺序有效、所有依赖可解析、资源许可完整、路径不冲突、仅一个编辑器写者、正式玩法场景映射完整且人工明确批准时，才允许 `status: approved`。`content_hash` 对除自身外的规范化内容求 SHA-256；任何输入或计划内容变化都使批准失效。
+只有无未决问题、核心玩法原型定义完整、业务流等级连续且依赖顺序有效、所有依赖可解析、资源许可完整、路径不冲突、仅一个编辑器写者、正式玩法场景映射完整且人工明确批准时，才允许 `status: approved`。计划只描述不可变的任务设计与依赖；任何执行状态、任务结果或运行时审批均不得写入计划。`content_hash` 对除自身与 `approval.subject_hash` 外的规范化内容求 SHA-256；任何输入或计划内容变化都使批准失效。
