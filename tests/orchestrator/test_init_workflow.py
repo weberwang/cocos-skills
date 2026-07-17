@@ -132,6 +132,7 @@ class InitializeWorkflowTests(unittest.TestCase):
             gates = read_yaml(state / "quality-gates.yaml")
             self.assertEqual(profile["review_mode"], "full")
             self.assertTrue(gates["P0"]["require_vertical_slice"])
+            self.assertTrue(gates["P0"]["visual_design_quality"])
 
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(WorkflowError):

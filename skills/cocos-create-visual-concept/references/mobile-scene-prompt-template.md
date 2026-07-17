@@ -1,23 +1,40 @@
-# 单场景手机效果图提示词模板
+# 单场景高质量视觉提示词模板
 
-每个 `scene_id` 建立一个独立提示词记录。方括号字段必须由冻结工件或已批准需求填充，禁止以模型偏好替换。
+提示词分为“游戏原画层”和“最终精修”两类。一次生成调用只能引用当前一个 `scene_id`，禁止列出其他页面、请求整套页面、生成多屏拼图或预生成后续场景。方括号字段必须来自冻结工件、批准需求或设计简报，禁止用模型偏好补写。
+
+## 游戏原画候选
 
 ```text
-Create one finished 2D mobile game screen concept for [scene_id]: [page purpose].
-Canvas: [orientation], exact design resolution [width]x[height]; use the approved mobile safe-area and fit policy.
-Approved Pencil layout (preserve exactly): [pencil_draft_path] / [pencil_draft_hash]. Keep its structure, primary action, UI hierarchy, navigation, and interaction regions unchanged.
-Global visual direction (copy verbatim): [keywords]; commercial benchmark patterns [commercial_benchmarks.adopt_patterns]; palette [palette]; color tokens and usage rules [color_system]; restraint/expression profile [restraint_expression_profile]; typography [typography]; shape/layout [shape_and_layout]; icon/illustration [icon_and_illustration]; motion cues [motion_cues]; functional UI [functional_ui_rules].
-Frozen global reference-effect images (match both): [reference_effect_image_1_path] / [reference_effect_image_1_hash]; [reference_effect_image_2_path] / [reference_effect_image_2_hash].
-Scene content: [game context], player action [player action], primary UI [primary_ui], hierarchy [hierarchy].
-Accessibility: [accessibility_rules].
-Quality target: [quality_rubric]. Keep [restraint_ratio] of the screen visually restrained and reserve [expression_ratio] for approved focal content. Never exceed [primary_focal_points_max] primary and [secondary_focal_points_max] secondary focal points. Make the primary action the clearest interactive focal point; use the approved accent budget only for approved interactive or reward states; preserve readable text capacity and state feedback.
-Exclude: [prohibited]; benchmark avoid patterns [commercial_benchmarks.avoid_patterns]. Do not introduce a new palette, typography, icon style, material, lighting, or motion language. Do not reproduce brands, characters, assets, screenshots, or page layouts from commercial benchmarks. No phone frame, no device mockup, no watermark, no multi-screen collage, no unrelated brand, and no illegible placeholder copy.
-Deliver a single flat screen-effect image for review, not a sprite sheet or Cocos scene.
+Create one production-quality 2D mobile game art layer for [scene_id], without UI or text.
+Narrative moment: [moment]. Player focus and visual path: [focus_and_eye_flow].
+Canvas: [orientation], exact [width]x[height], with UI reserve zones from the approved Pencil layout [pencil_path] / [hash].
+Composition: foreground [foreground], midground [midground], background [background], camera [camera], perspective [perspective], focal hierarchy [hierarchy].
+Character and environment direction: [character_environment_rules]. Silhouette and pose: [silhouette_pose].
+Material, lighting, color script and VFX: [material_lighting_color_vfx]. Apply frozen color tokens and usage rules [color_system].
+Restraint/expression profile: [restraint_expression_profile]. Keep [restraint_ratio] visually restrained; reserve [expression_ratio] for approved focal content only. Never exceed [primary_focal_points_max] primary and [secondary_focal_points_max] secondary focal points.
+Frozen game-art system, copy exactly: [art_direction]. Match reference [game_art_anchor_path] / [hash].
+Preserve the global palette and prohibited list: [palette]; exclude [prohibited].
+No UI, letters, numbers, logo, watermark, phone frame, mockup, collage, sprite sheet or decorative elements that obscure gameplay.
+Deliver a single clean game-art layer with readable silhouettes, coherent perspective, controlled detail density and clear asset boundaries.
+```
+
+三个候选必须分别填写不同的 `composition_strategy`、镜头与视觉动线，其他冻结字段保持一致。
+
+## UI 精确设计与最终合成
+
+UI 不依赖 ImageGen 生成文字。使用已批准 Pencil 源文件建立可编辑 UI：
+
+```text
+Scene purpose: [purpose]. Preserve Pencil structure and interaction regions exactly.
+Apply frozen UI system: [grid_spacing], [typography], [component_shapes], [icon_grid], [states], [hud_rules], [functional_ui_rules]. Follow color-token usage and the same restraint/expression profile; reserve accent, glow and motion for approved CTA, reward or key-event states.
+Use exact approved copy: [copy_inventory]. No placeholder or invented labels.
+Place over selected game-art layer [path] / [hash] while preserving focal subject, primary action and gameplay readability.
+Validate safe area, minimum touch targets, contrast, truncation and hierarchy at [capture_profiles].
 ```
 
 ## 记录字段
 
-将模板填充结果保存在 `art/concepts/<scene_id>/prompt.yaml`：
+保存到 `art/concepts/<scene_id>/prompt.yaml`：
 
 ```yaml
 scene_id: home
@@ -25,15 +42,15 @@ requirements_hash: sha256:<hash>
 project_profile_hash: sha256:<hash>
 visual_direction_version: 3
 visual_direction_hash: sha256:<hash>
-pencil_draft: {path: art/concepts/home/pencil-draft.pen, content_hash: sha256:<approved Pencil draft hash>}
+pencil_draft: {path: art/concepts/home/pencil-draft.pen, content_hash: sha256:<approved hash>}
 frozen_reference_effect_images:
-  - {path: art/visual-references/<reference_id>.png, content_hash: sha256:<hash>}
-  - {path: art/visual-references/<reference_id>.png, content_hash: sha256:<hash>}
+  - {role: game-art-quality-anchor, path: art/visual-references/game-art.png, content_hash: sha256:<hash>}
+  - {role: ui-system-quality-anchor, path: art/visual-references/ui-system.png, content_hash: sha256:<hash>}
 orientation: portrait
 design_resolution: {width: 1080, height: 1920, source: approved-default}
-prompt: <final prompt>
-prompt_hash: sha256:<utf-8 prompt hash>
+game_art_candidate_prompts: []
+ui_composition_spec: <exact UI spec>
+prompt_hash: sha256:<normalized prompt record hash>
 generator: {tool: imagegen, model_or_version: <returned value>, generated_at: <timestamp>}
-quality_rubric: <copied frozen rubric>
 restraint_expression_profile: <copied frozen default or matching context profile>
 ```

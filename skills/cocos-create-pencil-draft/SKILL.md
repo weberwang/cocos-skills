@@ -5,7 +5,7 @@ description: Use when an approved Cocos Creator Web Mobile implementation plan a
 
 # Cocos 创建 Pencil 草图
 
-Create one structural Pencil draft for one assigned `scene_loop_id`. This task confirms layout and interaction only; it must not create a local visual direction or modify a Cocos project.
+为一个 `scene_loop_id` 创建可直接进入高保真 UI 设计的 Pencil 结构稿。它必须解决布局、信息架构、真实文案和交互状态，但不得自行创建视觉风格或修改 Cocos 项目。
 
 ## Boundary
 
@@ -16,8 +16,8 @@ Read the orchestrator contracts and [Pencil draft contract](references/pencil-dr
 ## Procedure
 
 1. Read the assigned `pencil-draft` task, approved implementation plan, requirements, frozen project profile, and frozen visual direction. Confirm the task owns exactly one `scene_id` and its paths do not overlap another loop.
-2. Create or update the assigned Pencil source file and an exported preview. Define only page structure, camera/content zones, primary action, UI hierarchy, navigation, interaction regions, and mobile safe areas. Do not choose a new palette, typography, icon style, material, lighting, or motion language.
-3. Save the Pencil source and preview under the assigned scene directory. Record both paths and SHA-256 hashes, frozen input hashes, and a structural/functional review checklist in the per-scene artifact. The checklist must make the primary action, interaction regions, information hierarchy, state-feedback location, and expected text capacity reviewable before high-fidelity generation.
+2. 创建或更新 Pencil 源文件和预览。定义页面结构、游戏原画保留区、视线动线、主操作、UI 层级、导航、交互区域和移动端安全区；所有可见文案使用已批准的真实文本，并标注 normal、pressed、disabled、selected 等需要的组件状态。不得选择新的调色板、字体、图标、材质、光影或动效语言。
+3. 在 `mobile-small`、`mobile-standard`、`mobile-large` 三个捕获视口检查布局：主操作不得被拇指遮挡，关键触控目标满足冻结最小尺寸，长文案/本地化扩展有明确策略，HUD 不遮挡游戏焦点。用功能视觉检查记录主操作辨识、交互区域、信息层级、状态反馈位置和文本容量。保存源文件、预览、文案清单和视口预览的 SHA-256。
 4. Request explicit human approval of the exact Pencil-source hash. Keep the artifact `pending`, `rejected`, or `blocked` until approval is recorded; never infer approval from a preview or successful export.
 5. Return artifact, hashes, review evidence, and unblock conditions. A changed draft hash invalidates that scene's high-fidelity concept, assets, code, integration, and verification results; the orchestrator performs state changes.
 
@@ -25,7 +25,7 @@ Read the orchestrator contracts and [Pencil draft contract](references/pencil-dr
 
 - A Pencil draft must not add or override the frozen global visual direction.
 - Do not start `$cocos-create-visual-concept`, asset preparation, or scene/UI code for this loop without the approved Pencil artifact whose `approval.subject_hash` equals `pencil_source_hash`.
-- Reject missing source files, previews, hash mismatches, incomplete structural checks, and missing human approval.
+- Reject missing source files, previews, exact-copy inventory, required component states, three viewport checks, hash mismatches, incomplete structural checks, and missing human approval.
 
 ## Handoff
 

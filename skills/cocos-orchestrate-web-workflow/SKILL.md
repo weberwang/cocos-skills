@@ -30,9 +30,9 @@ Never accept a child-agent result that only says completion; require artifacts, 
 | `systems-design` | `$cocos-design-game-systems` |
 | `technical-design` | `$cocos-define-technical-design` |
 | `visual-direction` | `$cocos-freeze-visual-direction` |
-| `scene-concepts` | `$cocos-create-visual-concept` |
+| `scene-concepts` | `$cocos-create-visual-concept`：按“至少 3 个原画候选 → 精确可编辑 UI → 最终合成 → 质量门槛”执行 |
 | `planning` | `$cocos-plan-project` |
-| `production` | 按 `business_flow_levels` 从低到高编排每个 `scene_loop` 的 `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game`；仅在当前等级、依赖已通过且路径所有权无冲突时并行 |
+| `production` | 先派发核心玩法原型（`vertical_slice`：`$cocos-implement-game` 原型代码 → `$cocos-integrate-assets` → `$cocos-verify-game` vertical-slice → 人工确认）；确认后才派发 `$cocos-implement-game` 的模块拆分/全局骨架，再按 `business_flow_levels` 从低到高编排正式 `scene_loop` 的 `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game`；推进到 `is_core_gameplay` 场景时必须按正式版本实现；同级无冲突任务可并行，但 `visual-concept` 始终逐场景串行 |
 | `integration` | `$cocos-integrate-assets` |
 | `verification` | `$cocos-verify-game` |
 | `building` | `$cocos-deliver-web`，传入 `entry_mode=build` |
@@ -52,24 +52,42 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 该门禁不新增主状态，也不替代原有的人工审批门禁。它只约束上述四个阶段的决策性返工；首次没有 PRD 的需求澄清同样先派发 `$grilling`，随后才允许确认 PRD。
 
+## 核心玩法优先门禁
+
+进入 `production` 后，总控必须**先**派发并完成实施计划中的 `vertical_slice` 原型任务（核心玩法可玩确认），再允许模块拆分与正式场景循环。
+
+1. 仅派发 `vertical_slice.task_ids` 中的原型任务：`core-gameplay-code` → 串行集成 → Chrome 垂直切片验证 → `vertical-slice-review`。
+2. 原型阶段不得要求 Pencil 草图、高保真效果图、模块拆分或全局骨架；占位/最小资源可接受。
+3. 未获得 `artifacts/vertical-slice.md` 的 `passed` 状态与哈希绑定人工批准前，禁止派发 `module_decomposition`、`global_scaffold` 及任何正式 `scene_loops` 任务。
+4. 核心玩法确认后，才进入模块划分与业务流等级推进；`review_mode` 不得豁免此顺序。
+
 ## 业务流等级门禁
 
-进入 `production` 前读取已批准实施计划的 `business_flow_levels`。总控只派发当前最低未完成等级的任务，并将任务中的 `business_flow_level` 与计划一致地写入任务记录。
+核心玩法确认通过后，读取已批准实施计划的 `business_flow_levels`。总控只派发当前最低未完成等级的任务，并将任务中的 `business_flow_level` 与计划一致地写入任务记录。
 
 1. 同一等级仅可派发无共享写路径且已满足显式依赖的任务；Cocos Editor 写入仍必须串行。
 2. 等级大于 `1` 时，必须先验证前一等级全部 `completion_task_ids` 的结果均为 `passed`，其证据、输入哈希和验收检查均有效。
 3. 前一等级有 `failed`、`blocked`、`stale`、缺失结果或未通过退出检查时，保留后续等级任务为 `blocked`，不得提前派发、接受结果或写入集成状态。
 4. 模块、页面/场景循环、任务等级或依赖与计划不一致时，拒绝该任务并将 planning 标记为 `stale`；不得靠调整任务顺序绕过等级门禁。
+5. 当派发到 `is_core_gameplay: true` 的正式场景循环时，必须按正式版本执行完整小循环，用正式实现替换原型，不得把原型当作交付物。
+
+## 视觉质量门禁
+
+视觉方向必须同时包含完整的 `game_art_system`、`ui_system`、商业基准、颜色 token、克制/发散预算和功能 UI 规则，以及职责分别为 `game-art-quality-anchor` 和 `ui-system-quality-anchor` 的两张参考图。效果图严格按实施计划中的 `scene_loops` 顺序逐场景推进：任意时刻最多一个活动 `visual-concept` 任务；当前场景最终图通过质量门槛并获得哈希绑定人工批准后，才能派发下一个场景的效果图任务。禁止一次派发多个页面、整套页面生成或多页面拼图。
+
+单场景结果必须证明：至少三个实质不同的原画候选、候选评审、可编辑 UI 源、真实文案清单、至少一轮缺陷驱动精修、全部捕获视口证据和最终图人工批准。候选仅允许探索同一个场景，不构成批量页面生成。
+
+总控验收 `scene-concepts/<scene_id>.md` 时，必须拒绝以下情况：任务包含多个 `scene_id`、修改其他场景目录、存在多页面拼图、任一质量维度低于 4、平均分低于 4.5、克制/发散 profile 缺失或超预算、阻塞缺陷非空、缺少可编辑 UI/真实文案、最终审核未绑定 `final_image_hash`、使用生成伪文字，或候选/精修/视口证据不存在。视觉质量门槛属于 P0，不允许通过 `review_mode` 或人工豁免跳过。
 
 ## 人工门禁
 
-在项目配置、需求、系统设计、技术设计、视觉方向、Pencil 场景/UI 草图、高保真场景效果图、实施计划、垂直切片、视觉验证和交付各门禁处记录明确的人工批准及其版本。生产阶段按单场景循环执行 `Pencil 草图 → 高保真效果图 → 资源/代码 → 集成 → 验证`，不得要求其他场景先完成设计。高保真图必须绑定冻结视觉版本、内容哈希、两张全局参考效果图、颜色 token、克制/发散 profile、功能 UI 规则和通过的质量评分；任一项缺失或评分不通过均不得进入资源/代码。任何局部视觉变更均须返回视觉冻结。Never advance past an approval gate without explicit human approval.
+在项目配置、需求、系统设计、技术设计、视觉方向、Pencil 场景/UI 草图、高保真场景效果图、实施计划、核心玩法垂直切片、视觉验证和交付各门禁处记录明确的人工批准及其版本。生产阶段顺序为：先核心玩法原型确认，再模块拆分与全局骨架，再按单场景正式循环执行 `Pencil 草图 → 高保真效果图 → 资源/代码 → 集成 → 验证`；不得要求其他场景先完成设计，也不得在玩法未确认前启动正式模块划分。高保真图必须绑定冻结视觉版本、内容哈希、两张全局参考效果图、颜色 token、克制/发散 profile、功能 UI 规则和通过的质量评分；任一项缺失或超预算均不得进入资源/代码。任何局部视觉变更均须返回视觉冻结。Never advance past an approval gate without explicit human approval.
 
-项目配置的 `review_mode` 仅可为 `full` 或 `lean`：`full` 在每次设计、技术、视觉与生产交接时追加领域审查；`lean` 只在阶段交接时追加审查。两者都不得跳过哈希绑定的人工审批、P0 或垂直切片门禁，禁止 `solo` 模式。
+项目配置的 `review_mode` 仅可为 `full` 或 `lean`：`full` 在每次设计、技术、视觉与生产交接时追加领域审查；`lean` 只在阶段交接时追加审查。两者都不得跳过哈希绑定的人工审批、视觉质量 P0、其他 P0 或核心玩法垂直切片门禁，禁止 `solo` 模式。
 
 ## 子代理规则
 
-只并行没有共享写入面且依赖已经满足的独立任务。允许分析、检查和资源准备并行；所有 Cocos Editor 写入必须排队，由一个明确的写入者按批次执行并在每批之后读取验证。Never allow two agents to write through the same Cocos Editor concurrently.
+只并行没有共享写入面且依赖已经满足的独立任务。允许分析、检查和资源准备并行；效果图生成即使路径不冲突也必须逐场景串行；所有 Cocos Editor 写入必须排队，由一个明确的写入者按批次执行并在每批之后读取验证。Never allow two agents to write through the same Cocos Editor concurrently.
 
 ## 状态变更
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Cocos 冻结视觉方向"
-  short_description: "Freeze visual style with two reference images"
-  default_prompt: "Use $cocos-freeze-visual-direction to generate exactly two reference effect images and freeze the approved visual direction for this Cocos project."
+  short_description: "Freeze a production-ready game-art and UI system"
+  default_prompt: "Use $cocos-freeze-visual-direction to define the game-art system and UI design system, generate their two quality anchors, and freeze the approved direction."

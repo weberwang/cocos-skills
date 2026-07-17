@@ -163,17 +163,33 @@ class ValidateWorkflowTests(unittest.TestCase):
     def test_plan_code_task_requires_scene_design_dependencies(self) -> None:
         """计划不得允许代码任务跳过同场景草图和高保真设计任务。"""
         tasks = [
-            {"task_id": "modules", "kind": "module_decomposition", "business_flow_level": 1, "depends_on": []},
+            {"task_id": "proto-code", "kind": "core-gameplay-code", "scene_id": "home", "depends_on": []},
+            {"task_id": "slice-review", "kind": "vertical-slice-review", "depends_on": ["proto-code"]},
+            {"task_id": "modules", "kind": "module_decomposition", "business_flow_level": 1, "depends_on": ["slice-review"]},
             {"task_id": "scaffold", "kind": "global_scaffold", "business_flow_level": 1, "depends_on": ["modules"]},
             {"task_id": "pencil", "kind": "pencil-draft", "scene_id": "home", "business_flow_level": 1, "depends_on": ["scaffold"]},
             {"task_id": "concept", "kind": "visual-concept", "scene_id": "home", "business_flow_level": 1, "depends_on": ["pencil"]},
             {"task_id": "assets", "kind": "asset-preparation", "scene_id": "home", "business_flow_level": 1, "depends_on": ["concept"]},
-            {"task_id": "code", "kind": "code", "scene_id": "home", "module_ids": ["core"], "business_flow_level": 1, "depends_on": ["concept", "modules", "scaffold"]},
+            {"task_id": "code", "kind": "code", "scene_id": "home", "module_ids": ["core"], "business_flow_level": 1, "depends_on": ["concept", "modules", "scaffold", "slice-review"]},
         ]
         plan = {
             "tasks": tasks,
+            "vertical_slice": {
+                "implementation_mode": "prototype",
+                "scene_ids": ["home"],
+                "formal_scene_loop_ids": ["home-loop"],
+                "task_ids": ["proto-code", "slice-review"],
+            },
             "module_decomposition": {"modules": [{"id": "core", "business_flow_level": 1}]},
-            "scene_loops": [{"id": "home-loop", "scene_id": "home", "business_flow_level": 1}],
+            "scene_loops": [
+                {
+                    "id": "home-loop",
+                    "scene_id": "home",
+                    "business_flow_level": 1,
+                    "is_core_gameplay": True,
+                    "depends_on": ["slice-review", "modules", "scaffold"],
+                }
+            ],
             "business_flow_levels": [
                 {"level": 1, "name": "开始", "module_ids": ["core"], "page_ids": ["home"], "completion_task_ids": ["code"]}
             ],
@@ -189,9 +205,17 @@ class ValidateWorkflowTests(unittest.TestCase):
         """高等级任务必须等待前一等级的完成门禁，不能逆向依赖。"""
         artifact = {
             "tasks": [
-                {"task_id": "level-one-done", "kind": "module_decomposition", "business_flow_level": 1, "depends_on": []},
+                {"task_id": "proto-code", "kind": "core-gameplay-code", "scene_id": "entry", "depends_on": []},
+                {"task_id": "slice-review", "kind": "vertical-slice-review", "depends_on": ["proto-code"]},
+                {"task_id": "level-one-done", "kind": "module_decomposition", "business_flow_level": 1, "depends_on": ["slice-review"]},
                 {"task_id": "level-two-work", "kind": "global_scaffold", "business_flow_level": 2, "depends_on": []},
             ],
+            "vertical_slice": {
+                "implementation_mode": "prototype",
+                "scene_ids": ["entry"],
+                "formal_scene_loop_ids": ["entry-loop"],
+                "task_ids": ["proto-code", "slice-review"],
+            },
             "module_decomposition": {
                 "modules": [
                     {"id": "entry", "business_flow_level": 1},
@@ -199,8 +223,14 @@ class ValidateWorkflowTests(unittest.TestCase):
                 ]
             },
             "scene_loops": [
-                {"id": "entry-loop", "scene_id": "entry", "business_flow_level": 1},
-                {"id": "result-loop", "scene_id": "result", "business_flow_level": 2},
+                {
+                    "id": "entry-loop",
+                    "scene_id": "entry",
+                    "business_flow_level": 1,
+                    "is_core_gameplay": True,
+                    "depends_on": ["slice-review"],
+                },
+                {"id": "result-loop", "scene_id": "result", "business_flow_level": 2, "is_core_gameplay": False, "depends_on": ["slice-review"]},
             ],
             "business_flow_levels": [
                 {"level": 1, "name": "进入", "module_ids": ["entry"], "page_ids": ["entry"], "completion_task_ids": ["level-one-done"]},
@@ -212,6 +242,41 @@ class ValidateWorkflowTests(unittest.TestCase):
             "missing-business-flow-gate",
             {issue.code for issue in _validate_implementation_plan_tasks(artifact, Path("implementation-plan.md"))},
         )
+
+    def test_core_gameplay_must_precede_module_decomposition(self) -> None:
+        """模块拆分必须依赖核心玩法确认，不能先于原型门禁。"""
+        plan = {
+            "tasks": [
+                {"task_id": "modules", "kind": "module_decomposition", "business_flow_level": 1, "depends_on": []},
+                {"task_id": "scaffold", "kind": "global_scaffold", "business_flow_level": 1, "depends_on": ["modules"]},
+                {"task_id": "pencil", "kind": "pencil-draft", "scene_id": "home", "business_flow_level": 1, "depends_on": ["scaffold"]},
+                {"task_id": "concept", "kind": "visual-concept", "scene_id": "home", "business_flow_level": 1, "depends_on": ["pencil"]},
+                {"task_id": "assets", "kind": "asset-preparation", "scene_id": "home", "business_flow_level": 1, "depends_on": ["concept"]},
+                {"task_id": "code", "kind": "code", "scene_id": "home", "module_ids": ["core"], "business_flow_level": 1, "depends_on": ["concept", "modules", "scaffold"]},
+            ],
+            "vertical_slice": {
+                "implementation_mode": "prototype",
+                "scene_ids": ["home"],
+                "formal_scene_loop_ids": ["home-loop"],
+                "task_ids": ["missing-proto"],
+            },
+            "module_decomposition": {"modules": [{"id": "core", "business_flow_level": 1}]},
+            "scene_loops": [
+                {
+                    "id": "home-loop",
+                    "scene_id": "home",
+                    "business_flow_level": 1,
+                    "is_core_gameplay": True,
+                    "depends_on": ["modules", "scaffold"],
+                }
+            ],
+            "business_flow_levels": [
+                {"level": 1, "name": "开始", "module_ids": ["core"], "page_ids": ["home"], "completion_task_ids": ["code"]}
+            ],
+        }
+        codes = {issue.code for issue in _validate_implementation_plan_tasks(plan, Path("implementation-plan.md"))}
+        self.assertIn("missing-core-gameplay-gate", codes)
+        self.assertIn("missing-vertical-slice-task", codes)
 
     def test_initial_scene_rules_follow_bootstrap_phase(self) -> None:
         """验证初始场景在 bootstrap 初期可空，离开后必须是安全相对 scene 路径。"""
@@ -480,6 +545,15 @@ class ValidateWorkflowTests(unittest.TestCase):
             write_yaml(state / "quality-gates.yaml", gates)
             codes = {issue.code for issue in validate_workflow(root)}
             self.assertIn("p0-waiver-forbidden", codes)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = initialize_workflow(root, "portrait", creator_version="3.8.6", approved_by="tester")
+            gates = read_yaml(state / "quality-gates.yaml")
+            gates["P0"]["visual_design_quality"] = False
+            write_yaml(state / "quality-gates.yaml", gates)
+            codes = {issue.code for issue in validate_workflow(root)}
+            self.assertIn("visual-design-quality-required", codes)
 
     def test_task_evidence_and_visual_freeze_are_required(self) -> None:
         """验证 passed 任务证据和视觉依赖版本、哈希均不可缺失。"""

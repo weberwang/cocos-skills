@@ -3,7 +3,7 @@
 清单位于 `.cocos-workflow/artifacts/game-assets.yaml`；独立图片和元数据位于 `.cocos-workflow/art/assets/<asset_id>/`。它们是待集成的源文件，不代表已经导入 Cocos Editor。
 
 ```yaml
-schema_version: 1
+schema_version: 2
 status: pending # pending | blocked | approved | stale
 asset_set_version: 1
 asset_plan_hash: sha256:<approved planning asset-plan hash>
@@ -25,9 +25,12 @@ assets:
     generator: {tool: imagegen, model_or_version: <returned value>, generated_at: <timestamp>}
     source:
       scene_id: home
-      concept_path: art/concepts/home/effect.png
+      concept_path: art/concepts/home/effect-final.png
       concept_hash: sha256:<hash>
+      layer_source_path: art/concepts/home/game-art-selected.png # UI 资源则指向 ui-final.pen
+      layer_source_hash: sha256:<hash>
       reference_licenses: []
+    fidelity_checks: [] # silhouette、perspective、material、light 或 pixel-grid、nine-slice、states、copy
     license: {status: needs-human-review, evidence: []}
 approval: {status: pending, approved_by: null, approved_at: null, subject_hash: null}
 content_hash: sha256:<normalized content excluding content_hash>
@@ -37,6 +40,7 @@ content_hash: sha256:<normalized content excluding content_hash>
 
 - `asset_id`、`output_path` 唯一；每项只服务一个运行时用途和一个独立图像。
 - `output_hash` 是图像二进制 SHA-256；提示词、概念、视觉方向、项目配置和许可证证据均必须可追溯。
+- `layer_source_path` 必须指向已批准效果图工件中的原画层或可编辑 UI 源。`fidelity_checks` 必须按资源类型覆盖原画还原或 UI 精确导出检查，禁止从最终截图裁切带污染像素的资源。
 - 尺寸、方向和设计分辨率必须匹配已批准资产计划与冻结项目配置；未知、冲突或 `needs-human-review` 的许可证不得批准。
 - `status: approved` 时，`approval.status` 为 `approved`，`approved_by`、`approved_at` 非空，且 `approval.subject_hash == content_hash`；每项资产均有可用许可证决定和检查证据。
 
