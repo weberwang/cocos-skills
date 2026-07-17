@@ -46,11 +46,13 @@ quality_summary:
   P0: {passed: 0, failed: 0, blocked: 0}
   P1: {passed: 0, failed: 0, blocked: 0, waived: 0}
   P2: {passed: 0, failed: 0, blocked: 0}
+  visual_runtime: {color_tokens: pending, restraint_expression: pending, primary_action: pending, state_feedback: pending, text_readability: pending}
 issues: []
 ```
 
 - P0 不可豁免；任一失败停止当前及下游阶段。
 - P1 默认阻塞；仅总控可接受含检查 ID、工件哈希和有效人工批准的豁免。
 - P2 默认报告；仅按项目门禁升级规则阻塞。
+- `visual_runtime` 五项必须依据 Chrome 截图和可重放交互填写。它验证冻结的色彩角色、克制/发散焦点预算、主操作、状态反馈与文本可读性在真实运行时仍然成立；任何 `failed` 必须以对应 P0/P1/P2 问题记录，不能被像素差通过掩盖。
 
 报告放在分配的 `reports/` 路径，结果遵循总控 `results/<task_id>.yaml` 契约，并绑定 capture manifest、视觉方向、项目配置和基线的当前哈希。

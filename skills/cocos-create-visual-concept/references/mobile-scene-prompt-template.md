@@ -10,7 +10,8 @@ Narrative moment: [moment]. Player focus and visual path: [focus_and_eye_flow].
 Canvas: [orientation], exact [width]x[height], with UI reserve zones from the approved Pencil layout [pencil_path] / [hash].
 Composition: foreground [foreground], midground [midground], background [background], camera [camera], perspective [perspective], focal hierarchy [hierarchy].
 Character and environment direction: [character_environment_rules]. Silhouette and pose: [silhouette_pose].
-Material, lighting, color script and VFX: [material_lighting_color_vfx].
+Material, lighting, color script and VFX: [material_lighting_color_vfx]. Apply frozen color tokens and usage rules [color_system].
+Restraint/expression profile: [restraint_expression_profile]. Keep [restraint_ratio] visually restrained; reserve [expression_ratio] for approved focal content only. Never exceed [primary_focal_points_max] primary and [secondary_focal_points_max] secondary focal points.
 Frozen game-art system, copy exactly: [art_direction]. Match reference [game_art_anchor_path] / [hash].
 Preserve the global palette and prohibited list: [palette]; exclude [prohibited].
 No UI, letters, numbers, logo, watermark, phone frame, mockup, collage, sprite sheet or decorative elements that obscure gameplay.
@@ -25,7 +26,7 @@ UI 不依赖 ImageGen 生成文字。使用已批准 Pencil 源文件建立可�
 
 ```text
 Scene purpose: [purpose]. Preserve Pencil structure and interaction regions exactly.
-Apply frozen UI system: [grid_spacing], [typography], [component_shapes], [icon_grid], [states], [hud_rules].
+Apply frozen UI system: [grid_spacing], [typography], [component_shapes], [icon_grid], [states], [hud_rules], [functional_ui_rules]. Follow color-token usage and the same restraint/expression profile; reserve accent, glow and motion for approved CTA, reward or key-event states.
 Use exact approved copy: [copy_inventory]. No placeholder or invented labels.
 Place over selected game-art layer [path] / [hash] while preserving focal subject, primary action and gameplay readability.
 Validate safe area, minimum touch targets, contrast, truncation and hierarchy at [capture_profiles].
@@ -51,4 +52,5 @@ game_art_candidate_prompts: []
 ui_composition_spec: <exact UI spec>
 prompt_hash: sha256:<normalized prompt record hash>
 generator: {tool: imagegen, model_or_version: <returned value>, generated_at: <timestamp>}
+restraint_expression_profile: <copied frozen default or matching context profile>
 ```

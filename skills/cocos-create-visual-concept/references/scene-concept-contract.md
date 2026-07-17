@@ -3,7 +3,7 @@
 每个场景/UI 工件为 `.cocos-workflow/artifacts/scene-concepts/<scene_id>.md`，过程图像与记录位于 `.cocos-workflow/art/concepts/<scene_id>/`。一次任务只能创建或修改一个场景目录和一份工件；禁止批量清单、多场景数组、共享效果图或多页面拼图。
 
 ```yaml
-schema_version: 2
+schema_version: 3
 status: pending # pending | blocked | approved | stale
 requirements_hash: sha256:<hash>
 project_profile_hash: sha256:<hash>
@@ -38,6 +38,7 @@ final_image_path: art/concepts/home/effect-final.png
 final_image_hash: sha256:<binary hash>
 prompt_path: art/concepts/home/prompt.yaml
 prompt_hash: sha256:<hash>
+restraint_expression_profile: {context: default, restraint_ratio: 0.8, expression_ratio: 0.2, primary_focal_points_max: 1, secondary_focal_points_max: 1}
 refinement_rounds:
   - {round: 1, defect_ids: [D-01], output_path: art/concepts/home/refinement-01.png, output_hash: sha256:<hash>}
 quality_review:
@@ -52,6 +53,7 @@ quality_review:
     component-and-icon-consistency: 5
     touch-safe-area-and-viewport-fit: 5
     visual-noise-control: 5
+    restraint-expression-balance: 5
     asset-decomposability: 5
   average: 5.0
   viewport_evidence: []
@@ -67,7 +69,8 @@ content_hash: sha256:<normalized content excluding content_hash and review.subje
 - 总控只允许一个活动 `visual-concept` 任务。当前场景的质量检查和最终人工审核通过前，下一个场景不得生成候选图。
 - 两张冻结参考图必须分别承担 `game-art-quality-anchor` 与 `ui-system-quality-anchor`，路径和哈希与冻结视觉方向逐项一致。
 - `candidate_count >= 3`，候选构图必须有实质差异；每个候选都具有六维评分和缺陷记录。入选候选六维均不低于 4。
+- `restraint_expression_profile` 必须逐字段等于冻结方向中与该已批准页面类型匹配的上下文，或等于 `default`；不得按单场景改写。主/次焦点数量和高对比、高饱和、强动效、重材质的使用位置必须符合该预算。
 - `ui_design.editable_source_path` 必须存在；真实文案清单、可编辑文字、图标和组件状态均能从源文件追溯，禁止依赖生成图伪文字。
 - `refinement_rounds` 至少一项，每轮必须引用真实缺陷 ID、输出路径和哈希。
-- `quality_review.scores` 必须覆盖全部十项；每项不低于 4，平均分不低于 4.5，且 `blocking_defects` 为空。视口证据必须覆盖项目配置的全部捕获视口。
+- `quality_review.scores` 必须覆盖全部十一项；每项不低于 4，平均分不低于 4.5，且 `blocking_defects` 为空。视口证据必须覆盖项目配置的全部捕获视口。
 - `status: approved` 仅在人工审核精确绑定 `final_image_hash` 时允许。视觉方向、需求、配置、Pencil、候选选择、UI 源或最终图变化时批准失效。
