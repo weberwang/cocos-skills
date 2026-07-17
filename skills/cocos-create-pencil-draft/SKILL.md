@@ -17,7 +17,7 @@ Read the orchestrator contracts and [Pencil draft contract](references/pencil-dr
 
 1. Read the assigned `pencil-draft` task, approved implementation plan, requirements, frozen project profile, and frozen visual direction. Confirm the task owns exactly one `scene_id` and its paths do not overlap another loop.
 2. Create or update the assigned Pencil source file and an exported preview. Define only page structure, camera/content zones, primary action, UI hierarchy, navigation, interaction regions, and mobile safe areas. Do not choose a new palette, typography, icon style, material, lighting, or motion language.
-3. Save the Pencil source and preview under the assigned scene directory. Record both paths and SHA-256 hashes, frozen input hashes, and a structural review checklist in the per-scene artifact.
+3. Save the Pencil source and preview under the assigned scene directory. Record both paths and SHA-256 hashes, frozen input hashes, and a structural/functional review checklist in the per-scene artifact. The checklist must make the primary action, interaction regions, information hierarchy, state-feedback location, and expected text capacity reviewable before high-fidelity generation.
 4. Request explicit human approval of the exact Pencil-source hash. Keep the artifact `pending`, `rejected`, or `blocked` until approval is recorded; never infer approval from a preview or successful export.
 5. Return artifact, hashes, review evidence, and unblock conditions. A changed draft hash invalidates that scene's high-fidelity concept, assets, code, integration, and verification results; the orchestrator performs state changes.
 

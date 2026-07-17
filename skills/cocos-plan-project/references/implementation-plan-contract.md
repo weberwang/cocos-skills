@@ -82,7 +82,7 @@ content_hash: sha256:<规范化内容，不含 content_hash>
 
 ## 场景小循环
 
-`scene_loops` 必须覆盖每个可交付 `scene_id`。每项包含稳定 `id`、`scene_id`、`business_flow_level`、`depends_on`、按 `pencil-draft → visual-concept → asset-preparation → code → 串行 integration → Chrome verification → human-review` 排列的 `task_ids`，以及非空 `exit_checks`。`pencil-draft` 必须记录人工批准的草图哈希；`visual-concept` 必须依赖该草图，并逐项绑定全局视觉冻结的版本、内容哈希与两张参考效果图。没有这两项通过证据不得启动本场景的资源准备或代码任务。只有本循环 exit_checks 的项目内证据全部通过，才可启动下一场景循环；共享模块必须在首个消费者循环前完成。任何两个 scene_loop 不得并发拥有 Cocos MCP 写权。
+`scene_loops` 必须覆盖每个可交付 `scene_id`。每项包含稳定 `id`、`scene_id`、`business_flow_level`、`depends_on`、按 `pencil-draft → visual-concept → asset-preparation → code → 串行 integration → Chrome verification → human-review` 排列的 `task_ids`，以及非空 `exit_checks`。`pencil-draft` 必须记录人工批准的草图哈希与功能视觉检查；`visual-concept` 必须依赖该草图，并逐项绑定全局视觉冻结的版本、内容哈希、两张参考效果图、颜色 token、克制/发散 profile、功能 UI 规则和通过的质量评分。没有这些通过证据不得启动本场景的资源准备或代码任务。只有本循环 exit_checks 的项目内证据全部通过，才可启动下一场景循环；共享模块必须在首个消费者循环前完成。任何两个 scene_loop 不得并发拥有 Cocos MCP 写权。
 
 ## 垂直切片门禁
 
