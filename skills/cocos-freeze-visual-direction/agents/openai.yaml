@@ -1,4 +1,4 @@
 interface:
   display_name: "Cocos 冻结视觉方向"
   short_description: "Freeze a production-ready game-art and UI system"
-  default_prompt: "Use $cocos-freeze-visual-direction to define the game-art system and UI design system, generate their two quality anchors, and freeze the approved direction."
+  default_prompt: "Use $cocos-freeze-visual-direction after the approved global visual-direction grilling brief to define the game-art system and UI design system, generate their two quality anchors, and freeze the approved direction."

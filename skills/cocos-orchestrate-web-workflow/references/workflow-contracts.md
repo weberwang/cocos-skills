@@ -12,6 +12,7 @@
 ├── artifacts/
 │   ├── systems-design.md
 │   ├── technical-design.md
+│   ├── visual-direction-brief.md
 │   ├── visual-direction.md
 │   ├── implementation-plan.md
 │   ├── pencil-drafts/
@@ -92,6 +93,8 @@
 
 `P0.visual_design_quality` 必须为 `true`。它要求冻结视觉方向同时提供可执行的游戏原画规范与 UI 系统、商业基准、颜色 token、克制/发散预算和功能 UI 规则；每个正式场景效果图至少有三个实质不同的原画候选、评审记录、可编辑 UI 源、真实文案、一次缺陷驱动精修和全部捕获视口证据。十一项质量评分（含克制/发散平衡）必须全部不低于 4/5、平均分不低于 4.5/5，且最终人工批准绑定最终图哈希。该门槛不可豁免。
 
+同一 P0 还要求首次视觉冻结前完成唯一的 `role: grilling`、`kind: visual-direction-grilling` 任务。任务只写 `artifacts/visual-direction-brief.md`、结果和报告；确认与人工审批必须同时绑定工件 `content_hash`，未决问题必须为空。`cocos-freeze-visual-direction` 必须直接依赖该任务并携带相同 `visual_direction_brief_hash`。
+
 ### `ownership.yaml`
 
 必须逐项包含：
@@ -150,13 +153,15 @@ production 开始后，总控必须先完成 `vertical_slice` 核心玩法原型
 
 ## 决策拷问门禁
 
+首次全局视觉方向拷问是 `visual-direction` 阶段的固定前置门禁，不使用 `decision_change`。任务携带 `visual_direction_grilling` 输入，返回 `visual_direction_confirmation`；总控在确认与人工审批均绑定 `artifacts/visual-direction-brief.md.content_hash` 后，写入 `approval_gates.visual-direction-grilling`。后续已冻结视觉方向发生决策性变更时，仍按下述通用返工规则执行，并重新生成该工件与门禁。
+
 派发 `$grilling` 的只读任务使用 `role: grilling` 并携带 `decision_change`，不需要预先确认。重派发目标阶段时，任务必须保留同一 `decision_change` 并附带 `$grilling` 的 `grilling_confirmation`。确认记录必须包含 `status: confirmed`、`stage`、`subject_hash`、`confirmed_by`、`confirmed_at` 与至少一个项目内 `evidence` 路径；`stage` 和 `subject_hash` 必须分别等于任务的 `decision_change.stage` 与 `decision_change.subject_hash`。
 
 总控验证确认记录后，写入 `workflow.yaml.approval_gates.grilling-<stage>`。该门禁使用 `status: passed`、`approved_by`、`approved_at`、`subject_hash` 和 `evidence`；其阶段和主题哈希必须与 `decision_change` 一致。未通过时，目标阶段保持 `blocked`，不得创建、接受或批准新的阶段工件。总控是唯一可写入该门禁和 `workflow.yaml` 的角色。
 
 ## 阶段工件与审批门禁
 
-阶段离开后，总控必须同时校验实际存在的工件及 `workflow.yaml.approval_gates` 中的同名门禁。人可审阅的阶段工件必须保存为 Markdown：文件以 YAML front matter 开始，正文使用 Markdown 标题、段落和列表清晰表达工件内容。唯一视觉方向工件路径为 `artifacts/visual-direction.md`，不得使用 `art/visual-direction.yaml`。
+阶段离开后，总控必须同时校验实际存在的工件及 `workflow.yaml.approval_gates` 中的同名门禁。人可审阅的阶段工件必须保存为 Markdown：文件以 YAML front matter 开始，正文使用 Markdown 标题、段落和列表清晰表达工件内容。全局视觉拷问工件固定为 `artifacts/visual-direction-brief.md`，视觉冻结工件固定为 `artifacts/visual-direction.md`；不得使用 `art/visual-direction.yaml`。
 
 Markdown 工件的 front matter 承载 `schema_version`、`stage`、状态、版本、冻结输入、审批和 `content_hash` 等结构化元数据；正文不得为空。`content_hash` 对不含自身及 `approval.subject_hash` 的 front matter 与完整正文共同计算，因此任何正文修改都会使已有批准失效。机器状态、任务、结果，以及资产、捕获和绑定清单继续使用 YAML。Pencil 草图、场景概念、场景资源清单、集成结果与验证工件均须显式声明 `stage`；禁止依赖非正式路径猜测阶段。
 
@@ -165,6 +170,7 @@ Markdown 工件的 front matter 承载 `schema_version`、`stage`、状态、版
 | requirements | `requirements.md` | `approved` | `requirements` |
 | systems-design | `artifacts/systems-design.md` | `approved` | `systems-design` |
 | technical-design | `artifacts/technical-design.md` | `approved` | `technical-design` |
+| visual-direction | `artifacts/visual-direction-brief.md` | `approved` | `visual-direction-grilling` |
 | visual-direction | `artifacts/visual-direction.md` | `frozen` | `visual-direction` |
 | planning | `artifacts/implementation-plan.md` | `approved` | `implementation-plan` |
 | production | `artifacts/scene-boundaries/<scene_id>.md` | `approved` | `scene-boundary-<scene_id>` |

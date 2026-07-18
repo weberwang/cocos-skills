@@ -7,6 +7,7 @@ schema_version: 3
 stage: visual-direction
 status: draft # draft | blocked | frozen | superseded
 visual_direction_version: 1
+visual_direction_brief_hash: sha256:<approved global visual direction brief hash>
 requirements_hash: sha256:<approved requirements hash>
 systems_design_hash: sha256:<approved systems design hash>
 technical_design_hash: sha256:<approved technical design hash>
@@ -89,7 +90,7 @@ content_hash: sha256:<normalized content excluding content_hash and approval.sub
 ## 字段规则
 
 - `visual_direction_version` 必须大于同项目已存在的最大版本；冻结版本不可原地修改。
-- `requirements_hash`、`systems_design_hash`、`technical_design_hash`、`project_profile_hash`、引用哈希和 `content_hash` 必须为 `sha256:` 值。
+- `visual_direction_brief_hash`、`requirements_hash`、`systems_design_hash`、`technical_design_hash`、`project_profile_hash`、引用哈希和 `content_hash` 必须为 `sha256:` 值。视觉方向拷问工件的确认和人工审批必须同时绑定该哈希对应的当前内容。
 - `orientation` 与 `design_resolution` 必须逐字段复制自冻结 `project-profile.yaml`，包括 `source`；不允许模板默认值覆盖它们。
 - `references` 每项都必须有非空 `path`、`purpose`、`source`、`license_status` 和 `content_hash`。授权未知或不兼容时为 `blocked`。
 - `commercial_benchmarks` 必须有 3–5 项；每项均有标题、公开来源、至少一个 `adopt_patterns` 和 `avoid_patterns`，且 `use` 固定为 `analysis-only`。它们只允许用于抽象模式分析，不能复制素材、品牌或页面布局。
@@ -105,4 +106,4 @@ content_hash: sha256:<normalized content excluding content_hash and approval.sub
 
 ## 失效规则
 
-下列任一变化都使冻结失效：需求、系统设计、技术设计或项目配置哈希，方向、分辨率、引用内容或授权状态、任一参考效果图、图像提示词或生成器元数据。写入者将旧工件标为 `superseded` 并在任务结果中请求总控将 `planning` 至 `completed` 标为失效；禁止本 Skill 改写总控状态。
+下列任一变化都使冻结失效：全局视觉方向拷问工件、需求、系统设计、技术设计或项目配置哈希，方向、分辨率、引用内容或授权状态、任一参考效果图、图像提示词或生成器元数据。写入者将旧工件标为 `superseded` 并在任务结果中请求总控将 `planning` 至 `completed` 标为失效；禁止本 Skill 改写总控状态。

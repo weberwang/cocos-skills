@@ -29,7 +29,7 @@ Never accept a child-agent result that only says completion; require artifacts, 
 | `requirements` | `$cocos-define-game` |
 | `systems-design` | `$cocos-design-game-systems` |
 | `technical-design` | `$cocos-define-technical-design` |
-| `visual-direction` | `$cocos-freeze-visual-direction` |
+| `visual-direction` | 先派发 `$grilling` 全局视觉方向拷问并获得哈希绑定人工确认，再派发 `$cocos-freeze-visual-direction` |
 | `planning` | `$cocos-plan-project` |
 | `production` | 先派发核心玩法原型（`vertical_slice`：`$cocos-implement-game` 原型代码 → `$cocos-integrate-assets`，传入 `integration_mode=prototype` → `$cocos-verify-game` vertical-slice → 人工确认）；确认后才派发 `$cocos-implement-game` 的模块拆分/全局骨架，再按 `business_flow_levels` 从低到高编排正式 `scene_loop` 的 `$grilling` 场景功能边界拷问 → `$cocos-create-pencil-draft` → `$cocos-create-visual-concept` → `$cocos-generate-game-assets` / `$cocos-implement-game` → 人工评审；推进到 `is_core_gameplay` 场景时必须按正式版本实现；同级无冲突任务可并行，但 `visual-concept` 始终逐场景串行 |
 | `integration` | `$cocos-integrate-assets`，传入 `integration_mode=release`，并绑定全部已批准场景资源清单 |
@@ -81,7 +81,9 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 ## 视觉质量门禁
 
-视觉方向必须同时包含完整的 `game_art_system`、`ui_system`、商业基准、颜色 token、克制/发散预算和功能 UI 规则，以及职责分别为 `game-art-quality-anchor` 和 `ui-system-quality-anchor` 的两张参考图。效果图严格按实施计划中的 `scene_loops` 顺序逐场景推进：任意时刻最多一个活动 `visual-concept` 任务；当前场景最终图通过质量门槛并获得哈希绑定人工批准后，才能派发下一个场景的效果图任务。禁止一次派发多个页面、整套页面生成或多页面拼图。
+进入视觉冻结前，总控必须先派发唯一的只读 `$grilling` 全局视觉方向拷问任务，输出 `artifacts/visual-direction-brief.md`。工件必须覆盖目标用户与体验、原画/UI 风格、商业品质基准、统一视觉语言、颜色/字体/图标/材质/光影/动效边界、两张质量锚点职责、克制与焦点预算、设备与性能限制、禁止元素、全局不变量、场景可变量和人工验收标准；只有用户确认与人工审批都绑定当前 `content_hash` 且未决问题为空，才能派发 `$cocos-freeze-visual-direction`。
+
+冻结视觉方向必须消费并绑定已批准的全局视觉方向拷问工件，同时包含完整的 `game_art_system`、`ui_system`、商业基准、颜色 token、克制/发散预算和功能 UI 规则，以及职责分别为 `game-art-quality-anchor` 和 `ui-system-quality-anchor` 的两张参考图。效果图严格按实施计划中的 `scene_loops` 顺序逐场景推进：任意时刻最多一个活动 `visual-concept` 任务；当前场景最终图通过质量门槛并获得哈希绑定人工批准后，才能派发下一个场景的效果图任务。禁止一次派发多个页面、整套页面生成或多页面拼图。
 
 单场景结果必须证明：至少三个实质不同的原画候选、候选评审、可编辑 UI 源、真实文案清单、至少一轮缺陷驱动精修、全部捕获视口证据和最终图人工批准。候选仅允许探索同一个场景，不构成批量页面生成。
 
@@ -89,7 +91,7 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 ## 人工门禁
 
-在项目配置、需求、系统设计、技术设计、视觉方向、实施计划、核心玩法垂直切片、场景功能边界、Pencil 场景/UI 草图、高保真场景效果图、人工验证和交付各门禁处记录明确的人工批准及其版本。技术设计与实施计划还必须分别批准每个场景的节点/组件结构与可执行 `scene_blueprint`；场景根、运行时根、Canvas/UI 根、游戏内容根及条件 UI/安全区/相机/输入节点的稳定 ID、父子关系、组件和读回断言不完整时，禁止派发正式代码或全局集成。生产阶段顺序为：先核心玩法原型确认，再模块拆分与全局骨架，再按单场景正式循环执行 `场景功能边界拷问 → Pencil 草图 → 高保真效果图 → 资源/代码 → 人工评审`，待全部循环完成后再执行全局 `集成 → 验证`；不得要求其他场景先完成设计，也不得在玩法未确认前启动正式模块划分。场景边界未通过用户确认不得进入 Pencil 草图；高保真图必须绑定已批准边界、冻结视觉版本、内容哈希、两张全局参考效果图、颜色 token、克制/发散 profile、功能 UI 规则和通过的质量评分，任一项缺失或超预算均不得进入资源/代码。任何局部视觉变更均须返回视觉冻结。Never advance past an approval gate without explicit human approval.
+在项目配置、需求、系统设计、技术设计、全局视觉方向拷问、视觉冻结、实施计划、核心玩法垂直切片、场景功能边界、Pencil 场景/UI 草图、高保真场景效果图、人工验证和交付各门禁处记录明确的人工批准及其版本。技术设计与实施计划还必须分别批准每个场景的节点/组件结构与可执行 `scene_blueprint`；场景根、运行时根、Canvas/UI 根、游戏内容根及条件 UI/安全区/相机/输入节点的稳定 ID、父子关系、组件和读回断言不完整时，禁止派发正式代码或全局集成。视觉阶段必须先执行 `全局视觉方向拷问 → 视觉冻结`；拷问工件未获哈希绑定用户确认和人工审批前，不得生成视觉规范或质量锚点。生产阶段顺序为：先核心玩法原型确认，再模块拆分与全局骨架，再按单场景正式循环执行 `场景功能边界拷问 → Pencil 草图 → 高保真效果图 → 资源/代码 → 人工评审`，待全部循环完成后再执行全局 `集成 → 验证`；不得要求其他场景先完成设计，也不得在玩法未确认前启动正式模块划分。场景边界未通过用户确认不得进入 Pencil 草图；高保真图必须绑定已批准边界、冻结视觉版本、内容哈希、两张全局参考效果图、颜色 token、克制/发散 profile、功能 UI 规则和通过的质量评分，任一项缺失或超预算均不得进入资源/代码。任何局部视觉变更均须返回全局视觉方向拷问并产生新的视觉冻结版本。Never advance past an approval gate without explicit human approval.
 
 项目配置的 `review_mode` 仅可为 `full` 或 `lean`：`full` 在每次设计、技术、视觉与生产交接时追加领域审查；`lean` 只在阶段交接时追加审查。两者都不得跳过哈希绑定的人工审批、视觉质量 P0、其他 P0 或核心玩法垂直切片门禁，禁止 `solo` 模式。
 

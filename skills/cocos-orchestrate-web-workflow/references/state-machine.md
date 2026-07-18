@@ -17,7 +17,7 @@ blocked → pending | running
 
 ## 决策变更拷问门禁
 
-`grilling` 不是主状态。仅在已批准的 `requirements`、`systems-design`、`technical-design` 或 `planning` 发生决策性返工时，总控将该阶段置为 `blocked` 并派发只读 `$grilling` 任务。事实勘误、文案、资产、实现、验证与交付不适用。
+`grilling` 不是主状态。首次进入 `visual-direction` 时必须先执行一次全局视觉方向拷问；此外，仅在已批准的 `requirements`、`systems-design`、`technical-design`、`visual-direction` 或 `planning` 发生决策性返工时，总控将该阶段置为 `blocked` 并派发只读 `$grilling` 任务。事实勘误、文案、资产、实现、验证与交付不适用。
 
 `$grilling` 返回与 `decision_change` 同阶段、同 `subject_hash` 的明确用户确认后，总控才可写入 `approval_gates.grilling-<stage>`，并按 `blocked → pending` 重派发目标阶段。门禁缺失、未确认或哈希不匹配时，不得进入 `running`，也不得接受目标阶段工件。该门禁不替代阶段工件的哈希绑定人工审批。
 
@@ -41,7 +41,7 @@ blocked → pending | running
 | `requirements` | 项目配置门禁通过 | 需求工件、验收项和人工批准 |
 | `systems-design` | 需求已批准 | `artifacts/systems-design.md` 的 MVP 系统、设计支柱、哈希和人工批准 |
 | `technical-design` | 系统设计已批准 | `artifacts/technical-design.md` 的 ADR、性能/无障碍约束、哈希和人工批准 |
-| `visual-direction` | 需求、系统设计与技术设计已冻结 | `artifacts/visual-direction.md` 的版本、哈希、两张参考效果图和人工批准 |
+| `visual-direction` | 需求、系统设计与技术设计已冻结 | 先完成 `artifacts/visual-direction-brief.md` 的全局视觉方向拷问、用户确认与人工审批，再完成 `artifacts/visual-direction.md` 的版本、哈希、两张参考效果图和人工批准 |
 | `planning` | 视觉方向版本/哈希匹配 | `implementation-plan.md`、`capture-manifest.yaml`、每场景可执行 `scene_blueprint`（节点树、组件、属性与读回断言）、每场景 Pencil/高保真任务、单编辑器写者和人工批准 |
 | `production` | 计划已批准且任务路径不冲突 | 先完成核心玩法原型并获垂直切片人工批准，随后才允许模块拆分/全局骨架与正式 scene loops；每个正式 scene loop 依次完成场景功能边界拷问与人工确认、Pencil 草图、高保真效果图、场景资源清单、代码产物和人工评审；核心玩法场景推进到正式循环时必须按正式版本实现 |
 | `integration` | 全部正式 scene loops 通过且所有场景资源清单均已批准 | 唯一 Cocos 写者先落地并读回所有 `scene_blueprint` 节点/组件，再完成正式导入、绑定和读回证据，并绑定全部 `artifacts/game-assets/<scene_id>.yaml` 哈希 |
