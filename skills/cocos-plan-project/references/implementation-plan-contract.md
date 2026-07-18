@@ -23,6 +23,26 @@ approval:
   approved_by: null
   approved_at: null
 scenes: []
+scene_blueprints:
+  - scene_id: menu
+    scene_path: assets/scenes/menu.scene
+    source_structure_hash: sha256:<technical-design scene_structure entry>
+    nodes:
+      - id: menu-scene-root
+        name: MenuScene
+        parent_id: null
+        role: scene-root
+        required: true
+        components: [] # 每项含 type、properties、required_properties
+        readback_assertions: []
+      - id: menu-runtime-root
+        name: RuntimeRoot
+        parent_id: menu-scene-root
+        role: runtime-root
+        required: true
+        components: []
+        readback_assertions: []
+    conditions: [] # 条件节点的启用条件；未满足时不得写入该节点
 prefabs: []
 scripts: []
 # production 唯一实现顺序：
@@ -164,7 +184,10 @@ content_hash: sha256:<规范化内容，不含 content_hash 与 approval.subject
 
 ## 必填结构
 
-- `scenes` 每项含 `id`、`path`、`purpose`、`entry`、`exit`、`node_ids`、`prefab_ids`、`script_ids`、`asset_ids`、`acceptance_ids`。
+- `scenes` 每项含 `id`、`path`、`purpose`、`entry`、`exit`、`node_ids`、`prefab_ids`、`script_ids`、`asset_ids`、`acceptance_ids`；`node_ids` 必须与同一 `scene_blueprint.nodes[].id` 精确一致，不能作为节点结构的替代品。
+- `scene_blueprints` 必须与 `scenes` 一一对应，且每项含 `scene_id`、`scene_path`、技术设计结构来源哈希、`nodes` 与条件。节点必须具有全局稳定 `id`、名称、`parent_id`、角色、`required`、组件声明和非空读回断言；组件声明必须包含 `type`、`properties` 与 `required_properties`。除场景根外的所有父节点都必须存在于同一蓝图，节点不得形成循环。
+- 每个蓝图必须声明且仅声明一个 `scene-root`、一个 `runtime-root`、一个 `canvas`/`ui-root` 与一个 `gameplay-root`。存在 UI 时，必须声明 `hud` 与 `overlay`；`safe_area.enabled: true` 时必须声明 `safe-area`。相机、输入、列表、弹窗或其他交互组件必须由需求/技术设计显式驱动，不得在集成阶段临时猜测或补建。
+- 蓝图中的 `readback_assertions` 必须至少验证节点稳定 ID、父节点、每个必需组件类型及其 `required_properties`；Cocos 编辑器集成必须在导入资产和代码绑定前通过这些断言。
 - `prefabs` 每项含 `id`、`path`、`purpose`、`node_tree`、`component_bindings`、`asset_ids`、`acceptance_ids`。
 - `scripts` 每项含 `id`、`path`、`class_name`、`responsibility`、`exports`、`depends_on`、`test_path`、`acceptance_ids`。脚本不包含编辑器写入步骤。
 - `asset_dependencies` 每项含 `id`、`source_path`、`target_path`、`asset_type`、`license_status`、`consumers`、`depends_on`。未知许可证阻塞。
@@ -172,7 +195,7 @@ content_hash: sha256:<规范化内容，不含 content_hash 与 approval.subject
 - 原型任务：`core-gameplay-code` 与其集成/验证任务必须声明 `scene_id` 且属于 `vertical_slice.scene_ids`；不得声明正式 `module_ids` 依赖。
 - 正式任务：每个 `pencil-draft`、`visual-concept`、`code` 与 `asset-preparation` 必须声明 `scene_id` 与 `business_flow_level`。`visual-concept` 必须依赖同场景 `pencil-draft`；`code` 与 `asset-preparation` 必须依赖同场景 `visual-concept`，并在 `inputs` 中记录同一 Pencil/高保真批准哈希、全局视觉版本、内容哈希及两张参考效果图。每个正式 `code` 还必须依赖 `module_decomposition` 与 `global_scaffold`。每个正式循环必须以 `human-review` 收口。`integration` 只允许位于全局 integration 阶段，按 `batch_index` 串行并依赖全部 `business_flow_levels` 的完成门禁。
 - `path_ownership.production_writers` 中每个任务的可写路径不得重叠；`cocos_writer` 必须是非空单个任务 ID，且所有 integration 任务均引用它。
-- `integration_batches` 每项含 `batch_index`、`task_ids`、`readback_checks`；批次序号连续，每批结束均要读回验证。
+- `integration_batches` 每项含 `batch_index`、`task_ids`、`scene_blueprint_ids`、`readback_checks`；批次序号连续，每批结束均要读回验证。每个正式场景的节点/组件落地批次必须先于该场景的资源导入与绑定批次，且两类批次都不能省略。
 
 ## 批准与哈希
 

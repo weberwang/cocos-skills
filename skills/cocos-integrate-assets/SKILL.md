@@ -10,7 +10,7 @@ Perform the only Cocos MCP write phase in an approved plan. Serially import asse
 ## Block before editor writes
 
 1. Read the three orchestrator references, [the integration contract](references/integration-contract.md), project profile, requirements, frozen visual direction, `implementation-plan.md`, code-binding manifest, and asset-production results.
-2. Compare project-profile, requirements, visual-direction version and hash, implementation-plan, code-manifest, and every asset-artifact hash. On missing, mismatched, stale, or unapproved input, return `blocked` or `stale` and do not write.
+2. Compare project-profile, requirements, visual-direction version and hash, implementation-plan, code-manifest, every scene blueprint hash, and every asset-artifact hash. On missing, mismatched, stale, or unapproved input, return `blocked` or `stale` and do not write.
 3. Call `/health` and `tools/list` or `/capabilities` and save the current capability snapshot. Block if required import, query, node or component write, or save capability is not explicitly present. Never guess tool names or parameters.
 4. Require `ownership.yaml.active_cocos_writers` to contain only this task and require plan `cocos_writer` to name this task. Reject another active writer, parallel batches, and path ownership conflicts.
 5. Reject default overwrite, deletion, movement, project-settings change, editor restart or exit, and unauthorized tools. Allow `overwrite: true` only with human approval that names the target, reason, and evidence; otherwise block that item.
@@ -19,10 +19,11 @@ Perform the only Cocos MCP write phase in an approved plan. Serially import asse
 ## Serial integration protocol
 
 1. For `prototype`, require one `scene_loop_id` in `vertical_slice.scene_ids`. For `release`, require the global integration task to list every completed `scene_loop_id` and approved per-scene asset manifest. Process `integration_batches.batch_index` in order. Query stable IDs for resources, scenes, nodes, and components before each modification.
-2. Import only planned, licensed assets with non-conflicting target paths. Read back resource metadata and verify type, path, and reference ID.
-3. Apply the binding-manifest `binding_order` with minimal writes to planned nodes, components, properties, and resource references. Do not run opaque bulk scripts.
-4. Save the current scene and immediately read back every node, component, property, and asset reference. Run that batch's `readback_checks`. On failure, stop later batches, preserve evidence, and return `failed`; do not continue with improvised repair.
-5. Start the next batch only after the previous read-back passes. Write the prototype or global release integration report, scene read-back evidence, and result when complete; the orchestrator performs state transition. Formal scene loops are already complete before release integration starts.
+2. 在导入任何资源或脚本绑定前，按当前批次的 `scene_blueprint` 查询每个声明节点与组件。只创建缺失的计划节点、按计划父子关系挂接、添加缺失的计划组件并设置已声明属性；已有节点或组件的稳定 ID、父节点或关键属性与蓝图不一致时停止并返回 `failed`，不得覆盖、移动或猜测修复。
+3. 保存场景并读回蓝图的节点稳定 ID、父子关系、组件类型和 `required_properties`。场景结构断言全部通过后，才可导入计划资源；读取资源元数据并验证类型、路径和引用 ID。
+4. Apply the binding-manifest `binding_order` with minimal writes to planned nodes, components, properties, and resource references. 每项绑定都必须引用已通过读回的蓝图节点与组件；不得向蓝图外节点添加组件。Do not run opaque bulk scripts.
+5. Save the current scene and immediately read back every node, component, property, and asset reference. Run that batch's `readback_checks`. On failure, stop later batches, preserve evidence, and return `failed`; do not continue with improvised repair.
+6. Start the next batch only after the previous read-back passes. Write the prototype or global release integration report, scene read-back evidence, and result when complete; the orchestrator performs state transition. Formal scene loops are already complete before release integration starts.
 
 ## Result and invalidation
 

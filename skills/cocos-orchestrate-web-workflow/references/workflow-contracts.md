@@ -124,6 +124,8 @@
 
 production 开始后，总控必须先完成 `vertical_slice` 核心玩法原型任务并获得人工批准，然后才可派发 `module_decomposition`、`global_scaffold` 与正式场景任务。其后仅派发最低未完成 `business_flow_level` 的任务。同级可在路径无冲突且依赖已满足时并行；后一等级任务必须直接依赖前一等级所有 `completion_task_ids`，并在这些任务的 `passed` 结果、证据和验收检查全部有效后才可派发。`is_core_gameplay: true` 的正式循环必须走完整 Pencil → 效果图 → 资源 → 代码路径。
 
+每个正式场景任务必须在 `inputs` 中携带对应 `scene_blueprint` 的 `scene_id`、内容哈希、节点稳定 ID 清单和组件读回断言。总控在派发正式代码、资源绑定或集成任务前，验证蓝图与实施计划一一对应，且包含场景根、运行时根、Canvas/UI 根、游戏内容根，以及按冻结配置和需求启用的安全区、HUD、弹层、相机、输入节点。缺失节点、组件、父子关系或读回断言均为 P0，任务保持 `blocked`。
+
 正式 `visual-concept` 任务必须遵守 `1 task : 1 scene_id : 1 final image`，并按实施计划 `scene_loops` 的顺序串行派发。任意时刻 `active_task_ids` 中最多存在一个 `visual-concept`；当前场景的 `final-human-review` 未通过前，不得派发下一场景的候选生成。验收检查必须包含 `single-scene-scope`、`candidate-count`、`candidate-review`、`editable-ui-source`、`exact-copy`、`refinement-round`、`visual-quality-scores`、`capture-profile-legibility` 和 `final-human-review`。缺失任一项时不得接受结果或启动下一个场景。
 
 ## 代理返回契约

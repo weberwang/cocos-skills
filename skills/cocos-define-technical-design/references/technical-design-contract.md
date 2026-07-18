@@ -11,6 +11,16 @@ requirements_hash: sha256:<approved requirements>
 systems_design_hash: sha256:<approved systems design>
 architecture:
   scene_boundaries: []
+  scene_structure:
+    - scene_id: <stable scene id>
+      required_nodes:
+        - id: <stable node id>
+          name: <editor node name>
+          parent_id: null # 场景根节点使用 null；其余节点必须指向同场景节点
+          role: <scene-root | runtime-root | canvas | ui-root | gameplay-root | hud | overlay | safe-area | camera | input>
+          required: true
+          components: [] # 每项含 type、properties、required_properties
+      conditional_nodes: [] # 每项同 required_nodes，并额外含 when
   module_boundaries: []
   event_boundaries: []
   resource_strategy: <strategy>
@@ -34,4 +44,6 @@ content_hash: sha256:<normalized content excluding content_hash and approval.sub
 - 三个输入哈希必须与当前已批准工件一致；`adrs` 的 `id` 唯一，每项均须含问题、备选项、决定、后果和验证方式。
 - 每个 `high` 风险系统至少有一条 ADR；性能预算的数值必须为正数，触控目标不得低于 44 CSS 像素。
 - `control_manifest` 必须同时包含非空的 `required_patterns` 与 `forbidden_patterns`；`unresolved_questions` 非空时不得批准。
+- `scene_structure` 必须覆盖全部可交付 `scene_boundaries`。每个场景必须有唯一的场景根、运行时根、Canvas/UI 根和游戏内容根；存在 UI 时必须包含 HUD 与弹层层级，启用安全区时必须包含安全区容器。需要相机或输入节点时，必须声明对应节点、组件和启用原因；不得把未验证的组件类型写入此字段。
+- 节点 ID 在同一技术设计内必须全局唯一；除场景根外，`parent_id` 必须引用同场景已声明节点。每个必需组件都要声明类型、关键属性及其验证方式，供实施计划生成可执行的场景蓝图。
 - 仅在人工批准与 `content_hash` 绑定时使用 `status: approved`；任一输入变化均使工件 `stale`。

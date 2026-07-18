@@ -42,9 +42,9 @@ blocked → pending | running
 | `systems-design` | 需求已批准 | `artifacts/systems-design.md` 的 MVP 系统、设计支柱、哈希和人工批准 |
 | `technical-design` | 系统设计已批准 | `artifacts/technical-design.md` 的 ADR、性能/无障碍约束、哈希和人工批准 |
 | `visual-direction` | 需求、系统设计与技术设计已冻结 | `artifacts/visual-direction.md` 的版本、哈希、两张参考效果图和人工批准 |
-| `planning` | 视觉方向版本/哈希匹配 | `implementation-plan.md`、`capture-manifest.yaml`、每场景 Pencil/高保真任务、单编辑器写者和人工批准 |
+| `planning` | 视觉方向版本/哈希匹配 | `implementation-plan.md`、`capture-manifest.yaml`、每场景可执行 `scene_blueprint`（节点树、组件、属性与读回断言）、每场景 Pencil/高保真任务、单编辑器写者和人工批准 |
 | `production` | 计划已批准且任务路径不冲突 | 先完成核心玩法原型并获垂直切片人工批准，随后才允许模块拆分/全局骨架与正式 scene loops；每个正式 scene loop 的已批准 Pencil 草图、高保真效果图、场景资源清单、代码产物和人工评审；核心玩法场景推进到正式循环时必须按正式版本实现 |
-| `integration` | 全部正式 scene loops 通过且所有场景资源清单均已批准 | 唯一 Cocos 写者的正式导入、绑定和读回证据，并绑定全部 `artifacts/game-assets/<scene_id>.yaml` 哈希 |
+| `integration` | 全部正式 scene loops 通过且所有场景资源清单均已批准 | 唯一 Cocos 写者先落地并读回所有 `scene_blueprint` 节点/组件，再完成正式导入、绑定和读回证据，并绑定全部 `artifacts/game-assets/<scene_id>.yaml` 哈希 |
 | `verification` | 集成结果有效 | Chrome 对全部冻结 mobile profiles 的截图、交互、基线和像素差证据 |
 | `building` | 验证门禁已批准 | 成功构建日志、产物清单和哈希 |
 | `delivery` | 构建产物未失效 | 本地交付包、运行说明和人工批准 |
