@@ -16,6 +16,7 @@
 │   ├── implementation-plan.md
 │   ├── pencil-drafts/
 │   ├── scene-concepts/
+│   ├── scene-boundaries/
 │   ├── game-assets/
 │   ├── generation-requests/
 │   └── verification.md
@@ -25,7 +26,7 @@
 │   ├── concepts/
 │   ├── visual-references/
 │   └── runtime-baselines/
-└── reports/chrome/
+└── reports/human-review/
 ```
 
 所有路径均相对项目根目录。初始化器必须先在项目根目录内的唯一临时目录生成完整结构，再通过一次同卷重命名发布为 `.cocos-workflow/`；失败时清理临时目录且不得留下目标目录。
@@ -122,9 +123,13 @@
 
 递归扫描 `inputs` 时，映射键 `visual`、`visual_direction`、`scene_concept`，以及列表项 `type=visual|visual-direction|scene-concept` 都是视觉依赖。每个视觉依赖必须包含非空 `version` 和 `sha256:` `content_hash`；缺失时拒绝派发或验收。
 
-production 开始后，总控必须先完成 `vertical_slice` 核心玩法原型任务并获得人工批准，然后才可派发 `module_decomposition`、`global_scaffold` 与正式场景任务。其后仅派发最低未完成 `business_flow_level` 的任务。同级可在路径无冲突且依赖已满足时并行；后一等级任务必须直接依赖前一等级所有 `completion_task_ids`，并在这些任务的 `passed` 结果、证据和验收检查全部有效后才可派发。`is_core_gameplay: true` 的正式循环必须走完整 Pencil → 效果图 → 资源 → 代码路径。
+production 开始后，总控必须先完成 `vertical_slice` 核心玩法原型任务并获得人工批准，然后才可派发 `module_decomposition`、`global_scaffold` 与正式场景任务。其后仅派发最低未完成 `business_flow_level` 的任务。同级可在路径无冲突且依赖已满足时并行；后一等级任务必须直接依赖前一等级所有 `completion_task_ids`，并在这些任务的 `passed` 结果、证据和验收检查全部有效后才可派发。`is_core_gameplay: true` 的正式循环必须走完整 场景功能边界拷问 → Pencil → 效果图 → 资源/代码 → 人工评审路径。
+
+每个正式场景在 Pencil 草图开始前必须派发唯一的 `role: grilling`、`kind: scene-boundary-grilling` 任务。该任务只能写 `artifacts/scene-boundaries/<scene_id>.md`、任务结果和报告，必须携带 `scene_boundary` 输入（`scene_id`、`scene_loop_id`、场景蓝图、需求、系统设计、技术设计、实施计划、冻结视觉方向及其哈希），并返回哈希绑定的 `scene_boundary_confirmation`。总控只在确认与人工批准均绑定该边界 `content_hash`、未决问题为空后，才可派发该场景的 `pencil-draft`；Pencil、高保真图、资源/代码及后续绑定/集成必须携带同一边界哈希。该门禁是 P0，原型 `vertical_slice` 例外，正式核心玩法场景不例外。
 
 每个正式场景任务必须在 `inputs` 中携带对应 `scene_blueprint` 的 `scene_id`、内容哈希、节点稳定 ID 清单和组件读回断言。总控在派发正式代码、资源绑定或集成任务前，验证蓝图与实施计划一一对应，且包含场景根、运行时根、Canvas/UI 根、游戏内容根，以及按冻结配置和需求启用的安全区、HUD、弹层、相机、输入节点。缺失节点、组件、父子关系或读回断言均为 P0，任务保持 `blocked`。
+
+验证任务必须携带 `verification_mode: human-review`、冻结 `initial_scene` 与 capture manifest 的人工审核哈希绑定。总控只接受人工审核者提供并签署的操作记录、截图、日志、像素比较和结论；自动预览、Chrome、Cocos MCP、构建产物、静态服务或打包文件的运行记录均不是验证证据。`building` 与 `delivery` 仅生成和校验交付物完整性，不得重新运行游戏。
 
 正式 `visual-concept` 任务必须遵守 `1 task : 1 scene_id : 1 final image`，并按实施计划 `scene_loops` 的顺序串行派发。任意时刻 `active_task_ids` 中最多存在一个 `visual-concept`；当前场景的 `final-human-review` 未通过前，不得派发下一场景的候选生成。验收检查必须包含 `single-scene-scope`、`candidate-count`、`candidate-review`、`editable-ui-source`、`exact-copy`、`refinement-round`、`visual-quality-scores`、`capture-profile-legibility` 和 `final-human-review`。缺失任一项时不得接受结果或启动下一个场景。
 
@@ -162,6 +167,7 @@ Markdown 工件的 front matter 承载 `schema_version`、`stage`、状态、版
 | technical-design | `artifacts/technical-design.md` | `approved` | `technical-design` |
 | visual-direction | `artifacts/visual-direction.md` | `frozen` | `visual-direction` |
 | planning | `artifacts/implementation-plan.md` | `approved` | `implementation-plan` |
+| production | `artifacts/scene-boundaries/<scene_id>.md` | `approved` | `scene-boundary-<scene_id>` |
 | production | `artifacts/game-assets/<scene_id>.yaml` | `approved` | `game-assets` |
 | verification | `artifacts/verification.md` | `passed` | `verification` |
 | delivery | `artifacts/delivery.md` | `passed` | `delivery` |

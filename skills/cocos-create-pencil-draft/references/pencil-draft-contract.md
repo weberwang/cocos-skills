@@ -8,6 +8,7 @@ status: pending # pending | blocked | rejected | approved | stale
 stage: production
 scene_id: home
 scene_loop_id: scene-loop-home
+scene_boundary_hash: sha256:<approved scene boundary artifact hash>
 requirements_hash: sha256:<hash>
 project_profile_hash: sha256:<hash>
 visual_direction: {version: 1, content_hash: sha256:<hash>}
@@ -30,8 +31,9 @@ content_hash: sha256:<normalized content excluding content_hash and approval.sub
 ```
 
 - 源文件与预览必须存在于任务分配的 `art/concepts/<scene_id>/`，且二进制 SHA-256 与记录一致。
+- `scene_boundary_hash` 必须绑定同场景已确认且已批准的边界工件；草图必须逐项覆盖其玩家动作、UI 状态、失败/空态、返回路径和验收 ID，不得以视觉简化为由遗漏功能。
 - `copy_inventory_path` 必须列出所有可见真实文案、用途和最大长度，不得以 lorem、乱码或未批准占位文案替代。
 - `structural_checks` 必须覆盖页面结构、原画保留区、视线动线、主操作、UI 层级、导航/交互区域、触控尺寸、文案适配和安全区。
 - `functional_visual_checks` 必须覆盖主操作可辨识、交互区域、信息层级、状态反馈位置和文本容量；缺少任一项不得进入高保真效果图阶段。
 - `viewport_previews` 必须覆盖项目配置中的全部捕获视口，至少包含 mobile-small、mobile-standard、mobile-large；任一截断、重叠或焦点遮挡均阻塞批准。
-- `status: approved` 时，全部结构检查通过，且 `approval.subject_hash == content_hash`；`review_evidence.pencil_source_hash` 必须等于 `pencil_source_hash`。草图源文件、预览、结构或冻结输入变化均使该场景全部下游结果 `stale`。
+- `status: approved` 时，全部结构检查通过，且 `approval.subject_hash == content_hash`；`review_evidence.pencil_source_hash` 必须等于 `pencil_source_hash`。场景边界、草图源文件、预览、结构或冻结输入变化均使该场景全部下游结果 `stale`。

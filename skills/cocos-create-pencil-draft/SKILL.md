@@ -15,18 +15,18 @@ Read the orchestrator contracts and [Pencil draft contract](references/pencil-dr
 
 ## Procedure
 
-1. Read the assigned `pencil-draft` task, approved implementation plan, requirements, frozen project profile, and frozen visual direction. Confirm the task owns exactly one `scene_id` and its paths do not overlap another loop.
-2. 创建或更新 Pencil 源文件和预览。定义页面结构、游戏原画保留区、视线动线、主操作、UI 层级、导航、交互区域和移动端安全区；所有可见文案使用已批准的真实文本，并标注 normal、pressed、disabled、selected 等需要的组件状态。不得选择新的调色板、字体、图标、材质、光影或动效语言。
+1. Read the assigned `pencil-draft` task, approved implementation plan, requirements, frozen project profile, frozen visual direction, current `scene_blueprint`, and approved `artifacts/scene-boundaries/<scene_id>.md`. Confirm the task owns exactly one `scene_id`, its paths do not overlap another loop, and the boundary approval and confirmation both bind the current boundary hash; otherwise return `blocked`.
+2. 创建或更新 Pencil 源文件和预览。以已批准的场景功能边界为功能清单，定义页面结构、游戏原画保留区、视线动线、主操作、UI 层级、导航、交互区域和移动端安全区，逐项覆盖玩家动作、UI 状态、失败/空态、返回路径和验收 ID；所有可见文案使用已批准的真实文本，并标注 normal、pressed、disabled、selected 等需要的组件状态。不得选择新的调色板、字体、图标、材质、光影或动效语言，也不得自行缩减或扩张功能边界。
 3. 在 `mobile-small`、`mobile-standard`、`mobile-large` 三个捕获视口检查布局：主操作不得被拇指遮挡，关键触控目标满足冻结最小尺寸，长文案/本地化扩展有明确策略，HUD 不遮挡游戏焦点。用功能视觉检查记录主操作辨识、交互区域、信息层级、状态反馈位置和文本容量。保存源文件、预览、文案清单和视口预览的 SHA-256。
 4. Request explicit human approval of the complete Pencil artifact. Keep the artifact `pending`, `rejected`, or `blocked` until `approval.subject_hash` equals its `content_hash`; record `pencil_source_hash` as review evidence, never as an approval substitute.
 5. Return artifact, hashes, review evidence, and unblock conditions. A changed draft hash invalidates that scene's high-fidelity concept, assets, code, integration, and verification results; the orchestrator performs state changes.
 
 ## Hard Gates
 
-- A Pencil draft must not add or override the frozen global visual direction.
+- A Pencil draft must not add or override the approved scene boundary or frozen global visual direction.
 - Do not start `$cocos-create-visual-concept`, asset preparation, or scene/UI code for this loop without the approved Pencil artifact whose `approval.subject_hash` equals `content_hash`.
 - Reject missing source files, previews, exact-copy inventory, required component states, three viewport checks, hash mismatches, incomplete structural checks, and missing human approval.
 
 ## Handoff
 
-Pass approved `scene_id`, `scene_loop_id`, Pencil source and preview paths, hashes, frozen input hashes, structural checklist, and approval evidence to the high-fidelity concept task.
+Pass approved `scene_id`, `scene_loop_id`, scene-boundary path/hash, Pencil source and preview paths, hashes, frozen input hashes, structural checklist, and approval evidence to the high-fidelity concept task.

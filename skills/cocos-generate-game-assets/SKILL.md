@@ -15,7 +15,7 @@ Read the installed `$cocos-orchestrate-web-workflow` `workflow-contracts.md` and
 
 ## Procedure
 
-1. Read the assigned task, approved implementation asset plan, the approved per-scene `artifacts/scene-concepts/<scene_id>.md` and referenced Pencil-draft artifact, frozen `visual-direction.md`, and frozen `project-profile.yaml`. Block when any required approval, Pencil-draft hash, frozen-reference image hash, visual version/hash, profile hash, orientation, or design resolution does not match.
+1. Read the assigned task, approved implementation asset plan, the approved per-scene `artifacts/scene-concepts/<scene_id>.md` and referenced Pencil-draft artifact, approved `artifacts/scene-boundaries/<scene_id>.md`, frozen `visual-direction.md`, and frozen `project-profile.yaml`. Block when any required approval, scene-boundary confirmation/approval hash, Pencil-draft hash, frozen-reference image hash, visual version/hash, profile hash, orientation, or design resolution does not match. Only prepare assets for functions explicitly inside the approved scene boundary.
 2. Decompose each approved scene into a declared asset list. One `asset_id` has one intended runtime purpose and one independent output image; do not emit a screen crop, asset atlas, or mixed-purpose sheet unless the approved plan explicitly requires it.
 3. Build each asset prompt from the approved final concept, selected game-art layer, editable UI source and frozen direction. Use the asset plan's exact output dimensions; preserve silhouette, material, light direction, edge treatment, color-token roles and usage rules, the approved restraint/expression profile, palette, icon grid and component state from their source. Generate artwork with `$imagegen`; UI文字、关键图标和几何组件优先从可编辑设计源精确导出，不得用重新生成近似图替代。仅在资源用途要求时使用透明背景。
 4. Save each output and metadata under `.cocos-workflow/art/assets/<asset_id>/`. Record source concept path/hash, source reference licenses, generator metadata, final prompt hash, dimensions, alpha/background requirement, and binary SHA-256.
@@ -28,7 +28,7 @@ Read the installed `$cocos-orchestrate-web-workflow` `workflow-contracts.md` and
 - Never derive visual direction, orientation, or resolution from a new prompt default. They must equal the frozen artifacts exactly.
 - Never import, move, rename, or bind an image inside the Cocos project. `$cocos-integrate-assets` owns that later Editor work.
 - Never claim a source or license is known without recorded evidence. Unknown license status blocks approval and integration.
-- Never reuse an approved asset when an upstream concept, visual direction, profile, or asset-plan hash changes.
+- Never reuse an approved asset when an upstream concept, visual direction, profile, asset plan, or scene-boundary hash changes.
 
 ## Handoff
 

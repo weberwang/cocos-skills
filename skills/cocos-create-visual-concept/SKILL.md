@@ -11,7 +11,7 @@ description: Use when an approved Cocos Creator Web Mobile implementation plan a
 
 只写任务分配的 `.cocos-workflow/art/concepts/<scene_id>/`、`.cocos-workflow/artifacts/scene-concepts/<scene_id>.md` 和结果/报告路径。不得写 `workflow.yaml`、Cocos 场景、运行时资源、脚本或项目配置，不得调用 Cocos MCP 写操作。
 
-工作前读取总控的 `workflow-contracts.md`、`state-machine.md`、冻结视觉方向、已批准 Pencil 草图、[场景效果图契约](references/scene-concept-contract.md) 和 [高质量提示词模板](references/mobile-scene-prompt-template.md)。所有生成的游戏原画层都必须使用 `$imagegen`。
+工作前读取总控的 `workflow-contracts.md`、`state-machine.md`、冻结视觉方向、已批准的场景功能边界、已批准 Pencil 草图、[场景效果图契约](references/scene-concept-contract.md) 和 [高质量提示词模板](references/mobile-scene-prompt-template.md)。场景边界与 Pencil 必须属于同一 `scene_id` 且哈希链一致。所有生成的游戏原画层都必须使用 `$imagegen`。
 
 ## 专业分工
 
@@ -39,8 +39,8 @@ description: Use when an approved Cocos Creator Web Mobile implementation plan a
 - 不得把 ImageGen 生成的伪文字当作 UI 文案；关键文字和图标必须精确、可编辑、可实现。
 - 不得缺少克制/发散 profile，或用额外发散元素绕过冻结的焦点、颜色和视觉强度预算。
 - 不得改变冻结的调色板、字体、造型、材质、光影、图标或动效语言；需要改变时返回视觉冻结阶段创建新版本。
-- 任一质量项低于 4、平均分低于 4.5、视口检查失败或人工未批准时，禁止进入资源与代码生产。
+- 任一质量项低于 4、平均分低于 4.5、视口检查失败或人工未批准时，禁止进入资源与代码生产。场景功能边界必须已在 Pencil 前完成并批准；效果图不得反向改写边界，发现功能冲突时返回边界拷问重新确认。
 
 ## 交接
 
-只交接当前一个已批准场景的条目：`scene_id`、Pencil 路径/哈希、最终图路径/哈希、游戏原画层与 UI 层路径/哈希、候选和精修记录、提示词哈希、两张冻结参考图哈希、视觉版本/哈希、项目配置哈希、方向、分辨率、克制/发散 profile、质量评分和人工审核。不得在交接中附带未审核页面的预生成图；后续阶段将其视为设计依据，不得视为已可直接导入 Cocos 的运行时资源。
+只交接当前一个已批准场景的条目给资源与代码生产：`scene_id`、场景边界路径/哈希、Pencil 路径/哈希、最终图路径/哈希、游戏原画层与 UI 层路径/哈希、候选和精修记录、提示词哈希、两张冻结参考图哈希、视觉版本/哈希、项目配置哈希、方向、分辨率、克制/发散 profile、质量评分和人工审核。不得在交接中附带未审核页面的预生成图。

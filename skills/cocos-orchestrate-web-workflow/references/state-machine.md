@@ -43,10 +43,10 @@ blocked → pending | running
 | `technical-design` | 系统设计已批准 | `artifacts/technical-design.md` 的 ADR、性能/无障碍约束、哈希和人工批准 |
 | `visual-direction` | 需求、系统设计与技术设计已冻结 | `artifacts/visual-direction.md` 的版本、哈希、两张参考效果图和人工批准 |
 | `planning` | 视觉方向版本/哈希匹配 | `implementation-plan.md`、`capture-manifest.yaml`、每场景可执行 `scene_blueprint`（节点树、组件、属性与读回断言）、每场景 Pencil/高保真任务、单编辑器写者和人工批准 |
-| `production` | 计划已批准且任务路径不冲突 | 先完成核心玩法原型并获垂直切片人工批准，随后才允许模块拆分/全局骨架与正式 scene loops；每个正式 scene loop 的已批准 Pencil 草图、高保真效果图、场景资源清单、代码产物和人工评审；核心玩法场景推进到正式循环时必须按正式版本实现 |
+| `production` | 计划已批准且任务路径不冲突 | 先完成核心玩法原型并获垂直切片人工批准，随后才允许模块拆分/全局骨架与正式 scene loops；每个正式 scene loop 依次完成场景功能边界拷问与人工确认、Pencil 草图、高保真效果图、场景资源清单、代码产物和人工评审；核心玩法场景推进到正式循环时必须按正式版本实现 |
 | `integration` | 全部正式 scene loops 通过且所有场景资源清单均已批准 | 唯一 Cocos 写者先落地并读回所有 `scene_blueprint` 节点/组件，再完成正式导入、绑定和读回证据，并绑定全部 `artifacts/game-assets/<scene_id>.yaml` 哈希 |
-| `verification` | 集成结果有效 | Chrome 对全部冻结 mobile profiles 的截图、交互、基线和像素差证据 |
-| `building` | 验证门禁已批准 | 成功构建日志、产物清单和哈希 |
+| `verification` | 集成结果有效 | 人工审核者对全部冻结 mobile profiles 的手动试玩、截图、交互、基线、像素差与签署结论 |
+| `building` | 验证门禁已批准 | 成功构建日志、产物清单和完整性检查；不运行编译产物 |
 | `delivery` | 构建产物未失效 | 本地交付包、运行说明和人工批准 |
 
 `bootstrap` 的 `pending | running | blocked` 可使用 `initial_scene: null`；`bootstrap/passed` 或任何后续阶段必须使用安全的项目相对 `.scene` 路径。Cocos Creator 必须为正式三段版本且不低于 `3.8.6`。每批 Cocos Editor 写入后必须读回验证，才可释放唯一写入权。

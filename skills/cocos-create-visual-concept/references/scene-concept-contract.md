@@ -18,6 +18,7 @@ frozen_reference_effect_images:
 scene_id: home
 scene_loop_id: scene-loop-home
 requirement_page_id: home
+scene_boundary_hash: sha256:<approved scene boundary artifact hash>
 pencil_draft:
   artifact_path: artifacts/pencil-drafts/home.md
   content_hash: sha256:<approved Pencil artifact hash>
@@ -68,6 +69,7 @@ content_hash: sha256:<normalized content excluding content_hash and approval.sub
 ## 验收规则
 
 - 任务、工件、提示词和最终图必须形成严格的 `1 task : 1 scene_id : 1 final image` 关系。`changed_paths` 只允许落在当前场景目录、当前工件和分配的结果路径中。
+- `scene_boundary_hash` 必须绑定同场景已确认且已批准的边界工件，并与 Pencil 工件携带的哈希一致；高保真图必须覆盖该边界的功能状态，不得反向缩减或扩张功能范围。
 - 总控只允许一个活动 `visual-concept` 任务。当前场景的质量检查和最终人工审核通过前，下一个场景不得生成候选图。
 - 两张冻结参考图必须分别承担 `game-art-quality-anchor` 与 `ui-system-quality-anchor`，路径和哈希与冻结视觉方向逐项一致。
 - `candidate_count >= 3`，候选构图必须有实质差异；每个候选必须声明不同的 `composition_strategy`，并在 `review_path` 记录构图叙事、造型剪影、透视纵深、材质光影、色彩控制、克制/发散平衡、风格一致性七维评分、缺陷、入选/淘汰理由和对应图像哈希。每个候选必须有独立 `generation_request_path`/`generation_request_hash`，其内容逐项绑定两个冻结锚点的 role、path、content_hash 与该候选输出路径/哈希。入选候选七维均不低于 4。
@@ -76,4 +78,4 @@ content_hash: sha256:<normalized content excluding content_hash and approval.sub
 - `refinement_rounds` 至少一项，每轮必须引用真实缺陷 ID、输出路径和哈希。
 - `quality_review.scores` 必须覆盖全部十一项；`frozen-direction-consistency` 的证据必须逐项列出 token、budget_bucket、使用区域和对应截图，以验证颜色 token 合规。每项不低于 4，平均分不低于 4.5，且 `blocking_defects` 为空。视口证据必须覆盖项目配置的全部捕获视口。
 - 每项评分必须在工件正文写明可核对的通过条件、失败证据路径和阻断缺陷；禁止只有分数而没有区域标注、截图或设计审查记录。
-- `status: approved` 仅在人工审核精确绑定 `content_hash` 且 `review_evidence.final_image_hash == final_image_hash` 时允许。视觉方向、需求、配置、Pencil、候选选择、UI 源、审核证据或最终图变化时批准失效。
+- `status: approved` 仅在人工审核精确绑定 `content_hash` 且 `review_evidence.final_image_hash == final_image_hash` 时允许。场景边界、视觉方向、需求、配置、Pencil、候选选择、UI 源、审核证据或最终图变化时批准失效。
