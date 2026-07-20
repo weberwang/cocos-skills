@@ -95,9 +95,11 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 项目配置的 `review_mode` 仅可为 `full` 或 `lean`：`full` 在每次设计、技术、视觉与生产交接时追加领域审查；`lean` 只在阶段交接时追加审查。两者都不得跳过哈希绑定的人工审批、视觉质量 P0、其他 P0 或核心玩法垂直切片门禁，禁止 `solo` 模式。
 
-## 子代理规则
+## 团队协作规则
 
-阶段工作一旦满足派发条件，总控必须创建子代理实施，并向子代理提供对应 Skill、明确输入、允许写入路径、预期工件、验收检查和证据要求；总控不得止于输出任务清单、建议后续派发或模拟子代理结果。只有 `workflow.yaml` 初始化、状态迁移、结果验收与门禁判断由总控亲自执行。
+团队固定使用 `team-lead`、`game-designer`、`game-developer`、`visual-designer` 和 `qa-delivery` 五个角色。阶段工作一旦满足派发条件，总控必须按任务类型从 [team-roles.md](references/team-roles.md) 选择唯一主执行角色，使用该角色的预设提示词创建子代理，并附加对应 Skill、明确输入、允许写入路径、预期工件、验收检查和证据要求。Skill 是角色执行任务时使用的能力，不得把 Skill 或每个任务种类扩张成新角色。
+
+`team-lead` 由总控承担，只负责任务派发、结果验收、冲突控制和流程状态维护；不得止于输出任务清单、建议后续派发或模拟子代理结果，也不得替代专业成员完成阶段工作。只有 `workflow.yaml` 初始化、状态迁移、结果验收与门禁判断由总控亲自执行。需要复核时，从现有角色中指定与主执行者不同的交叉检查者，不创建临时 reviewer 角色，也不允许执行者批准自己的结果。
 
 只并行没有共享写入面且依赖已经满足的独立子代理任务。允许分析、检查和资源准备并行；效果图生成即使路径不冲突也必须逐场景串行；所有 Cocos Editor 写入必须排队，每个批次只允许一个明确的子代理写入者执行，并在批次结束后读回验证。Never allow two agents to write through the same Cocos Editor concurrently.
 
@@ -115,5 +117,6 @@ Never accept a child-agent result that only says completion; require artifacts, 
 ## 引用路由
 
 - 创建任务、接收结果或读写状态前，读取 [workflow-contracts.md](references/workflow-contracts.md)。
+- 选择角色、组装子代理提示词或安排交叉检查前，读取 [team-roles.md](references/team-roles.md)。
 - 判断进入条件、迁移或失效范围前，读取 [state-machine.md](references/state-machine.md)。
 - 任何 MCP 写入前，读取 [mcp-safety-policy.md](references/mcp-safety-policy.md)。

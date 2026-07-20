@@ -93,7 +93,7 @@
 
 `P0.visual_design_quality` 必须为 `true`。它要求冻结视觉方向同时提供可执行的游戏原画规范与 UI 系统、商业基准、颜色 token、克制/发散预算和功能 UI 规则；每个正式场景效果图至少有三个实质不同的原画候选、评审记录、可编辑 UI 源、真实文案、一次缺陷驱动精修和全部捕获视口证据。十一项质量评分（含克制/发散平衡）必须全部不低于 4/5、平均分不低于 4.5/5，且最终人工批准绑定最终图哈希。该门槛不可豁免。
 
-同一 P0 还要求首次视觉冻结前完成唯一的 `role: grilling`、`kind: visual-direction-grilling` 任务。任务只写 `artifacts/visual-direction-brief.md`、结果和报告；确认与人工审批必须同时绑定工件 `content_hash`，未决问题必须为空。`cocos-freeze-visual-direction` 必须直接依赖该任务并携带相同 `visual_direction_brief_hash`。
+同一 P0 还要求首次视觉冻结前完成唯一的 `role: visual-designer`、`skill: grilling`、`kind: visual-direction-grilling` 任务。任务只写 `artifacts/visual-direction-brief.md`、结果和报告；确认与人工审批必须同时绑定工件 `content_hash`，未决问题必须为空。`cocos-freeze-visual-direction` 必须直接依赖该任务并携带相同 `visual_direction_brief_hash`。
 
 ### `ownership.yaml`
 
@@ -112,7 +112,11 @@
 每个 `.cocos-workflow/tasks/<task_id>.yaml` 必须包含：
 
 - `task_id`：工作流内唯一且不可复用。
-- `role`：执行阶段职责。
+- `kind`：本次工作的具体类型，用于选择角色、Skill 和协作方式；任务种类不构成新角色。
+- `role`：唯一主执行角色，只能是 `game-designer | game-developer | visual-designer | qa-delivery`，并且必须符合 [team-roles.md](team-roles.md) 的任务路由。
+- `role_prompt_version`：本次派发原样使用的角色提示词版本，当前固定为 `1`。
+- `skill`：主执行角色本次必须调用的阶段 Skill；必须与 `kind`、`role` 和路由表一致。
+- `collaboration`：必须包含 `execution_mode`、`review_required`、`reviewer_role` 与 `cocos_editor_access`。`execution_mode` 仅可为 `parallel-safe | dependency-serial | editor-serial | visual-serial`；`cocos_editor_access` 仅可为 `none | read | exclusive-write`。需要复核时，`reviewer_role` 必须是不同于 `role` 的现有团队角色；不需要时为 `null`。
 - `baseline_revision`：仓库修订或工作区基线标识。
 - `allowed_paths`：唯一可修改的项目相对路径；只读任务使用空列表。
 - `read_only`：是否禁止写入。
@@ -124,11 +128,13 @@
 - `decision_change`：可选映射；仅用于已批准 `requirements | systems-design | technical-design | planning` 的决策性返工，必须包含目标 `stage` 与变更材料的 `sha256:` `subject_hash`。事实勘误、文案、资产、实现、验证与交付任务不得声明它。
 - `state`、`attempt`、`created_at`。
 
+总控必须使用 [team-roles.md](team-roles.md) 中对应角色的完整预设提示词，再附加上述任务契约来创建子代理。角色预设不得替代或放宽任务级路径、依赖、冻结输入和验收约束。角色与 Skill 错配、执行者自我复核、未声明 Editor 权限或 `exclusive-write` 与其他 Editor 写任务重叠时拒绝派发。`team-lead` 不得作为阶段任务的主执行角色。
+
 递归扫描 `inputs` 时，映射键 `visual`、`visual_direction`、`scene_concept`，以及列表项 `type=visual|visual-direction|scene-concept` 都是视觉依赖。每个视觉依赖必须包含非空 `version` 和 `sha256:` `content_hash`；缺失时拒绝派发或验收。
 
 production 开始后，总控必须先完成 `vertical_slice` 核心玩法原型任务并获得人工批准，然后才可派发 `module_decomposition`、`global_scaffold` 与正式场景任务。其后仅派发最低未完成 `business_flow_level` 的任务。同级可在路径无冲突且依赖已满足时并行；后一等级任务必须直接依赖前一等级所有 `completion_task_ids`，并在这些任务的 `passed` 结果、证据和验收检查全部有效后才可派发。`is_core_gameplay: true` 的正式循环必须走完整 场景功能边界拷问 → Pencil → 效果图 → 资源/代码 → 人工评审路径。
 
-每个正式场景在 Pencil 草图开始前必须派发唯一的 `role: grilling`、`kind: scene-boundary-grilling` 任务。该任务只能写 `artifacts/scene-boundaries/<scene_id>.md`、任务结果和报告，必须携带 `scene_boundary` 输入（`scene_id`、`scene_loop_id`、场景蓝图、需求、系统设计、技术设计、实施计划、冻结视觉方向及其哈希），并返回哈希绑定的 `scene_boundary_confirmation`。总控只在确认与人工批准均绑定该边界 `content_hash`、未决问题为空后，才可派发该场景的 `pencil-draft`；Pencil、高保真图、资源/代码及后续绑定/集成必须携带同一边界哈希。该门禁是 P0，原型 `vertical_slice` 例外，正式核心玩法场景不例外。
+每个正式场景在 Pencil 草图开始前必须派发唯一的 `role: game-designer`、`skill: grilling`、`kind: scene-boundary-grilling` 任务。该任务只能写 `artifacts/scene-boundaries/<scene_id>.md`、任务结果和报告，必须携带 `scene_boundary` 输入（`scene_id`、`scene_loop_id`、场景蓝图、需求、系统设计、技术设计、实施计划、冻结视觉方向及其哈希），并返回哈希绑定的 `scene_boundary_confirmation`。总控只在确认与人工批准均绑定该边界 `content_hash`、未决问题为空后，才可派发该场景的 `pencil-draft`；Pencil、高保真图、资源/代码及后续绑定/集成必须携带同一边界哈希。该门禁是 P0，原型 `vertical_slice` 例外，正式核心玩法场景不例外。
 
 每个正式场景任务必须在 `inputs` 中携带对应 `scene_blueprint` 的 `scene_id`、内容哈希、节点稳定 ID 清单和组件读回断言。总控在派发正式代码、资源绑定或集成任务前，验证蓝图与实施计划一一对应，且包含场景根、运行时根、Canvas/UI 根、游戏内容根，以及按冻结配置和需求启用的安全区、HUD、弹层、相机、输入节点。缺失节点、组件、父子关系或读回断言均为 P0，任务保持 `blocked`。
 
@@ -141,6 +147,7 @@ production 开始后，总控必须先完成 `vertical_slice` 核心玩法原型
 每个 `.cocos-workflow/results/<task_id>.yaml` 必须包含：
 
 - `task_id`、`baseline_revision` 及所有输入的冻结版本和哈希。
+- `execution`：包含实际 `role`、`role_prompt_version`、`skill`、`agent_id` 和 `cocos_editor_access`，必须与任务契约完全一致。
 - `status`：`passed | failed | blocked | stale`。
 - `changed_paths`：实际修改的项目相对路径。
 - `artifacts`：产物路径、类型、版本及内容哈希。
@@ -148,14 +155,15 @@ production 开始后，总控必须先完成 `vertical_slice` 核心玩法原型
 - `evidence`：日志、截图、报告或读回证据路径。
 - `issues`：包含检查 ID、严重级别、状态、描述、证据、处置及解除条件。
 - `handoff_notes`：给下游的约束与上下文。
+- `review`：包含 `required`、`reviewer_role`、`reviewer_agent_id`、`result_path` 和 `status`；无需复核时后四项为 `null`。需要复核时，审查结果必须来自与执行代理不同的代理，并使用项目内结果路径。
 
-`passed` 结果必须包含非空证据。`changed_paths` 越界、证据缺失、冻结版本不匹配或 P0 失败时拒绝验收。P1 只有绑定具体检查与工件哈希的有效人工豁免才可继续；P2 默认仅报告。
+`passed` 结果必须包含非空证据。`changed_paths` 越界、证据缺失、角色或 Skill 错配、执行者自我复核、必需审查未通过、Editor 权限不一致、冻结版本不匹配或 P0 失败时拒绝验收。P1 只有绑定具体检查与工件哈希的有效人工豁免才可继续；P2 默认仅报告。
 
 ## 决策拷问门禁
 
 首次全局视觉方向拷问是 `visual-direction` 阶段的固定前置门禁，不使用 `decision_change`。任务携带 `visual_direction_grilling` 输入，返回 `visual_direction_confirmation`；总控在确认与人工审批均绑定 `artifacts/visual-direction-brief.md.content_hash` 后，写入 `approval_gates.visual-direction-grilling`。后续已冻结视觉方向发生决策性变更时，仍按下述通用返工规则执行，并重新生成该工件与门禁。
 
-派发 `$grilling` 的只读任务使用 `role: grilling` 并携带 `decision_change`，不需要预先确认。重派发目标阶段时，任务必须保留同一 `decision_change` 并附带 `$grilling` 的 `grilling_confirmation`。确认记录必须包含 `status: confirmed`、`stage`、`subject_hash`、`confirmed_by`、`confirmed_at` 与至少一个项目内 `evidence` 路径；`stage` 和 `subject_hash` 必须分别等于任务的 `decision_change.stage` 与 `decision_change.subject_hash`。
+派发 `$grilling` 的只读任务使用 `skill: grilling` 并携带 `decision_change`，不需要预先确认。`requirements`、`systems-design` 与 `planning` 的决策拷问使用 `role: game-designer`，`technical-design` 使用 `role: game-developer`，视觉方向拷问使用 `role: visual-designer`。重派发目标阶段时，任务必须保留同一 `decision_change` 并附带 `$grilling` 的 `grilling_confirmation`。确认记录必须包含 `status: confirmed`、`stage`、`subject_hash`、`confirmed_by`、`confirmed_at` 与至少一个项目内 `evidence` 路径；`stage` 和 `subject_hash` 必须分别等于任务的 `decision_change.stage` 与 `decision_change.subject_hash`。
 
 总控验证确认记录后，写入 `workflow.yaml.approval_gates.grilling-<stage>`。该门禁使用 `status: passed`、`approved_by`、`approved_at`、`subject_hash` 和 `evidence`；其阶段和主题哈希必须与 `decision_change` 一致。未通过时，目标阶段保持 `blocked`，不得创建、接受或批准新的阶段工件。总控是唯一可写入该门禁和 `workflow.yaml` 的角色。
 
