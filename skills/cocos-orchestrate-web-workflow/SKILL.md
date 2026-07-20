@@ -7,7 +7,7 @@ description: Use when starting, coordinating, resuming, or auditing a Cocos Crea
 
 ## 核心原则
 
-只编排阶段 Skill、验证阶段结果并维护流程状态，不替代任何阶段 Skill 执行需求、设计、资源生产、编码、编辑器集成、浏览器验证或交付。将 `.cocos-workflow/workflow.yaml` 视为单写者状态：只有总控可以写入。
+所有可独立执行的阶段工作都必须创建子代理，并由子代理调用对应阶段 Skill 完成实际实现；不得只把工作描述成“可编排的子代理任务”，也不得由总控替代子代理执行需求、设计、资源生产、编码、编辑器集成、浏览器验证或交付。总控只负责任务派发、结果验证和流程状态维护。将 `.cocos-workflow/workflow.yaml` 视为单写者状态：只有总控可以写入。
 
 Never accept a child-agent result that only says completion; require artifacts, checks, and evidence.
 
@@ -97,7 +97,9 @@ Never accept a child-agent result that only says completion; require artifacts, 
 
 ## 子代理规则
 
-只并行没有共享写入面且依赖已经满足的独立任务。允许分析、检查和资源准备并行；效果图生成即使路径不冲突也必须逐场景串行；所有 Cocos Editor 写入必须排队，由一个明确的写入者按批次执行并在每批之后读取验证。Never allow two agents to write through the same Cocos Editor concurrently.
+阶段工作一旦满足派发条件，总控必须创建子代理实施，并向子代理提供对应 Skill、明确输入、允许写入路径、预期工件、验收检查和证据要求；总控不得止于输出任务清单、建议后续派发或模拟子代理结果。只有 `workflow.yaml` 初始化、状态迁移、结果验收与门禁判断由总控亲自执行。
+
+只并行没有共享写入面且依赖已经满足的独立子代理任务。允许分析、检查和资源准备并行；效果图生成即使路径不冲突也必须逐场景串行；所有 Cocos Editor 写入必须排队，每个批次只允许一个明确的子代理写入者执行，并在批次结束后读回验证。Never allow two agents to write through the same Cocos Editor concurrently.
 
 ## 状态变更
 

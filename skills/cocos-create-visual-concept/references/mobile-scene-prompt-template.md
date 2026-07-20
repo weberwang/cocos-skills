@@ -2,34 +2,37 @@
 
 提示词分为“游戏原画层”和“最终精修”两类。一次生成调用只能引用当前一个 `scene_id`，禁止列出其他页面、请求整套页面、生成多屏拼图或预生成后续场景。方括号字段必须来自冻结工件、批准需求或设计简报，禁止用模型偏好补写。
 
+## 编写原则
+
+- **结构清晰，引导方向**：按“目标 → 画面重点 → 视觉方向 → 必要约束 → 自由空间”组织，让模型先理解要解决的问题。
+- **抓住关键，不堆细节**：只保留会显著改变构图、风格、用途或验收结果的信息；能用几句话说清楚，就不要扩写。
+- **要引导，不要过度限制**：冻结项和业务边界必须明确，其余构图连接、环境细节与表现手法交给模型发挥。
+- **减少矛盾与干扰**：合并重复要求，删除无验收意义的辞藻；发现字段冲突时先修正输入，不把冲突原样塞进提示词。
+
+提示词不是冻结工件的全文转录。颜色 token、克制/发散预算等结构化约束应提炼成当前画面真正会用到的结论；路径、哈希和生成元数据保存在记录中，不作为画面描述重复输入。负面约束只保留高风险错误，避免长串禁止词挤压创作空间。
+
 ## 游戏原画候选
 
 ```text
-Create one production-quality 2D mobile game art layer for [scene_id], without UI or text.
-Narrative moment: [moment]. Player focus and visual path: [focus_and_eye_flow].
-Canvas: [orientation], exact [width]x[height], with UI reserve zones from the approved Pencil layout [pencil_path] / [hash].
-Composition: foreground [foreground], midground [midground], background [background], camera [camera], perspective [perspective], focal hierarchy [hierarchy].
-Character and environment direction: [character_environment_rules]. Silhouette and pose: [silhouette_pose].
-Material, lighting, color script and VFX: [material_lighting_color_vfx]. Apply frozen color tokens and usage rules [color_system].
-Restraint/expression profile: [restraint_expression_profile]. Keep [restraint_ratio] visually restrained; reserve [expression_ratio] for approved focal content only. Never exceed [primary_focal_points_max] primary and [secondary_focal_points_max] secondary focal points.
-Frozen game-art system, copy exactly: [art_direction]. Match reference [game_art_anchor_path] / [hash].
-Preserve the global palette and prohibited list: [palette]; exclude [prohibited].
-No UI, letters, numbers, logo, watermark, phone frame, mockup, collage, sprite sheet or decorative elements that obscure gameplay.
-Deliver a single clean game-art layer with readable silhouettes, coherent perspective, controlled detail density and clear asset boundaries.
+Goal: Create one production-quality 2D mobile game-art layer for [scene_id], [orientation], exact [width]x[height].
+Scene: [moment]. Make [focus] the clear focal point and guide the eye through [eye_flow]. Use [composition_strategy] with [camera_and_depth]; keep the approved UI reserve zones clear.
+Direction: [concise_art_direction]. Follow the frozen palette, material and lighting roles [active_visual_tokens], using expressive detail only on [approved_focal_content]. Match the supplied game-art quality anchor.
+Constraints: one scene and one image; no UI, text, logo, watermark, device frame or collage. Keep silhouettes readable, perspective coherent and gameplay boundaries clear.
+Creative latitude: freely resolve secondary environment details, transitions and atmospheric accents as long as they support the focal hierarchy and frozen direction.
 ```
 
-三个候选必须分别填写不同的 `composition_strategy`、镜头与视觉动线，其他冻结字段保持一致。
+三个候选必须分别填写不同的 `composition_strategy`、镜头与视觉动线，其他冻结结论保持一致。不要为了让提示词显得“丰富”而加入未批准的风格词、同义形容词或逐物件微观描述。
 
 ## UI 精确设计与最终合成
 
 UI 不依赖 ImageGen 生成文字。使用已批准 Pencil 源文件建立可编辑 UI：
 
 ```text
-Scene purpose: [purpose]. Preserve Pencil structure and interaction regions exactly.
-Apply frozen UI system: [grid_spacing], [typography], [component_shapes], [icon_grid], [states], [hud_rules], [functional_ui_rules]. Follow color-token usage and the same restraint/expression profile; reserve accent, glow and motion for approved CTA, reward or key-event states.
-Use exact approved copy: [copy_inventory]. No placeholder or invented labels.
-Place over selected game-art layer [path] / [hash] while preserving focal subject, primary action and gameplay readability.
-Validate safe area, minimum touch targets, contrast, truncation and hierarchy at [capture_profiles].
+Goal: Build the editable UI for [purpose] over the approved game-art layer while preserving the Pencil structure and interaction regions.
+Hierarchy: prioritize [primary_action_and_information]; apply the frozen typography, spacing, component and icon rules [active_ui_rules]. Use accent only for [approved_accent_targets].
+Content: use the exact approved copy [copy_inventory], with no placeholder or invented labels.
+Quality: preserve the gameplay focal point and verify safe area, touch targets, contrast, truncation and component states at [capture_profiles].
+Creative latitude: refine spacing rhythm and visual transitions within the frozen UI system without adding new functions or changing interaction regions.
 ```
 
 ## 记录字段
