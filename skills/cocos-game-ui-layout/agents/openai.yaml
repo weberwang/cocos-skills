@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 游戏 UI 布局"
+  short_description: "为 Cocos Creator 3.x 游戏建立可验证的响应式 UI 布局合同与证据门禁"
+  default_prompt: "在 $cocos-game-workflow-control 批准范围内使用 $cocos-game-ui-layout 建立合同并验证响应式布局。"

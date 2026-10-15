@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 技术架构"
+  short_description: "划分并确认模块边界，建立可测试、可构建的移动端技术基线"
+  default_prompt: "在 $cocos-game-workflow-control 下使用 $cocos-game-architecture 提议并审查模块边界和技术基线。"

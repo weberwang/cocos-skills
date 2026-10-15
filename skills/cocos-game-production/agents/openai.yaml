@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 制作策划"
+  short_description: "将游戏构想或参考行为转化为可验收的制作范围、功能契约与交付计划"
+  default_prompt: "在 $cocos-game-workflow-control 下使用 $cocos-game-production 建立可审批需求、范围和制作计划。"

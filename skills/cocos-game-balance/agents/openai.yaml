@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 数值设计"
+  short_description: "建立可调参可验证并能支持长期迭代的游戏数值体系和数据证据链"
+  default_prompt: "在 $cocos-game-workflow-control 批准范围内使用 $cocos-game-balance 设计并校验数值模型。"

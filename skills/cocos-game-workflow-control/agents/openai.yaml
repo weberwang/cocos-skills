@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 全局工作流控制"
+  short_description: "统一管理游戏任务范围、风险、阶段状态和实施证据，并按实际副作用处理批准"
+  default_prompt: "使用 $cocos-game-workflow-control 按当前用户任务推进工作项，维护风险、状态和证据；仅对带副作用的 A4-A6 操作逐对象审批。Creator 编辑器、AssetDB、场景、节点、组件、Prefab、构建和预览操作遵循 cocos-mcp-protocol.md，并以实时 tools/list schema 为准。"

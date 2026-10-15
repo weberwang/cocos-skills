@@ -1,4 +1,0 @@
-interface:
-  display_name: "Cocos 创建高保真游戏视觉"
-  short_description: "Art-direct game artwork and precise UI effects"
-  default_prompt: "Use $cocos-create-visual-concept to explore game-art candidates, build precise editable UI, refine the composite, and pass the visual quality gate."

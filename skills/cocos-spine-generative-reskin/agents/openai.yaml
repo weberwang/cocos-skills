@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x Spine 生成式换皮"
+  short_description: "逐 Cell 生图并重建可恢复验证的 Spine Atlas 新纹理"
+  default_prompt: "在 $cocos-game-workflow-control 批准范围内，使用 $cocos-spine-generative-reskin 生成、记录并验证 Spine Atlas 换皮。"

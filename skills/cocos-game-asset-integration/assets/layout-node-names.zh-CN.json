@@ -1,0 +1,40 @@
+{
+  "schema": "cocos-layout-node-names.zh-CN/1.0",
+  "fallback": "布局节点",
+  "layout_role": {
+    "root": "根节点",
+    "container": "容器",
+    "parent": "父容器",
+    "group": "节点组",
+    "visual-component": "视觉组件",
+    "runtime-shape": "运行时图形",
+    "runtime-text": "运行时文字",
+    "interaction-zone": "交互区域",
+    "image": "图像",
+    "icon": "图标",
+    "text": "文字",
+    "button": "按钮",
+    "background": "背景",
+    "overlay": "遮罩",
+    "safe-area": "安全区域",
+    "viewport": "根视口"
+  },
+  "tokens": [
+    { "pattern": "(^|[-_:])background($|[-_:])", "name": "背景" },
+    { "pattern": "(^|[-_:])overlay($|[-_:])", "name": "遮罩" },
+    { "pattern": "(^|[-_:])scrim($|[-_:])", "name": "遮罩" },
+    { "pattern": "(^|[-_:])panel($|[-_:])", "name": "面板" },
+    { "pattern": "(^|[-_:])button($|[-_:])", "name": "按钮" },
+    { "pattern": "(^|[-_:])icon($|[-_:])", "name": "图标" },
+    { "pattern": "(^|[-_:])image($|[-_:])", "name": "图像" },
+    { "pattern": "(^|[-_:])text($|[-_:])", "name": "文字" },
+    { "pattern": "(^|[-_:])title($|[-_:])", "name": "标题" },
+    { "pattern": "(^|[-_:])close($|[-_:])", "name": "关闭" },
+    { "pattern": "(^|[-_:])hit[-_]?area($|[-_:])", "name": "交互区域" },
+    { "pattern": "(^|[-_:])interaction($|[-_:])", "name": "交互区域" },
+    { "pattern": "(^|[-_:])safe[-_]?area($|[-_:])", "name": "安全区域" },
+    { "pattern": "(^|[-_:])viewport($|[-_:])", "name": "根视口" },
+    { "pattern": "(^|[-_:])container($|[-_:])", "name": "容器" },
+    { "pattern": "(^|[-_:])group($|[-_:])", "name": "节点组" }
+  ]
+}

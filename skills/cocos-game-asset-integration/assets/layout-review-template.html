@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+  <title>Cocos 布局候选审阅</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: #eef2f7;
+      color: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; padding: 18px; background: #eef2f7; }
+    .page { width: min(1440px, 100%); margin: 0 auto; }
+    .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+    h1 { margin: 0; color: #152238; font-size: clamp(20px, 2.4vw, 28px); line-height: 1.3; }
+    h2 { margin: 0; color: #24344d; font-size: 17px; line-height: 1.35; }
+    .context { margin: 5px 0 0; color: #64748b; font-size: 13px; overflow-wrap: anywhere; }
+    .status { flex: 0 0 auto; margin: 0; padding: 6px 10px; border: 1px solid #e8b85d; border-radius: 999px; color: #8a5b08; background: #fff8e7; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .notice { margin: 0 0 16px; padding: 10px 12px; border-left: 3px solid #e8b85d; color: #5b6472; background: #fffaf0; font-size: 13px; line-height: 1.6; }
+    .review-grid { display: grid; grid-template-columns: minmax(300px, 1.12fr) minmax(340px, 0.88fr); gap: 18px; align-items: start; }
+    .card { min-width: 0; padding: 15px; border: 1px solid #d9e1ec; border-radius: 15px; background: #fff; box-shadow: 0 8px 26px rgb(31 49 75 / 8%); }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
+    .section-meta { color: #64748b; font-size: 12px; text-align: right; overflow-wrap: anywhere; }
+    .reference-scroll { display: flex; justify-content: center; align-items: flex-start; max-height: min(78vh, 920px); overflow: auto; padding: 2px; border-radius: 11px; background: #e9eef5; }
+    .stage { position: relative; width: min(100%, calc(78vh * __VIEWPORT_WIDTH__ / __VIEWPORT_HEIGHT__)); max-height: 78vh; flex: 0 0 auto; overflow: hidden; aspect-ratio: __VIEWPORT_WIDTH__ / __VIEWPORT_HEIGHT__; background: #dbe3ee; }
+    .stage img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+    .overlay { position: absolute; inset: 0; pointer-events: none; }
+    .highlight { position: absolute; border-radius: 4px; }
+    .highlight.target { border: 2px solid #1674d1; background: rgb(22 116 209 / 12%); box-shadow: 0 0 0 1px rgb(255 255 255 / 70%); }
+    .highlight.parent { border: 2px dashed #e48b2b; background: rgb(228 139 43 / 8%); }
+    .stage-label { position: absolute; inset: 9px auto auto 9px; padding: 4px 7px; border-radius: 6px; color: #fff; background: rgb(21 34 56 / 78%); font-size: 11px; line-height: 1.3; }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 12px; color: #59677a; font-size: 12px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-mark { width: 22px; height: 11px; border-radius: 3px; }
+    .legend-mark.target { border: 2px solid #1674d1; background: rgb(22 116 209 / 12%); }
+    .legend-mark.parent { border: 2px dashed #e48b2b; background: rgb(228 139 43 / 8%); }
+    .field-label { display: block; margin: 0 0 6px; color: #334155; font-size: 13px; font-weight: 700; }
+    .search { width: 100%; min-height: 36px; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 8px; color: #1f2937; background: #f8fafc; font: inherit; }
+    .search:focus, .node-button:focus-visible, a:focus-visible { outline: 3px solid rgb(22 116 209 / 30%); outline-offset: 2px; }
+    .node-list { display: flex; flex-direction: column; gap: 5px; max-height: min(57vh, 660px); margin-top: 10px; padding: 3px; overflow: auto; border: 1px solid #e1e7ef; border-radius: 9px; background: #f8fafc; }
+    .node-button { display: block; width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid transparent; border-radius: 7px; color: #334155; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+    .node-button:hover { background: #edf4fc; }
+    .node-button[aria-selected="true"] { border-color: #9fc7ef; color: #0f3f72; background: #eaf4ff; box-shadow: inset 3px 0 0 #1674d1; }
+    .node-title { display: block; min-width: 0; overflow-wrap: anywhere; font-size: 13px; font-weight: 700; line-height: 1.4; }
+    .node-id { display: block; min-width: 0; margin-top: 2px; color: #718096; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; line-height: 1.4; }
+    .empty { margin: 12px 2px 0; color: #718096; font-size: 13px; }
+    .details { margin-top: 14px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+    .details h3 { margin: 0 0 10px; color: #1d4f89; font-size: 16px; line-height: 1.45; overflow-wrap: anywhere; }
+    .detail-row { display: grid; grid-template-columns: minmax(92px, 0.42fr) minmax(0, 1fr); gap: 10px; padding: 4px 0; border-bottom: 1px solid #f0f3f7; font-size: 13px; line-height: 1.5; }
+    .detail-label { color: #64748b; }
+    .detail-value { min-width: 0; color: #29384d; overflow-wrap: anywhere; }
+    .detail-value code, .provenance code { color: #475569; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; }
+    .technical { margin-top: 11px; border: 1px solid #e1e7ef; border-radius: 8px; background: #f8fafc; }
+    .technical summary, .provenance summary { padding: 8px 10px; color: #40536d; cursor: pointer; font-size: 12px; font-weight: 700; }
+    .technical pre { max-height: 330px; margin: 0; padding: 10px; overflow: auto; border-top: 1px solid #e1e7ef; color: #475569; font: 11px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .provenance { margin-top: 14px; border: 1px solid #e1e7ef; border-radius: 8px; background: #f8fafc; }
+    .provenance-body { padding: 0 10px 10px; border-top: 1px solid #e1e7ef; }
+    .provenance-row { display: grid; grid-template-columns: minmax(70px, 0.35fr) minmax(0, 1fr); gap: 8px; padding-top: 7px; font-size: 12px; line-height: 1.45; }
+    .provenance-row dt { color: #64748b; }
+    .provenance-row dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+    .downloads { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; }
+    a { color: #145fa9; font-size: 12px; text-decoration: underline; }
+    .footer-note { margin: 14px 0 0; color: #8491a3; font-size: 11px; line-height: 1.5; }
+    @media (max-width: 800px) {
+      body { padding: 10px; }
+      .header { display: block; }
+      .status { display: inline-block; margin-top: 10px; }
+      .review-grid { grid-template-columns: 1fr; }
+      .reference-scroll { max-height: 70vh; }
+      .stage { width: min(100%, calc(70vh * __VIEWPORT_WIDTH__ / __VIEWPORT_HEIGHT__)); max-height: 70vh; }
+      .node-list { max-height: 48vh; }
+    }
+    @media (max-width: 430px) {
+      .card { padding: 11px; }
+      .detail-row, .provenance-row { grid-template-columns: 1fr; gap: 1px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <h1 id="page-title">Cocos 布局候选审阅</h1>
+        <p class="context" id="page-context"></p>
+      </div>
+      <p class="status" id="status">候选：待人工布局确认</p>
+    </header>
+    <p class="notice">本页仅用于审阅候选布局。打开页面、切换节点和生成成功都不会自动构成人工确认；正式确认仍须通过独立确认记录和现有证据门。</p>
+    <section class="review-grid" aria-label="布局审阅">
+      <section class="card" aria-labelledby="reference-heading">
+        <div class="section-head">
+          <h2 id="reference-heading">冻结参考图</h2>
+          <span class="section-meta" id="viewport-label"></span>
+        </div>
+        <div class="reference-scroll">
+          <div class="stage" id="stage">
+            <img id="reference-image" src="__REFERENCE_DATA_URL__" alt="冻结参考图">
+            <div class="overlay" aria-hidden="true">
+              <div class="highlight parent" id="parent-box" hidden></div>
+              <div class="highlight target" id="target-box" hidden></div>
+            </div>
+            <span class="stage-label" id="stage-label"></span>
+          </div>
+        </div>
+        <div class="legend" aria-label="高亮图例">
+          <span class="legend-item"><i class="legend-mark target"></i>当前节点（蓝色实线）</span>
+          <span class="legend-item"><i class="legend-mark parent"></i>父节点（橙色虚线）</span>
+        </div>
+        <p class="footer-note">参考图按原始比例缩放，标注框与参考图共用冻结 viewport 坐标映射。</p>
+      </section>
+      <section class="card" aria-labelledby="nodes-heading">
+        <div class="section-head">
+          <h2 id="nodes-heading">布局节点</h2>
+          <span class="section-meta" id="node-count"></span>
+        </div>
+        <label class="field-label" for="node-search">筛选节点</label>
+        <input class="search" id="node-search" type="search" autocomplete="off" placeholder="按中文名称或技术 ID 筛选" aria-controls="node-list">
+        <div class="node-list" id="node-list" role="listbox" aria-label="布局节点列表"></div>
+        <p class="empty" id="empty-state" hidden>没有符合筛选条件的节点。</p>
+        <section class="details" id="details" aria-live="polite"></section>
+        <details class="provenance">
+          <summary>文件与身份</summary>
+          <div class="provenance-body">
+            <dl>
+              <div class="provenance-row"><dt>场景 / 状态</dt><dd id="scene-state"></dd></div>
+              <div class="provenance-row"><dt>参考图</dt><dd><span id="reference-file"></span><br><code id="reference-sha"></code></dd></div>
+              <div class="provenance-row"><dt>拆解提案</dt><dd><span id="proposal-file"></span><br><code id="proposal-sha"></code></dd></div>
+              <div class="provenance-row"><dt>布局决策</dt><dd><span id="decision-file"></span><br><code id="decision-sha"></code></dd></div>
+              <div class="provenance-row"><dt>节点数据</dt><dd><span id="nodes-file"></span><br><code id="nodes-sha"></code></dd></div>
+              <div class="provenance-row"><dt>标注图</dt><dd><span id="annotation-file"></span><br><code id="annotation-sha"></code></dd></div>
+            </dl>
+            <div class="downloads" aria-label="标准产物下载">
+              <a id="annotation-link" href="__ANNOTATION_DATA_URL__" download="layout-annotation.png" target="_blank" rel="noopener">查看/下载标准布局标注 PNG</a>
+              <a id="nodes-link" href="__NODES_DATA_URL__" download="layout-nodes.json">下载布局节点 JSON</a>
+              <a id="decision-link" href="__DECISION_DATA_URL__" download="layout-decision.json">下载布局决策 JSON</a>
+            </div>
+          </div>
+        </details>
+      </section>
+    </section>
+  </main>
+  <script type="application/json" id="layout-review-data">__LAYOUT_REVIEW_PAYLOAD__</script>
+  <script>
+    const REVIEW_PAYLOAD = JSON.parse(document.getElementById("layout-review-data").textContent);
+    const NAME_RULES = __NAME_RULES__;
+    const SEMANTIC_GROUPING_LABELS = { region: "区域", component: "功能组件", part: "组件部件", standalone: "独立元素" };
+    const nodesDocument = REVIEW_PAYLOAD.nodesDocument;
+    const bindings = REVIEW_PAYLOAD.bindings;
+    const viewport = nodesDocument.viewport;
+    const nodes = Array.isArray(nodesDocument.layout_nodes) ? nodesDocument.layout_nodes : [];
+    const displayNames = nodes.map((node, index) => resolveNodeName(node, index));
+    const roots = Array.isArray(nodesDocument.root_nodes) ? nodesDocument.root_nodes : [];
+    const nodeNamesById = new Map(nodes.map((node, index) => [node.layout_node_id, displayNames[index]]));
+    const rootNamesById = new Map(roots.map((root) => [root.layout_node_id, declaredNodeName(root) || (root.layout_node_id === "safe-area" ? "安全区域" : "根视口")]));
+    const stage = document.getElementById("stage");
+    const targetBox = document.getElementById("target-box");
+    const parentBox = document.getElementById("parent-box");
+    const details = document.getElementById("details");
+    const nodeList = document.getElementById("node-list");
+    const emptyState = document.getElementById("empty-state");
+    const nodeButtons = [];
+    let selectedIndex = -1;
+
+    /** 判断节点字段是否包含可展示的声明名称。 */
+    function declaredNodeName(node) {
+      for (const key of ["display_name_zh", "displayNameZh", "display_name", "displayName"]) {
+        if (typeof node?.[key] === "string" && node[key].trim()) return node[key].trim();
+      }
+      return "";
+    }
+
+    /** 依据可维护的通用语义规则生成缺省中文名，不绑定任何项目专有节点。 */
+    function resolveNodeName(node, index) {
+      const declared = declaredNodeName(node);
+      if (declared) return declared;
+      const role = String(node?.layout_role ?? node?.layoutRole ?? "").trim().toLowerCase();
+      const roleName = NAME_RULES.layout_role?.[role];
+      if (roleName) return `${roleName}（${node.marker_id || `L${String(index + 1).padStart(2, "0")}`}）`;
+      const source = [node?.layout_node_id, node?.element_id, role].filter(Boolean).join(" ");
+      for (const item of NAME_RULES.tokens || []) {
+        if (new RegExp(item.pattern, "i").test(source)) return `${item.name}（${node.marker_id || `L${String(index + 1).padStart(2, "0")}`}）`;
+      }
+      return `${NAME_RULES.fallback || "布局节点"}（${node.marker_id || `L${String(index + 1).padStart(2, "0")}`}）`;
+    }
+
+    /** 将一个几何事实映射为相对冻结 viewport 的 CSS 百分比。 */
+    function cssRect(rect) {
+      if (!rect) return null;
+      return {
+        left: `${rect.x / viewport.width * 100}%`,
+        top: `${rect.y / viewport.height * 100}%`,
+        width: `${rect.width / viewport.width * 100}%`,
+        height: `${rect.height / viewport.height * 100}%`
+      };
+    }
+
+    /** 更新高亮框，两个框始终使用同一组 viewport 百分比映射。 */
+    function applyBox(box, rect) {
+      const value = cssRect(rect);
+      box.hidden = !value;
+      if (value) Object.assign(box.style, value);
+    }
+
+    /** 用稳定文本格式展示位置、尺寸和偏移，避免区域值进入 HTML 解析。 */
+    function formatBounds(bounds) {
+      if (!bounds) return "—";
+      return `x=${bounds.x}，y=${bounds.y}，宽=${bounds.width}，高=${bounds.height}`;
+    }
+
+    /** 统一显示对齐事实的中文语义。 */
+    function formatAlignment(alignment) {
+      if (!alignment) return "—";
+      const horizontal = { left: "左", center: "中", right: "右" }[alignment.horizontal] || alignment.horizontal || "—";
+      const vertical = { top: "上", center: "中", bottom: "下" }[alignment.vertical] || alignment.vertical || "—";
+      return `水平${horizontal}，垂直${vertical}`;
+    }
+
+    /** 将父子 ID 转成默认中文说明；完整技术 ID仍保留在可展开参数中。 */
+    function relationName(id) {
+      if (!id) return "无";
+      return nodeNamesById.get(id) || rootNamesById.get(id) || "未命名父节点";
+    }
+
+    /** 以中文名称列出子节点，保持原始数组顺序不变。 */
+    function relationNames(ids) {
+      if (!Array.isArray(ids) || ids.length === 0) return "无";
+      return ids.map((id) => relationName(id)).join("、");
+    }
+
+    /** 将动态详情以 textContent 写入节点，阻断名称和 ID 的 HTML 注入路径。 */
+    function addDetailRow(label, value, useCode = false) {
+      const row = document.createElement("div");
+      row.className = "detail-row";
+      const labelNode = document.createElement("span");
+      labelNode.className = "detail-label";
+      labelNode.textContent = label;
+      const valueNode = document.createElement(useCode ? "code" : "span");
+      valueNode.className = "detail-value";
+      valueNode.textContent = value == null || value === "" ? "—" : String(value);
+      row.append(labelNode, valueNode);
+      details.appendChild(row);
+    }
+
+    /** 渲染当前节点的中文几何说明与可展开完整参数。 */
+    function renderDetails(index) {
+      const node = nodes[index];
+      details.replaceChildren();
+      if (!node) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "请选择一个布局节点查看说明。";
+        details.appendChild(empty);
+        return;
+      }
+      const heading = document.createElement("h3");
+      heading.textContent = displayNames[index];
+      details.appendChild(heading);
+      addDetailRow("顺序 / 标记", `${index + 1} / ${node.marker_id || "—"}`);
+      addDetailRow("父节点", relationName(node.parent_layout_node_id));
+      const grouping = node.semantic_grouping;
+      addDetailRow("功能分组", grouping?.kind ? `${SEMANTIC_GROUPING_LABELS[grouping.kind] || grouping.kind}（kind=${grouping.kind}）` : "—");
+      addDetailRow("分组理由", grouping?.rationale || "—");
+      const uiLayout = node.ui_layout;
+      addDetailRow("父子依赖", uiLayout?.grouping_basis?.join("、") || "同级根节点");
+      addDetailRow("布局控制 / 尺寸", uiLayout ? `${uiLayout.layout_owner} / ${uiLayout.size_policy}` : "—");
+      addDetailRow("溢出 / 安全区", uiLayout ? `${uiLayout.overflow_policy} / ${uiLayout.safe_area_policy}` : "—");
+      addDetailRow("输入命中", uiLayout?.interaction_policy || "—");
+      if (uiLayout?.minimum_size) addDetailRow("最小尺寸", `${uiLayout.minimum_size.width} × ${uiLayout.minimum_size.height}`);
+      addDetailRow("子节点", relationNames(node.child_layout_node_ids));
+      addDetailRow("水平 / 垂直对齐", formatAlignment(node.axis_alignment));
+      addDetailRow("偏移", node.offset ? `x=${node.offset.x ?? "—"}，y=${node.offset.y ?? "—"}` : "—");
+      addDetailRow("位置与尺寸", formatBounds(node.target_bounds));
+      addDetailRow("父节点边界", formatBounds(node.parent_target_bounds));
+      addDetailRow("层级深度", node.depth ?? "—");
+      const technical = document.createElement("details");
+      technical.className = "technical";
+      const summary = document.createElement("summary");
+      summary.textContent = "技术 ID 与完整参数";
+      const pre = document.createElement("pre");
+      pre.textContent = JSON.stringify(node, null, 2);
+      technical.append(summary, pre);
+      details.appendChild(technical);
+    }
+
+    /** 选中节点并同步父子高亮、列表状态和详情。 */
+    function selectNode(index, moveFocus = false) {
+      if (!Number.isInteger(index) || index < 0 || index >= nodes.length) return;
+      selectedIndex = index;
+      const node = nodes[index];
+      applyBox(targetBox, node.target_bounds);
+      applyBox(parentBox, node.parent_target_bounds);
+      nodeButtons.forEach((button, buttonIndex) => {
+        button.setAttribute("aria-selected", buttonIndex === selectedIndex ? "true" : "false");
+      });
+      renderDetails(index);
+      if (moveFocus) nodeButtons[index]?.focus();
+    }
+
+    /** 按搜索文本筛选节点，长列表仍保持可滚动和键盘可达。 */
+    function filterNodes() {
+      const query = document.getElementById("node-search").value.trim().toLowerCase();
+      let visibleCount = 0;
+      nodeButtons.forEach((button, index) => {
+        const haystack = `${displayNames[index]} ${nodes[index].layout_node_id || ""} ${nodes[index].element_id || ""}`.toLowerCase();
+        const visible = !query || haystack.includes(query);
+        button.hidden = !visible;
+        if (visible) visibleCount += 1;
+      });
+      emptyState.hidden = visibleCount !== 0;
+      if (visibleCount && selectedIndex >= 0 && nodeButtons[selectedIndex].hidden) {
+        const firstVisible = nodeButtons.findIndex((button) => !button.hidden);
+        selectNode(firstVisible);
+      }
+    }
+
+    /** 提供列表的上下、Home/End 键盘导航。 */
+    function handleNodeKey(event, index) {
+      const visible = nodeButtons.map((button, itemIndex) => ({ button, itemIndex })).filter((item) => !item.button.hidden);
+      const position = visible.findIndex((item) => item.itemIndex === index);
+      let next = -1;
+      if (event.key === "ArrowDown") next = visible[(position + 1) % visible.length]?.itemIndex ?? -1;
+      else if (event.key === "ArrowUp") next = visible[(position - 1 + visible.length) % visible.length]?.itemIndex ?? -1;
+      else if (event.key === "Home") next = visible[0]?.itemIndex ?? -1;
+      else if (event.key === "End") next = visible.at(-1)?.itemIndex ?? -1;
+      if (next >= 0) { event.preventDefault(); selectNode(next, true); }
+    }
+
+    /** 构造按确认顺序排列的节点按钮，动态文本全部通过 textContent 写入。 */
+    function buildNodeList() {
+      nodes.forEach((node, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "node-button";
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", "false");
+        button.setAttribute("aria-label", `${index + 1} ${displayNames[index]}`);
+        const depth = Number.isSafeInteger(node.depth) && node.depth > 0 ? Math.min(node.depth, 12) : 0;
+        button.style.paddingInlineStart = `${10 + depth * 13}px`;
+        const title = document.createElement("span");
+        title.className = "node-title";
+        title.textContent = `${String(index + 1).padStart(2, "0")} · ${displayNames[index]}`;
+        const id = document.createElement("span");
+        id.className = "node-id";
+        id.textContent = node.marker_id ? `标记 ${node.marker_id}` : "布局编号";
+        button.append(title, id);
+        button.addEventListener("click", () => selectNode(index));
+        button.addEventListener("keydown", (event) => handleNodeKey(event, index));
+        nodeList.appendChild(button);
+        nodeButtons.push(button);
+      });
+    }
+
+    /** 把绑定文件身份放入详情区，便于人工核对审阅页版本。 */
+    function renderProvenance() {
+      const entries = [
+        ["reference-file", "reference", "file"], ["reference-sha", "reference", "sha256"],
+        ["proposal-file", "proposal", "file"], ["proposal-sha", "proposal", "sha256"],
+        ["decision-file", "decision", "file"], ["decision-sha", "decision", "sha256"],
+        ["nodes-file", "nodes", "file"], ["nodes-sha", "nodes", "sha256"],
+        ["annotation-file", "annotation", "file"], ["annotation-sha", "annotation", "sha256"]
+      ];
+      entries.forEach(([elementId, group, key]) => { document.getElementById(elementId).textContent = String(bindings[group]?.[key] ?? "—"); });
+    }
+
+    document.getElementById("page-context").textContent = "冻结参考图与布局节点候选，按已确认顺序审阅";
+    document.getElementById("viewport-label").textContent = `冻结 viewport：${viewport.width} × ${viewport.height}`;
+    document.getElementById("stage-label").textContent = `${viewport.width} × ${viewport.height}`;
+    document.getElementById("node-count").textContent = `${nodes.length} 个节点 · 按确认顺序`;
+    document.getElementById("scene-state").textContent = `${nodesDocument.scene_id} · ${nodesDocument.state_id}`;
+    document.getElementById("node-search").addEventListener("input", filterNodes);
+    buildNodeList();
+    renderProvenance();
+    if (nodes.length) selectNode(0);
+    else renderDetails(-1);
+  </script>
+</body>
+</html>

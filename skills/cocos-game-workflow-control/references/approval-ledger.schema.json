@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cocos-approval-ledger.schema.json",
+  "title": "操作审批账本",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "approvals"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["approvalId","promptContextId","pendingState","pendingContext","workItemId","userOriginalText","approvedAt","explicitObject","stageId","moduleIds","baselineVersion","actionType","actionLevel","impactSummary","fileScope","services","allowServiceStart","allowDelete","externalWrite","destructive","physicalDevice","release","gate","invalidatedWhen"],
+        "properties": {
+          "approvalId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "promptContextId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pendingState": {
+            "enum": [
+              "INTAKE",
+              "BASELINE",
+              "PROPOSAL",
+              "REVIEW",
+              "IMPLEMENTING",
+              "VALIDATING",
+              "PASSED",
+              "INTEGRATING",
+              "RELEASE_APPROVAL_REQUIRED",
+              "RELEASING",
+              "COMPLETE",
+              "RETURN",
+              "BLOCKED"
+            ]
+          },
+          "pendingContext": {
+            "type": "string",
+            "minLength": 1
+          },
+          "workItemId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "userOriginalText": {
+            "type": "string",
+            "minLength": 1
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "explicitObject": {
+            "type": "string",
+            "minLength": 1
+          },
+          "stageId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "moduleIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "baselineVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "baselineHash": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+          "actionType": {
+            "enum": [
+              "cocos-integration",
+              "cocos-build-upload",
+              "cocos-backend-config",
+              "cocos-channel-config",
+              "cocos-device-test",
+              "cocos-store-submit",
+              "cocos-release",
+              "cocos-game-rollback"
+            ]
+          },
+          "actionLevel": {
+            "enum": [
+              "A4",
+              "A5",
+              "A6"
+            ]
+          },
+          "impactSummary": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "fileScope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowServiceStart": {
+            "type": "boolean"
+          },
+          "allowDelete": {
+            "type": "boolean"
+          },
+          "externalWrite": {
+            "type": "boolean"
+          },
+          "destructive": {
+            "type": "boolean"
+          },
+          "physicalDevice": {
+            "type": "boolean"
+          },
+          "release": {
+            "type": "boolean"
+          },
+          "gate": {
+            "enum": [
+              "F0",
+              "F1",
+              "F2",
+              "F3",
+              "F4"
+            ]
+          },
+          "invalidatedWhen": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "externalTargets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "invalidatedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "legacyReadOnly": {
+            "type": "boolean"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "actionType": {
+                  "enum": [
+                    "cocos-integration"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "actionLevel": {
+                  "const": "A4"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "actionType": {
+                  "enum": [
+                    "cocos-build-upload",
+                    "cocos-backend-config",
+                    "cocos-channel-config"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "actionLevel": {
+                  "const": "A5"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "actionType": {
+                  "enum": [
+                    "cocos-device-test",
+                    "cocos-store-submit",
+                    "cocos-release",
+                    "cocos-game-rollback"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "actionLevel": {
+                  "const": "A6"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

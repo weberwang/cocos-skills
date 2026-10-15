@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cocos-global-visual-baseline-selection.schema.json",
+  "title": "全局视觉基线三候选人工选择证据（生产者冻结根）",
+  "description": "该文件由生产者 Work Item 创建并在冻结后保持不可变；brief.path 指向符合 cocos-game-art-brief/1.0 的 JSON。冻结要求三候选均有逐项人工质量评估且所选项全部通过；消费者不得改写根证据所有者。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion","workItemId","selectionId","brief","generationBatchId","candidates","humanSelection","baseline","frozenAt"],
+  "properties": {
+    "schemaVersion": {"const": "cocos-global-visual-baseline-selection/1.1"},
+    "workItemId": {"type": "string", "minLength": 1, "description": "生成并冻结这份选择根证据的生产者 Work Item 身份；不是消费者 Work Item。"},
+    "selectionId": {"type": "string", "minLength": 1},
+    "brief": {"$ref": "#/$defs/brief"},
+    "generationBatchId": {"type": "string", "minLength": 1},
+    "conditionsFingerprint": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/candidate"}
+    },
+    "humanSelection": {"$ref": "#/$defs/humanSelection"},
+    "baseline": {"$ref": "#/$defs/baseline"},
+    "frozenAt": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["briefId","path"],
+      "properties": {
+        "briefId": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1, "pattern": "\\.[Jj][Ss][Oo][Nn]$"},
+        "sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"}
+      }
+    },
+    "fileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"}
+      }
+    },
+    "imageRef": {
+      "description": "全局候选及冻结锚点只允许 PNG/JPEG；机器文件门还必须检查文件真实魔数。",
+      "allOf": [
+        {"$ref": "#/$defs/fileRef"},
+        {"properties": {"path": {"pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp][Ee]?[Gg])$"}}}
+      ]
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateId", "origin", "status", "image", "generationRecord"],
+      "properties": {
+        "candidateId": {"type": "string", "minLength": 1},
+        "origin": {"const": "generated"},
+        "status": {"const": "GENERATED"},
+        "image": {"$ref": "#/$defs/imageRef"},
+        "generationRecord": {"$ref": "#/$defs/fileRef"}
+      }
+    },
+    "assessmentCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"enum": ["passed", "failed", "unverified"]},
+        "reason": {"type": "string", "minLength": 1, "description": "记录真实人工判断理由；机器仅校验结构和候选绑定。"}
+      }
+    },
+    "candidateAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateId", "checks"],
+      "properties": {
+        "candidateId": {"type": "string", "minLength": 1},
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["themeFit", "audienceFit", "readability", "comfort", "craft"],
+          "properties": {
+            "themeFit": {"$ref": "#/$defs/assessmentCheck"},
+            "audienceFit": {"$ref": "#/$defs/assessmentCheck"},
+            "readability": {"$ref": "#/$defs/assessmentCheck"},
+            "comfort": {"$ref": "#/$defs/assessmentCheck"},
+            "craft": {"$ref": "#/$defs/assessmentCheck"}
+          }
+        }
+      }
+    },
+    "candidateAssessments": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "必须与三张候选按 candidateId 唯一完整绑定；逐项唯一性和所选项全通过由机器合同校验。",
+      "items": {"$ref": "#/$defs/candidateAssessment"}
+    },
+    "humanSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewMode","status","selectedCandidateId","presentedCandidateIds","candidateAssessments","decisionFile","confirmedAt","userOriginalText"],
+      "properties": {
+        "reviewMode": {"const": "SINGLE_HUMAN"},
+        "status": {"const": "CONFIRMED"},
+        "selectedCandidateId": {"type": "string", "minLength": 1},
+        "presentedCandidateIds": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "candidateAssessments": {"$ref": "#/$defs/candidateAssessments"},
+        "decisionFile": {"type": "string", "minLength": 1},
+        "decisionSha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "confirmedAt": {"type": "string", "format": "date-time"},
+        "userOriginalText": {"type": "string", "minLength": 1}
+      }
+    },
+    "humanDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "selectionId", "workItemId", "briefId", "generationBatchId", "presentedCandidateIds", "reviewMode", "status", "selectedCandidateId", "candidateAssessments", "confirmedAt", "userOriginalText"],
+      "properties": {
+        "schemaVersion": {"const": "cocos-global-visual-baseline-selection-decision/1.1"},
+        "selectionId": {"type": "string", "minLength": 1},
+        "workItemId": {"type": "string", "minLength": 1},
+        "briefId": {"type": "string", "minLength": 1},
+        "generationBatchId": {"type": "string", "minLength": 1},
+        "briefSha256": {"description": "仅作为可选摘要记录，不参与验收或放行。"},
+        "conditionsFingerprint": {"description": "仅作为可选摘要记录，不参与验收或放行。"},
+        "decisionSha256": {"description": "仅作为可选摘要记录，不参与验收或放行。"},
+        "presentedCandidateIds": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "reviewMode": {"const": "SINGLE_HUMAN"},
+        "status": {"const": "CONFIRMED"},
+        "selectedCandidateId": {"type": "string", "minLength": 1},
+        "candidateAssessments": {"$ref": "#/$defs/candidateAssessments"},
+        "confirmedAt": {"type": "string", "format": "date-time"},
+        "userOriginalText": {"type": "string", "minLength": 1}
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","version","status","document","primaryAnchor","selectedCandidateId","selectedCandidate"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "status": {"const": "global-static-baseline-frozen"},
+        "document": {"const": "docs/visual-baseline.md"},
+        "documentSha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "styleFingerprint": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "primaryAnchor": {"$ref": "#/$defs/imageRef"},
+        "selectedCandidateId": {"type": "string", "minLength": 1},
+        "selectedCandidate": {"$ref": "#/$defs/imageRef"}
+      }
+    }
+  }
+}

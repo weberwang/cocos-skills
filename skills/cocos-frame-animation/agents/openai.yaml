@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 通用帧动画"
+  short_description: "按普通、角色、特效与 UI 用途制作帧动画，默认视频抽帧，可明确选用图片递归补帧"
+  default_prompt: "使用 $cocos-frame-animation，内部记录动作时间轴并在已有授权内直接制作真实候选；默认视频路线须经人工验收后抽帧，用户明确选择图片时逐张确认首尾、关键帧与递归父图，并验收完整序列。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 测试性能"
+  short_description: "验证游戏功能还原、状态覆盖与性能，整理工程证据并交接人工视觉验收"
+  default_prompt: "在 $cocos-game-workflow-control 当前工作项内使用 $cocos-game-qa-performance 生成可复现工程证据。"

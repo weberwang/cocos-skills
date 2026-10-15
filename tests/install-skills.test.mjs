@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { cp, lstat, mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdtemp, mkdir, readFile, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import {
@@ -11,6 +12,7 @@ import {
   installSkills,
   resolveManagedTarget,
 } from "../scripts/install-skills.mjs";
+import { prepareSkillRuntime } from "../scripts/install-runtime.mjs";
 
 const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const installerPath = join(repositoryRoot, "scripts", "install-skills.mjs");
@@ -158,6 +160,39 @@ test("替换阶段失败时回滚已替换的全部 Skill", async (t) => {
   assert.equal(await readFile(join(projectRoot, ".agents", "skills", "beta", "marker.txt"), "utf8"), "old-beta");
 });
 
+// 运行依赖属于同一次升级，准备失败不能留下已更新的入口和旧运行库。
+test("图片运行依赖准备失败时保留全部既有安装", async (t) => {
+  const temporaryDirectory = await createTemporaryDirectory(t);
+  const sourceRoot = join(temporaryDirectory, "source-skills");
+  const projectRoot = join(temporaryDirectory, "project");
+  await createSkill(sourceRoot, "alpha", "new");
+  await createSkill(join(projectRoot, ".agents", "skills"), "alpha", "old");
+
+  await assert.rejects(installSkills({
+    sourceRoot, projectRoot, log: () => {},
+    prepareRuntime: async () => { throw new Error("运行依赖缺失"); },
+  }), /运行依赖缺失/);
+  assert.equal(await readFile(join(projectRoot, ".agents", "skills", "alpha", "marker.txt"), "utf8"), "old");
+});
+
+test("链接式运行依赖复制后不再依赖原来的模块目录", async (t) => {
+  const root = await createTemporaryDirectory(t);
+  const original = join(root, "store", "sharp");
+  const packageRoot = join(root, "installer");
+  const stageRoot = join(root, "stage");
+  await mkdir(original, { recursive: true });
+  await mkdir(join(packageRoot, "node_modules"), { recursive: true });
+  await mkdir(join(stageRoot, "cocos-game-workflow-control"), { recursive: true });
+  await writeFile(join(original, "package.json"), '{"name":"sharp","main":"index.cjs"}');
+  await writeFile(join(original, "index.cjs"), "module.exports = () => '独立运行';");
+  await createDirectoryLink(original, join(packageRoot, "node_modules", "sharp"));
+  await prepareSkillRuntime(stageRoot, { requireFrom: createRequire(join(packageRoot, "package.json")) });
+  const copied = join(stageRoot, "cocos-game-workflow-control", "node_modules", "sharp");
+  assert.equal((await lstat(copied)).isSymbolicLink(), false);
+  await rename(original, join(root, "store", "detached-sharp"));
+  assert.equal(createRequire(join(stageRoot, "cocos-game-workflow-control", "package.json"))("sharp")(), "独立运行");
+});
+
 test("拒绝源 Skill 内任意符号链接且不触碰既有安装", async (t) => {
   const temporaryDirectory = await createTemporaryDirectory(t);
   const sourceRoot = join(temporaryDirectory, "source-skills");
@@ -275,6 +310,33 @@ test("CLI 将包内有效 Skill 安装到执行目录", async (t) => {
   for (const skillName of expectedSkillNames) {
     assert.equal(await exists(join(projectRoot, ".agents", "skills", skillName, "SKILL.md")), true);
   }
+  // 脱离仓库和目标项目的 npm 依赖，验证复制后的原生图片运行库可独立加载。
+  const runtimeUrl = pathToFileURL(join(projectRoot, ".agents", "skills", "cocos-game-workflow-control", "scripts", "runtime", "image-runtime.mjs")).href;
+  const toolUrls = [
+    "cocos-frame-animation/scripts/frame-atlas-core.mjs",
+    "cocos-spine-generative-reskin/scripts/spine_reskin_progress.mjs",
+    "cocos-game-workflow-control/scripts/visual-image-normalization.mjs",
+  ].map((path) => pathToFileURL(join(projectRoot, ".agents", "skills", path)).href);
+  const runtime = spawnSync(process.execPath, ["--input-type=module", "-e", `const {default: sharp} = await import(${JSON.stringify(runtimeUrl)}); await sharp({create:{width:1,height:1,channels:4,background:'#000'}}).png().toBuffer(); for (const url of ${JSON.stringify(toolUrls)}) await import(url);`], {
+    cwd: projectRoot, encoding: "utf8",
+  });
+  assert.equal(runtime.status, 0, runtime.stderr);
+  assert.equal(await exists(join(projectRoot, "package.json")), false);
+});
+
+test("CLI 支持显式目标目录且不写入执行目录", async (t) => {
+  const temporaryDirectory = await createTemporaryDirectory(t);
+  const projectRoot = join(temporaryDirectory, "game");
+  await mkdir(projectRoot);
+  const originalPackage = '{"name":"game","private":true}\n';
+  await writeFile(join(projectRoot, "package.json"), originalPackage);
+  const result = spawnSync(process.execPath, [installerPath, projectRoot], {
+    cwd: temporaryDirectory, encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await exists(join(projectRoot, ".agents", "skills", "cocos-game-workflow-control", "SKILL.md")), true);
+  assert.equal(await exists(join(temporaryDirectory, ".agents")), false);
+  assert.equal(await readFile(join(projectRoot, "package.json"), "utf8"), originalPackage);
 });
 
 test("npx 通过本地包路径运行后安装包内 Skill", async (t) => {

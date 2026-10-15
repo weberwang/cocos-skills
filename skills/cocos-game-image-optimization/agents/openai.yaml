@@ -1,0 +1,7 @@
+interface:
+  display_name: "Cocos Creator 3.x 图片资源优化"
+  short_description: "手动压缩运行时图片资源并验证画质渠道兼容性与总体积收益"
+  default_prompt: "显式调用后，在 $cocos-game-workflow-control 批准范围内使用 $cocos-game-image-optimization 优化图片。"
+
+policy:
+  allow_implicit_invocation: false

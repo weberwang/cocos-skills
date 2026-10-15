@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 玩法开发"
+  short_description: "实现或还原经过验收、适合触控设备运行的游戏功能与交互"
+  default_prompt: "在 $cocos-game-workflow-control 批准范围内，使用 $cocos-gameplay-development 实现并验证 Cocos Creator 3.x 玩法。"

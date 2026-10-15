@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "user-resolution-ledger.schema.json",
+  "title": "用户决定权威账本",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema","ledger_id","work_item_id","entries"],
+  "properties": {
+    "schema": {"const": "user-resolution-ledger/1.0"},
+    "ledger_id": {"type": "string", "minLength": 1},
+    "ledger_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "work_item_id": {"type": "string", "minLength": 1},
+    "entries": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/entry"}}
+  },
+  "$defs": {
+    "sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receipt_id","receipt_file","message_id","thread_id","author_role","accepted_at","work_item_id","candidate_version","scene_id","state_id","resolution_id","resolution_status","resolved_from","user_statement","annotation_file","annotation_width","annotation_height","annotation_schema","annotation_layout","proposal_id","proposal_file","decision_record_file"],
+      "properties": {
+        "receipt_id": {"type": "string", "minLength": 1},
+        "receipt_file": {"type": "string", "pattern": "^\\.workflow-control/user-resolutions/[^/]+\\.json$"},
+        "receipt_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "entry_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "message_id": {"type": "string", "minLength": 1},
+        "thread_id": {"type": "string", "minLength": 1},
+        "author_role": {"const": "user"},
+        "user_message_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "decision_record_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "accepted_at": {"type": "string", "format": "date-time"},
+        "work_item_id": {"type": "string", "minLength": 1},
+        "candidate_version": {"type": "string", "minLength": 1},
+        "candidate_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "target_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "scene_id": {"type": "string", "minLength": 1},
+        "state_id": {"type": "string", "minLength": 1},
+        "resolution_id": {"type": "string", "minLength": 1},
+        "resolution_status": {"const": "resolved"},
+        "resolved_from": {"const": "USER_INPUT_REQUIRED"},
+        "user_statement": {"type": "string", "minLength": 1},
+        "annotation_file": {"type": "string", "minLength": 1},
+        "annotation_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "annotation_width": {"type": "integer", "minimum": 1},
+        "annotation_height": {"type": "integer", "minimum": 1},
+        "annotation_schema": {"const": "effect-image-annotation/png/1"},
+        "annotation_layout": {"const": "image-plus-right-panel"},
+        "annotation_metadata_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "annotation_identity_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "proposal_id": {"type": "string", "minLength": 1},
+        "proposal_file": {"type": "string", "minLength": 1},
+        "proposal_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "decision_record_file": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

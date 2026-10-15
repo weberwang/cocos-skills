@@ -1,0 +1,6274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cocos-work-item.schema.json",
+  "title": "工作项",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "workItemId",
+    "projectId",
+    "moduleIds",
+    "domain",
+    "stageId",
+    "globalState",
+    "baselineId",
+    "baselineVersion",
+    "objective",
+    "inScope",
+    "approvedRequirements",
+    "allowedActions",
+    "allowedActionLevels",
+    "explicitApprovalActionLevels",
+    "prohibitedActions",
+    "allowedPaths",
+    "forbiddenPaths",
+    "allowedExternalTargets",
+    "protectedExternalTargets",
+    "requiredGates",
+    "approvalRecord",
+    "assignedAgent",
+    "delegatedAgents",
+    "expectedOutputs",
+    "validationPlan",
+    "exitCriteria",
+    "nextGate",
+    "rollbackPolicy",
+    "evidenceRoot",
+    "pendingApprovalId",
+    "pendingApprovalObject",
+    "pendingApprovalStage",
+    "pendingApprovalActionLevel",
+    "pendingApprovalGate",
+    "pendingApprovalState",
+    "pendingApprovalContext",
+    "pendingApprovalActionType",
+    "pendingApprovalImpactSummary",
+    "pendingApprovalFileScope",
+    "pendingApprovalServices",
+    "pendingApprovalAllowServiceStart",
+    "pendingApprovalAllowDelete",
+    "pendingApprovalExternalWrite",
+    "pendingApprovalDestructive",
+    "pendingApprovalPhysicalDevice",
+    "pendingApprovalRelease",
+    "pendingApprovalExternalTargets",
+    "pendingApprovalPreparedAt",
+    "pendingApprovalPresentedId",
+    "pendingApprovalPresentedAt",
+    "validationBatchId",
+    "changeRequestFiles"
+  ],
+  "properties": {
+    "workItemId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "moduleIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "domain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "visualStage": {
+      "enum": [
+        "V0",
+        "V1",
+        "V2",
+        "V3",
+        "V4"
+      ]
+    },
+    "visualStageState": {
+      "enum": [
+        "not-started",
+        "in-progress",
+        "pending",
+        "failed",
+        "stale",
+        "invalid",
+        "global-static-baseline-frozen",
+        "v2-production-planning-complete",
+        "v3-formal-acceptance-complete",
+        "v4-runtime-integration-candidate"
+      ]
+    },
+    "globalStaticBaselineState": {
+      "const": "global-static-baseline-frozen",
+      "description": "全局静态 visual_baseline 的冻结声明；只有三张候选效果图经过唯一人工选择确认后才能写入。该字段不等同于逐场景 V2。"
+    },
+    "globalVisualBaselineSelectionRef": {
+      "$ref": "#/$defs/globalVisualBaselineSelectionReference",
+      "description": "不可变全局基线选择证据引用；通过 path+sha256 跨 Work Item 复用，根证据内部绑定生产者及其三张 generated 候选图、唯一 SINGLE_HUMAN/CONFIRMED 选择、冻结正文和真实 SHA。"
+    },
+    "visualStageEvidenceRefs": {
+      "type": "object",
+      "properties": {
+        "V2": {
+          "$ref": "#/$defs/visualStageEvidenceReference"
+        },
+        "V3": {
+          "$ref": "#/$defs/visualStageEvidenceReference"
+        },
+        "V4": {
+          "$ref": "#/$defs/visualStageEvidenceReference"
+        }
+      },
+      "additionalProperties": false
+    },
+    "visualIntegration": {
+      "type": "object",
+      "properties": {
+        "registersFormalScene": {
+          "type": "boolean"
+        },
+        "replacesFormalScene": {
+          "type": "boolean"
+        },
+        "modifiesBootEntry": {
+          "type": "boolean"
+        },
+        "registersProductionEntry": {
+          "type": "boolean"
+        },
+        "formalRuntimeConsumption": {
+          "type": "boolean"
+        },
+        "deletesLegacyVisualImplementation": {
+          "type": "boolean"
+        },
+        "declaresVisualComplete": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "visibleVisualProductionIntegration": {
+      "type": "boolean"
+    },
+    "graybox": {
+      "type": "boolean"
+    },
+    "isolatedPrototype": {
+      "type": "boolean"
+    },
+    "pendingVisualPrerequisiteSnapshot": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "pendingApprovalStatus": {
+      "enum": [
+        "pending",
+        "stale",
+        "invalid"
+      ]
+    },
+    "returnRecord": {
+      "$ref": "#/$defs/returnRecord",
+      "description": "必要回退的持久化审计记录；不允许用 RETURN 掩盖 repair/revalidate。"
+    },
+    "sceneReconstructionContract": {
+      "type": "object",
+      "description": "effect-image V1-V4 场景还原合同；缺失时不得把独立资源工件视为完整还原。",
+      "required": [
+        "contract_version",
+        "reference_technical_conflicts",
+        "target_conditions",
+        "text_decomposition",
+        "coverage_regions",
+        "composition",
+        "responsive_contract",
+        "predeclared_tolerances",
+        "implementation_plan",
+        "display_layer_planning"
+      ],
+      "properties": {
+        "contract_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_technical_conflicts": {
+          "$ref": "#/$defs/referenceTechnicalConflicts"
+        },
+        "reference_target": {
+          "$ref": "#/$defs/referenceTarget"
+        },
+        "v2_decomposition_annotation": {
+          "$ref": "#/$defs/v2Artifact"
+        },
+        "v2_technical_decomposition": {
+          "$ref": "#/$defs/v2Artifact"
+        },
+        "v2_decomposition_confirmation": {
+          "$ref": "#/$defs/v2DecompositionConfirmation"
+        },
+        "target_conditions": {
+          "type": "object"
+        },
+        "all_native_justification": {
+          "$ref": "#/$defs/allNativeJustification"
+        },
+        "text_decomposition": {
+          "$ref": "#/$defs/sceneTextDecomposition"
+        },
+        "coverage_regions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sceneCoverageRegion"
+          }
+        },
+        "composition": {
+          "type": "object"
+        },
+        "responsive_contract": {
+          "type": "object"
+        },
+        "predeclared_tolerances": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "rules"
+            ]
+          }
+        },
+        "implementation_plan": {
+          "type": "object"
+        },
+        "display_layer_planning": {
+          "$ref": "#/$defs/displayLayerPlanning"
+        },
+        "layout_decomposition": {
+          "$ref": "#/$defs/layoutDecomposition"
+        },
+        "combination_preacceptance": {
+          "$ref": "#/$defs/combinationPreacceptance"
+        }
+      },
+      "additionalProperties": true
+    },
+    "scene_reconstruction_contract": {
+      "type": "object",
+      "description": "effect-image V1-V4 场景还原合同；snake_case 入口同样必须显式提供完整合同。",
+      "required": [
+        "contract_version",
+        "reference_technical_conflicts",
+        "target_conditions",
+        "text_decomposition",
+        "coverage_regions",
+        "composition",
+        "responsive_contract",
+        "predeclared_tolerances",
+        "implementation_plan",
+        "display_layer_planning"
+      ],
+      "properties": {
+        "contract_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_technical_conflicts": {
+          "$ref": "#/$defs/referenceTechnicalConflicts"
+        },
+        "reference_target": {
+          "$ref": "#/$defs/referenceTarget"
+        },
+        "v2_decomposition_annotation": {
+          "$ref": "#/$defs/v2Artifact"
+        },
+        "v2_technical_decomposition": {
+          "$ref": "#/$defs/v2Artifact"
+        },
+        "v2_decomposition_confirmation": {
+          "$ref": "#/$defs/v2DecompositionConfirmation"
+        },
+        "target_conditions": {
+          "type": "object"
+        },
+        "all_native_justification": {
+          "$ref": "#/$defs/allNativeJustification"
+        },
+        "text_decomposition": {
+          "$ref": "#/$defs/sceneTextDecomposition"
+        },
+        "coverage_regions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sceneCoverageRegion"
+          }
+        },
+        "composition": {
+          "type": "object"
+        },
+        "responsive_contract": {
+          "type": "object"
+        },
+        "predeclared_tolerances": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "rules"
+            ]
+          }
+        },
+        "implementation_plan": {
+          "type": "object"
+        },
+        "display_layer_planning": {
+          "$ref": "#/$defs/displayLayerPlanning"
+        },
+        "layout_decomposition": {
+          "$ref": "#/$defs/layoutDecomposition"
+        },
+        "combination_preacceptance": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "globalState": {
+      "enum": [
+        "INTAKE",
+        "BASELINE",
+        "PROPOSAL",
+        "REVIEW",
+        "IMPLEMENTING",
+        "VALIDATING",
+        "PASSED",
+        "INTEGRATING",
+        "RELEASE_APPROVAL_REQUIRED",
+        "RELEASING",
+        "COMPLETE",
+        "RETURN",
+        "BLOCKED"
+      ]
+    },
+    "baselineId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baselineVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baselineHash": {
+      "description": "仅作为可选摘要记录，不参与验收或放行。"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "userOriginalText": {
+      "type": "string",
+      "minLength": 1,
+      "description": "用户原始任务描述；它是工作上下文，不是独立授权凭据。"
+    },
+    "visualConfirmationPrerequisiteFiles": {
+      "$ref": "#/$defs/strings",
+      "description": "V2 人工确认文件的工作项前置引用；仅用于复核文件身份，不代表额外授权。"
+    },
+    "visualConfirmationPrerequisiteFilesSha256": {
+      "description": "仅作为可选摘要记录，不参与验收或放行。"
+    },
+    "inScope": {
+      "$ref": "#/$defs/strings"
+    },
+    "outOfScope": {
+      "$ref": "#/$defs/strings"
+    },
+    "approvedRequirements": {
+      "$ref": "#/$defs/strings"
+    },
+    "allowedActions": {
+      "$ref": "#/$defs/actions"
+    },
+    "allowedActionLevels": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "A0",
+          "A1",
+          "A2",
+          "A3"
+        ]
+      }
+    },
+    "explicitApprovalActionLevels": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "A4",
+          "A5",
+          "A6"
+        ]
+      }
+    },
+    "prohibitedActions": {
+      "$ref": "#/$defs/actions"
+    },
+    "allowedPaths": {
+      "$ref": "#/$defs/strings"
+    },
+    "forbiddenPaths": {
+      "$ref": "#/$defs/strings"
+    },
+    "allowedExternalTargets": {
+      "$ref": "#/$defs/strings"
+    },
+    "protectedExternalTargets": {
+      "$ref": "#/$defs/strings"
+    },
+    "requiredGates": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "F0",
+          "F1",
+          "F2",
+          "F3",
+          "F4"
+        ]
+      }
+    },
+    "approvalRecord": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assignedAgent": {
+      "type": "string",
+      "minLength": 1
+    },
+    "delegatedAgents": {
+      "$ref": "#/$defs/strings"
+    },
+    "expectedOutputs": {
+      "$ref": "#/$defs/strings"
+    },
+    "validationPlan": {
+      "$ref": "#/$defs/strings"
+    },
+    "exitCriteria": {
+      "$ref": "#/$defs/strings"
+    },
+    "nextGate": {
+      "enum": [
+        "F0",
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ]
+    },
+    "rollbackPolicy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidenceRoot": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pendingApprovalId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pendingApprovalObject": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pendingApprovalStage": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pendingApprovalActionLevel": {
+      "enum": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6"
+      ]
+    },
+    "pendingApprovalGate": {
+      "enum": [
+        "F0",
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ]
+    },
+    "pendingApprovalState": {
+      "enum": [
+        "INTAKE",
+        "BASELINE",
+        "PROPOSAL",
+        "REVIEW",
+        "IMPLEMENTING",
+        "VALIDATING",
+        "PASSED",
+        "INTEGRATING",
+        "RELEASE_APPROVAL_REQUIRED",
+        "RELEASING",
+        "COMPLETE",
+        "RETURN",
+        "BLOCKED"
+      ]
+    },
+    "pendingApprovalContext": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pendingApprovalActionType": {
+      "enum": [
+        "cocos-inspect",
+        "cocos-spec-candidate",
+        "cocos-prototype",
+        "cocos-code-change",
+        "cocos-asset-change",
+        "cocos-ui-change",
+        "cocos-audio-change",
+        "cocos-balance-change",
+        "cocos-qa-build",
+        "cocos-integration",
+        "cocos-build-upload",
+        "cocos-backend-config",
+        "cocos-channel-config",
+        "cocos-device-test",
+        "cocos-store-submit",
+        "cocos-release",
+        "cocos-game-rollback"
+      ]
+    },
+    "pendingApprovalImpactSummary": {
+      "$ref": "#/$defs/strings"
+    },
+    "pendingApprovalFileScope": {
+      "$ref": "#/$defs/strings"
+    },
+    "pendingApprovalServices": {
+      "$ref": "#/$defs/strings"
+    },
+    "pendingApprovalAllowServiceStart": {
+      "type": "boolean"
+    },
+    "pendingApprovalAllowDelete": {
+      "type": "boolean"
+    },
+    "pendingApprovalExternalWrite": {
+      "type": "boolean"
+    },
+    "pendingApprovalDestructive": {
+      "type": "boolean"
+    },
+    "pendingApprovalPhysicalDevice": {
+      "type": "boolean"
+    },
+    "pendingApprovalRelease": {
+      "type": "boolean"
+    },
+    "pendingApprovalExternalTargets": {
+      "$ref": "#/$defs/strings"
+    },
+    "pendingApprovalPreparedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "pendingApprovalPresentedId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pendingApprovalPresentedAt": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "validationBatchId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "changeRequestFiles": {
+      "$ref": "#/$defs/strings"
+    },
+    "moduleGateRequired": {
+      "type": "boolean"
+    },
+    "substantiveTradeoffRequired": {
+      "type": "boolean"
+    },
+    "visualDecisionRequired": {
+      "type": "boolean"
+    },
+    "visualConfirmationAuthorityRefs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/visualConfirmationAuthorityRef"
+      }
+    },
+    "moduleApprovalId": {
+      "type": "string"
+    },
+    "moduleApprovalBaselineHash": {
+      "description": "仅作为可选摘要记录，不参与验收或放行。"
+    },
+    "grillingDecisionId": {
+      "type": "string"
+    },
+    "grillingBaselineHash": {
+      "description": "仅作为可选摘要记录，不参与验收或放行。"
+    },
+    "releaseWorkItem": {
+      "type": "boolean"
+    },
+    "diffAuditRecord": {
+      "type": "string"
+    },
+    "diffAuditLedgerRecord": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "implementationPackageRecord": {
+      "type": "string"
+    },
+    "previousApprovalRecord": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "legacyReadOnly": {
+      "type": "boolean"
+    },
+    "responsiveContractVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "layoutContractVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "visualBaselineVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "logicalViewportSpace": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "designResolutionPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "canvasBackingPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "runtimeDprPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "maxRuntimeDpr": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "scaleMode": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "cameraViewportPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "cameraZoomPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "cameraOriginPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "inputCoordinatePolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "safeAreaPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "resizePolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "orientationPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "textResolutionPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "assetResolutionPolicy": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "performanceBudget": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "representativeViewports": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "requiredRuntimeEvidence": {
+      "$ref": "#/$defs/responsiveContractFact"
+    },
+    "responsiveViewportContract": {
+      "$ref": "#/$defs/responsiveViewportContract"
+    },
+    "responsiveContract": {
+      "$ref": "#/$defs/responsiveViewportContract"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "visualStage"
+        ],
+        "properties": {
+          "visualStage": {
+            "const": "V4"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "visualStageEvidenceRefs"
+        ],
+        "properties": {
+          "visualStageEvidenceRefs": {
+            "required": [
+              "V2",
+              "V3"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "visualStageState"
+        ],
+        "properties": {
+          "visualStageState": {
+            "const": "v4-runtime-integration-candidate"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "visualStageEvidenceRefs"
+        ],
+        "properties": {
+          "visualStageEvidenceRefs": {
+            "required": [
+              "V4"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "required": [
+              "responsiveViewportContract"
+            ]
+          },
+          {
+            "required": [
+              "responsiveContract"
+            ]
+          },
+          {
+            "required": [
+              "visibleVisualProductionIntegration"
+            ],
+            "properties": {
+              "visibleVisualProductionIntegration": {
+                "const": true
+              }
+            }
+          }
+        ]
+      },
+      "then": {
+        "required": [
+          "responsiveContractVersion",
+          "layoutContractVersion",
+          "visualBaselineVersion",
+          "logicalViewportSpace",
+          "designResolutionPolicy",
+          "canvasBackingPolicy",
+          "runtimeDprPolicy",
+          "maxRuntimeDpr",
+          "scaleMode",
+          "cameraViewportPolicy",
+          "cameraZoomPolicy",
+          "cameraOriginPolicy",
+          "inputCoordinatePolicy",
+          "safeAreaPolicy",
+          "resizePolicy",
+          "orientationPolicy",
+          "textResolutionPolicy",
+          "assetResolutionPolicy",
+          "performanceBudget",
+          "representativeViewports",
+          "requiredRuntimeEvidence"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "globalState": {
+            "const": "RETURN"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "returnRecord",
+          "pendingApprovalStatus"
+        ],
+        "properties": {
+          "pendingApprovalStatus": {
+            "const": "invalid"
+          }
+        }
+      },
+      "else": {
+        "if": {
+          "required": [
+            "returnRecord"
+          ]
+        },
+        "then": {
+          "properties": {
+            "returnRecord": {
+              "properties": {
+                "resolvedAt": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "required": [
+              "globalStaticBaselineState"
+            ]
+          },
+          {
+            "required": [
+              "visualStage",
+              "visualStageState"
+            ],
+            "properties": {
+              "visualStage": {
+                "enum": [
+                  "V0",
+                  "V1"
+                ]
+              },
+              "visualStageState": {
+                "const": "global-static-baseline-frozen"
+              }
+            }
+          }
+        ]
+      },
+      "then": {
+        "required": [
+          "globalVisualBaselineSelectionRef"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "visualStage"
+        ],
+        "properties": {
+          "visualStage": {
+            "enum": [
+              "V0",
+              "V1"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "visualStageState"
+        ],
+        "properties": {
+          "visualStageState": {
+            "enum": [
+              "not-started",
+              "in-progress",
+              "pending",
+              "failed",
+              "stale",
+              "invalid",
+              "global-static-baseline-frozen"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "visualStage"
+        ],
+        "properties": {
+          "visualStage": {
+            "const": "V2"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "visualStageState"
+        ],
+        "properties": {
+          "visualStageState": {
+            "enum": [
+              "not-started",
+              "in-progress",
+              "pending",
+              "failed",
+              "stale",
+              "invalid",
+              "v2-production-planning-complete"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "visualStage"
+        ],
+        "properties": {
+          "visualStage": {
+            "const": "V3"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "visualStageState"
+        ],
+        "properties": {
+          "visualStageState": {
+            "enum": [
+              "not-started",
+              "in-progress",
+              "pending",
+              "failed",
+              "stale",
+              "invalid",
+              "v3-formal-acceptance-complete"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "visualStage"
+        ],
+        "properties": {
+          "visualStage": {
+            "const": "V4"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "visualStageState"
+        ],
+        "properties": {
+          "visualStageState": {
+            "enum": [
+              "not-started",
+              "in-progress",
+              "pending",
+              "failed",
+              "stale",
+              "invalid",
+              "v4-runtime-integration-candidate"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "stageId"
+        ],
+        "properties": {
+          "stageId": {
+            "pattern": "^V[0-9]+$"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "visualStage",
+          "visualStageState"
+        ],
+        "properties": {
+          "visualStage": {
+            "enum": [
+              "V0",
+              "V1",
+              "V2",
+              "V3",
+              "V4"
+            ]
+          },
+          "visualStageState": {
+            "not": {
+              "const": "frozen"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "required": [
+              "stageId"
+            ],
+            "properties": {
+              "stageId": {
+                "enum": [
+                  "V3",
+                  "V4"
+                ]
+              }
+            }
+          },
+          {
+            "required": [
+              "stageId",
+              "visualStageState"
+            ],
+            "properties": {
+              "stageId": {
+                "const": "V2"
+              },
+              "visualStageState": {
+                "const": "v2-production-planning-complete"
+              }
+            }
+          }
+        ]
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": [
+              "sceneReconstructionContract"
+            ],
+            "properties": {
+              "sceneReconstructionContract": {
+                "required": [
+                  "v2_decomposition_annotation",
+                  "v2_technical_decomposition",
+                  "v2_decomposition_confirmation",
+                  "layout_decomposition"
+                ],
+                "properties": {
+                  "layout_decomposition": {
+                    "required": [
+                      "layout_annotation",
+                      "layout_annotation_confirmation"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "required": [
+              "scene_reconstruction_contract"
+            ],
+            "properties": {
+              "scene_reconstruction_contract": {
+                "required": [
+                  "v2_decomposition_annotation",
+                  "v2_technical_decomposition",
+                  "v2_decomposition_confirmation",
+                  "layout_decomposition"
+                ],
+                "properties": {
+                  "layout_decomposition": {
+                    "required": [
+                      "layout_annotation",
+                      "layout_annotation_confirmation"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "stageId"
+        ],
+        "properties": {
+          "stageId": {
+            "const": "V4"
+          }
+        }
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": [
+              "sceneReconstructionContract"
+            ],
+            "properties": {
+              "sceneReconstructionContract": {
+                "required": [
+                  "combination_preacceptance"
+                ]
+              }
+            }
+          },
+          {
+            "required": [
+              "scene_reconstruction_contract"
+            ],
+            "properties": {
+              "scene_reconstruction_contract": {
+                "required": [
+                  "combination_preacceptance"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "stageId"
+        ],
+        "properties": {
+          "stageId": {
+            "enum": [
+              "V2",
+              "V3",
+              "V4"
+            ]
+          }
+        }
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": [
+              "sceneReconstructionContract"
+            ],
+            "properties": {
+              "sceneReconstructionContract": {
+                "properties": {
+                  "text_decomposition": {
+                    "properties": {
+                      "text_nodes": {
+                        "items": {
+                          "required": [
+                            "implementation_route",
+                            "route_reason",
+                            "ownership",
+                            "required_resources"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "required": [
+              "scene_reconstruction_contract"
+            ],
+            "properties": {
+              "scene_reconstruction_contract": {
+                "properties": {
+                  "text_decomposition": {
+                    "properties": {
+                      "text_nodes": {
+                        "items": {
+                          "required": [
+                            "implementation_route",
+                            "route_reason",
+                            "ownership",
+                            "required_resources"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "stageId"
+        ],
+        "properties": {
+          "stageId": {
+            "const": "V4"
+          }
+        }
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": [
+              "sceneReconstructionContract"
+            ],
+            "properties": {
+              "sceneReconstructionContract": {
+                "properties": {
+                  "text_decomposition": {
+                    "properties": {
+                      "text_nodes": {
+                        "items": {
+                          "required": [
+                            "runtime_verification"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "required": [
+              "scene_reconstruction_contract"
+            ],
+            "properties": {
+              "scene_reconstruction_contract": {
+                "properties": {
+                  "text_decomposition": {
+                    "properties": {
+                      "text_nodes": {
+                        "items": {
+                          "required": [
+                            "runtime_verification"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pendingApprovalActionLevel": {
+            "enum": [
+              "A4",
+              "A5",
+              "A6"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "pendingApprovalImpactSummary": {
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pendingApprovalActionType": {
+            "enum": [
+              "cocos-inspect"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "pendingApprovalActionLevel": {
+            "const": "A0"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pendingApprovalActionType": {
+            "enum": [
+              "cocos-spec-candidate"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "pendingApprovalActionLevel": {
+            "const": "A1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pendingApprovalActionType": {
+            "enum": [
+              "cocos-prototype"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "pendingApprovalActionLevel": {
+            "const": "A2"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pendingApprovalActionType": {
+            "enum": [
+              "cocos-code-change",
+              "cocos-asset-change",
+              "cocos-ui-change",
+              "cocos-audio-change",
+              "cocos-balance-change",
+              "cocos-qa-build"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "pendingApprovalActionLevel": {
+            "const": "A3"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pendingApprovalActionType": {
+            "enum": [
+              "cocos-integration"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "pendingApprovalActionLevel": {
+            "const": "A4"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pendingApprovalActionType": {
+            "enum": [
+              "cocos-build-upload",
+              "cocos-backend-config",
+              "cocos-channel-config"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "pendingApprovalActionLevel": {
+            "const": "A5"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "pendingApprovalActionType": {
+            "enum": [
+              "cocos-device-test",
+              "cocos-store-submit",
+              "cocos-release",
+              "cocos-game-rollback"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "pendingApprovalActionLevel": {
+            "const": "A6"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nineSliceDecision": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "mode",
+            "reason"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "not-applicable"
+            },
+            "reason": {
+              "type": "string",
+              "pattern": "\\S"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "mode",
+            "reason",
+            "source_size",
+            "borders"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "stretch"
+            },
+            "reason": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "source_size": {
+              "type": "object",
+              "required": [
+                "width",
+                "height"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "width": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "borders": {
+              "type": "object",
+              "required": [
+                "left",
+                "right",
+                "top",
+                "bottom"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "left": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "right": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "top": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "bottom": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "anyOf": [
+                {
+                  "properties": {
+                    "top": {
+                      "minimum": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "bottom": {
+                      "minimum": 1
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nativeRenderContract": {
+      "type": "object",
+      "description": "冻结 Cocos 原生渲染参数；不支持的视觉特征必须明确留空并由上层选用图片路线。",
+      "required": [
+        "renderer",
+        "dimensions",
+        "colors",
+        "line_width",
+        "corner_radius",
+        "gradient",
+        "opacity",
+        "applicable_states",
+        "unsupported_features"
+      ],
+      "properties": {
+        "renderer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dimensions": {
+          "type": "object",
+          "required": [
+            "width",
+            "height"
+          ],
+          "properties": {
+            "width": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "height": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "colors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          }
+        },
+        "line_width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "corner_radius": {
+          "type": "number",
+          "minimum": 0
+        },
+        "gradient": {
+          "type": "object",
+          "required": [
+            "type",
+            "stops"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "none",
+                "linear"
+              ]
+            },
+            "angle": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 360
+            },
+            "stops": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "offset",
+                  "color"
+                ],
+                "properties": {
+                  "offset": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "color": {
+                    "type": "string",
+                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "none"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "stops": {
+                    "maxItems": 0
+                  }
+                },
+                "not": {
+                  "required": [
+                    "angle"
+                  ]
+                }
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "linear"
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "angle"
+                ],
+                "properties": {
+                  "stops": {
+                    "minItems": 2
+                  }
+                }
+              }
+            }
+          ],
+          "additionalProperties": false
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "applicable_states": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "unsupported_features": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "nativeRuntimeEvidence": {
+      "type": "object",
+      "required": [
+        "observed_method",
+        "observed_delivery_kind",
+        "render_contract",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "observed_method": {
+          "enum": [
+            "cocos-graphics",
+            "runtime-program"
+          ]
+        },
+        "observed_delivery_kind": {
+          "enum": [
+            "runtime-drawing",
+            "runtime-program"
+          ]
+        },
+        "render_contract": {
+          "$ref": "#/$defs/nativeRenderContract"
+        },
+        "status": {
+          "const": "passed"
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "candidate_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "evidence_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "baseline_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "diff_fingerprint": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "globalVisualBaselineSelectionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "workItemId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "可选的根证据生产者 Work Item 身份；不是当前消费者 Work Item。"
+        }
+      }
+    },
+    "visualStageEvidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "workItemId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resultId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unitResultId": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "sha256": {
+      "description": "仅作为可选摘要记录，不参与验收或放行。"
+    },
+    "workflowDpr": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 2,
+      "description": "运行时实际 DPR，允许 (0,2]；设备原始值由运行时动态封顶为 2。"
+    },
+    "imageNormalizationRecord": {
+      "type": "object",
+      "required": [
+        "schema",
+        "status",
+        "operation",
+        "source_file",
+        "source_width",
+        "source_height",
+        "target_width",
+        "target_height",
+        "output_file",
+        "output_width",
+        "output_height",
+        "preserve_alpha",
+        "tool",
+        "tool_version",
+        "completed_at"
+      ],
+      "properties": {
+        "schema": {
+          "const": "image-normalization/1"
+        },
+        "status": {
+          "const": "passed"
+        },
+        "operation": {
+          "enum": [
+            "resize-to-contract",
+            "not-required",
+            "crop-and-resize-to-contract"
+          ]
+        },
+        "source_file": {
+          "type": "string",
+          "pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp](?:[Ee])?[Gg])$"
+        },
+        "source_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "source_width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target_width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target_height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "output_file": {
+          "type": "string",
+          "pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp](?:[Ee])?[Gg])$"
+        },
+        "output_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "output_width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "output_height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "preserve_alpha": {
+          "type": "boolean"
+        },
+        "tool": {
+          "const": "sharp"
+        },
+        "tool_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aspect_ratio_correction": {
+          "$ref": "#/$defs/aspectRatioCorrection"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "crop-and-resize-to-contract"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "aspect_ratio_correction"
+            ]
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {
+                "operation": {
+                  "const": "crop-and-resize-to-contract"
+                }
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "aspect_ratio_correction"
+              ]
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "aspectRatioCorrection": {
+      "type": "object",
+      "required": [
+        "schema",
+        "status",
+        "trigger",
+        "strategy",
+        "attempts",
+        "focus",
+        "crop_rect"
+      ],
+      "properties": {
+        "schema": {
+          "const": "aspect-ratio-correction/1"
+        },
+        "status": {
+          "const": "passed"
+        },
+        "trigger": {
+          "const": "two-generation-attempts-mismatched"
+        },
+        "strategy": {
+          "const": "controlled-crop"
+        },
+        "attempts": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "attempt_id",
+              "generation_record_id",
+              "generated_at",
+              "file",
+              "width",
+              "height"
+            ],
+            "properties": {
+              "attempt_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "generation_record_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "generated_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp](?:[Ee])?[Gg])$"
+              },
+              "sha256": {
+                "description": "仅作为可选摘要记录，不参与验收或放行。"
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "focus": {
+          "type": "object",
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": true
+        },
+        "crop_rect": {
+          "type": "object",
+          "required": [
+            "left",
+            "top",
+            "width",
+            "height"
+          ],
+          "properties": {
+            "left": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "top": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "referenceTechnicalConflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "minProperties": 1
+      }
+    },
+    "referenceTarget": {
+      "type": "object",
+      "required": [
+        "candidate_id",
+        "original_file",
+        "frozen_at",
+        "status",
+        "scene_ids",
+        "state_ids",
+        "origin"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "original_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "frozen_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "const": "reference-target-frozen"
+        },
+        "scene_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "state_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "origin": {
+          "enum": [
+            "provided",
+            "generated"
+          ]
+        },
+        "generation_record": {
+          "$ref": "#/$defs/globalVisualGenerationRecord"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "origin": {
+                "const": "generated"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "generation_record"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "origin": {
+                "const": "provided"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "generation_record"
+              ]
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "artifactIdentity": {
+      "type": "object",
+      "properties": {
+        "sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "code_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "build_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "candidate_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "diff_fingerprint": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "diff_identity": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "evidenceValue": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": [
+              "string",
+              "object"
+            ]
+          }
+        },
+        {
+          "type": "object",
+          "minProperties": 1
+        }
+      ]
+    },
+    "globalVisualGenerationRecord": {
+      "type": "object",
+      "required": [
+        "origin",
+        "visual_baseline_id",
+        "visual_baseline_version",
+        "baseline_document",
+        "style_reference_inputs",
+        "global_visual_consistency_prompt",
+        "style_drift_policy",
+        "full_prompt",
+        "prompt_sent",
+        "consistency_status",
+        "consistency_evidence"
+      ],
+      "properties": {
+        "origin": {
+          "const": "generated"
+        },
+        "visual_baseline_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "visual_baseline_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "style_fingerprint": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "baseline_document": {
+          "const": "docs/visual-baseline.md"
+        },
+        "style_reference_inputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/globalStyleReferenceInput"
+          }
+        },
+        "global_visual_consistency_prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "style_drift_policy": {
+          "const": "forbid"
+        },
+        "full_prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt_sent": {
+          "const": true
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "output_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "consistency_status": {
+          "const": "passed"
+        },
+        "consistency_evidence": {
+          "$ref": "#/$defs/globalConsistencyEvidence"
+        }
+      },
+      "additionalProperties": true
+    },
+    "imageGenerationRecord": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/globalVisualGenerationRecord"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "normalization_record": {
+              "$ref": "#/$defs/imageNormalizationRecord"
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "transparency_strategy"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/transparentBackgroundProductionRecord"
+          }
+        }
+      ]
+    },
+    "transparentBackgroundRemovalAttempt": {
+      "type": "object",
+      "required": [
+        "operation",
+        "status",
+        "source_file",
+        "output_file",
+        "source_has_alpha",
+        "output_has_alpha",
+        "completed_at",
+        "evidence"
+      ],
+      "properties": {
+        "operation": {
+          "const": "background-removal"
+        },
+        "status": {
+          "enum": [
+            "failed",
+            "completed"
+          ]
+        },
+        "source_file": {
+          "type": "string",
+          "pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp](?:[Ee])?[Gg])$"
+        },
+        "output_file": {
+          "type": "string",
+          "pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp](?:[Ee])?[Gg])$"
+        },
+        "source_has_alpha": {
+          "type": "boolean"
+        },
+        "output_has_alpha": {
+          "type": "boolean"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceValue"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "output_has_alpha": {
+                "const": true
+              },
+              "evidence": {
+                "type": "object",
+                "required": [
+                  "solid_background_check"
+                ],
+                "properties": {
+                  "solid_background_check": {
+                    "type": "object",
+                    "required": [
+                      "status",
+                      "background_color",
+                      "opaque",
+                      "boundary_pixels",
+                      "matched_boundary_pixels"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "passed"
+                      },
+                      "background_color": {
+                        "type": "string",
+                        "pattern": "^#[0-9A-Fa-f]{6}$"
+                      },
+                      "opaque": {
+                        "const": true
+                      },
+                      "boundary_pixels": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "matched_boundary_pixels": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "transparentBackgroundProductionRecord": {
+      "type": "object",
+      "required": [
+        "transparency_strategy",
+        "generator",
+        "generator_version",
+        "edge_profile",
+        "edge_evidence",
+        "source_background_mode",
+        "final_background_mode",
+        "raw_source_file",
+        "raw_source_has_alpha",
+        "source_file",
+        "source_has_alpha",
+        "parameters",
+        "postprocess",
+        "transparency_preview"
+      ],
+      "properties": {
+        "generator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generator_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transparency_strategy": {
+          "enum": [
+            "background-removal",
+            "direct-alpha",
+            "mask-composition"
+          ]
+        },
+        "edge_profile": {
+          "$ref": "#/$defs/transparencyEdgeProfile"
+        },
+        "edge_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_background_mode": {
+          "enum": [
+            "opaque",
+            "transparent"
+          ]
+        },
+        "source_background_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "color_separation_verified": {
+          "type": "boolean"
+        },
+        "final_background_mode": {
+          "const": "transparent"
+        },
+        "raw_source_file": {
+          "type": "string",
+          "pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp](?:[Ee])?[Gg])$"
+        },
+        "raw_source_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "raw_source_has_alpha": {
+          "type": "boolean"
+        },
+        "source_file": {
+          "type": "string",
+          "pattern": "\\.[Pp][Nn][Gg]$"
+        },
+        "source_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "source_has_alpha": {
+          "const": true
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "postprocess": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "background_removal_max_attempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "background_removal_attempts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/transparentBackgroundRemovalAttempt"
+          }
+        },
+        "capability": {
+          "$ref": "#/$defs/transparencyGenerationCapability"
+        },
+        "mask_record": {
+          "$ref": "#/$defs/transparencyMaskRecord"
+        },
+        "transparency_preview": {
+          "$ref": "#/$defs/transparencyPreview"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "transparency_strategy": {
+                "const": "background-removal"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "source_background_color",
+              "color_separation_verified",
+              "background_removal_attempts"
+            ],
+            "properties": {
+              "source_background_mode": {
+                "const": "opaque"
+              },
+              "edge_profile": {
+                "const": "hard-edge"
+              },
+              "color_separation_verified": {
+                "const": true
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "capability"
+                  ]
+                },
+                {
+                  "required": [
+                    "mask_record"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "transparency_strategy": {
+                "const": "direct-alpha"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "capability"
+            ],
+            "properties": {
+              "source_background_mode": {
+                "const": "transparent"
+              },
+              "raw_source_has_alpha": {
+                "const": true
+              },
+              "raw_source_file": {
+                "pattern": "\\.[Pp][Nn][Gg]$"
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "source_background_color"
+                  ]
+                },
+                {
+                  "required": [
+                    "background_removal_attempts"
+                  ]
+                },
+                {
+                  "required": [
+                    "background_removal_max_attempts"
+                  ]
+                },
+                {
+                  "required": [
+                    "color_separation_verified"
+                  ]
+                },
+                {
+                  "required": [
+                    "mask_record"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "transparency_strategy": {
+                "const": "mask-composition"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "mask_record"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "source_background_color"
+                  ]
+                },
+                {
+                  "required": [
+                    "background_removal_attempts"
+                  ]
+                },
+                {
+                  "required": [
+                    "background_removal_max_attempts"
+                  ]
+                },
+                {
+                  "required": [
+                    "color_separation_verified"
+                  ]
+                },
+                {
+                  "required": [
+                    "capability"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source_background_mode": {
+                "const": "transparent"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "raw_source_has_alpha": {
+                "const": true
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "globalStyleReferenceInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        }
+      }
+    },
+    "globalConsistencyEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        }
+      }
+    },
+    "v2Artifact": {
+      "type": "object",
+      "required": [
+        "identity",
+        "evidence"
+      ],
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/artifactIdentity"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "origin": {
+          "enum": [
+            "provided",
+            "generated"
+          ]
+        },
+        "generation_record": {
+          "$ref": "#/$defs/globalVisualGenerationRecord"
+        },
+        "decomposition_confirmation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decomposition_confirmation_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "origin"
+            ],
+            "properties": {
+              "origin": {
+                "const": "generated"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "generation_record"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "origin"
+            ],
+            "properties": {
+              "origin": {
+                "const": "provided"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "generation_record"
+              ]
+            }
+          }
+        }
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "reviewer"
+            ]
+          },
+          {
+            "required": [
+              "reviewer_type"
+            ]
+          },
+          {
+            "required": [
+              "reviewerType"
+            ]
+          },
+          {
+            "required": [
+              "reviewer_id"
+            ]
+          },
+          {
+            "required": [
+              "reviewerId"
+            ]
+          },
+          {
+            "required": [
+              "review_id"
+            ]
+          },
+          {
+            "required": [
+              "reviewId"
+            ]
+          },
+          {
+            "required": [
+              "reviewed_at"
+            ]
+          },
+          {
+            "required": [
+              "reviewedAt"
+            ]
+          },
+          {
+            "required": [
+              "human_review"
+            ]
+          },
+          {
+            "required": [
+              "humanReview"
+            ]
+          },
+          {
+            "required": [
+              "f2_review"
+            ]
+          },
+          {
+            "required": [
+              "f2_reviews"
+            ]
+          },
+          {
+            "required": [
+              "f2Review"
+            ]
+          },
+          {
+            "required": [
+              "f2Reviews"
+            ]
+          },
+          {
+            "required": [
+              "visual_fidelity_review"
+            ]
+          },
+          {
+            "required": [
+              "visualFidelityReview"
+            ]
+          },
+          {
+            "required": [
+              "production_contract_review"
+            ]
+          },
+          {
+            "required": [
+              "productionContractReview"
+            ]
+          },
+          {
+            "required": [
+              "component_reviews"
+            ]
+          },
+          {
+            "required": [
+              "componentReviews"
+            ]
+          }
+        ]
+      },
+      "additionalProperties": true
+    },
+    "v2DecompositionConfirmation": {
+      "type": "object",
+      "required": [
+        "confirmation_schema",
+        "confirmation_mode",
+        "status",
+        "annotation_file",
+        "proposal_file",
+        "decision_record_file"
+      ],
+      "properties": {
+        "confirmation_schema": {
+          "const": "visual-decomposition-confirmation/1.0"
+        },
+        "confirmation_mode": {
+          "const": "manual"
+        },
+        "status": {
+          "const": "accepted"
+        },
+        "annotation_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "annotation_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "proposal_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proposal_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "decision_record_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision_record_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "candidate_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "diff_fingerprint": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "reviewer"
+            ]
+          },
+          {
+            "required": [
+              "reviewer_type"
+            ]
+          },
+          {
+            "required": [
+              "reviewerType"
+            ]
+          },
+          {
+            "required": [
+              "reviewer_id"
+            ]
+          },
+          {
+            "required": [
+              "reviewerId"
+            ]
+          },
+          {
+            "required": [
+              "reviewed_at"
+            ]
+          },
+          {
+            "required": [
+              "reviewedAt"
+            ]
+          },
+          {
+            "required": [
+              "review_id"
+            ]
+          },
+          {
+            "required": [
+              "reviewId"
+            ]
+          },
+          {
+            "required": [
+              "human_review"
+            ]
+          },
+          {
+            "required": [
+              "humanReview"
+            ]
+          },
+          {
+            "required": [
+              "f2_review"
+            ]
+          },
+          {
+            "required": [
+              "f2_reviews"
+            ]
+          },
+          {
+            "required": [
+              "f2Review"
+            ]
+          },
+          {
+            "required": [
+              "f2Reviews"
+            ]
+          },
+          {
+            "required": [
+              "visual_fidelity_review"
+            ]
+          },
+          {
+            "required": [
+              "visualFidelityReview"
+            ]
+          },
+          {
+            "required": [
+              "production_contract_review"
+            ]
+          },
+          {
+            "required": [
+              "productionContractReview"
+            ]
+          },
+          {
+            "required": [
+              "component_reviews"
+            ]
+          },
+          {
+            "required": [
+              "componentReviews"
+            ]
+          }
+        ]
+      }
+    },
+    "layoutDecomposition": {
+      "type": "object",
+      "required": [
+        "layout_nodes"
+      ],
+      "properties": {
+        "layout_nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "layout_node_id",
+              "parent_layout_node_id",
+              "target_bounds"
+            ]
+          }
+        },
+        "layout_annotation": {
+          "$ref": "#/$defs/layoutAnnotation"
+        },
+        "layout_annotation_confirmation": {
+          "$ref": "#/$defs/layoutAnnotationConfirmation"
+        }
+      },
+      "additionalProperties": true
+    },
+    "layoutAnnotation": {
+      "type": "object",
+      "required": [
+        "layout_decision_file",
+        "layout_decision_id",
+        "layout_annotation_file",
+        "layout_annotation_width",
+        "layout_annotation_height",
+        "layout_annotation_schema",
+        "layout_annotation_layout",
+        "layout_review_file",
+        "layout_nodes_file",
+        "decomposition_confirmation_id",
+        "scene_id",
+        "state_id"
+      ],
+      "properties": {
+        "layout_decision_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_decision_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_decision_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_annotation_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_annotation_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_annotation_width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "layout_annotation_height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "layout_annotation_schema": {
+          "const": "layout-annotation/png/1"
+        },
+        "layout_annotation_layout": {
+          "const": "image-plus-right-panel"
+        },
+        "layout_annotation_metadata_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_annotation_identity_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_review_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_review_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_review_identity_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_nodes_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_nodes_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "decomposition_confirmation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decomposition_confirmation_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "proposal_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_node_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "layoutAnnotationConfirmation": {
+      "type": "object",
+      "required": [
+        "layout_decision_file",
+        "layout_decision_id",
+        "confirmation_schema",
+        "confirmation_id",
+        "status",
+        "confirmation_mode",
+        "layout_annotation_file",
+        "layout_annotation_width",
+        "layout_annotation_height",
+        "layout_annotation_schema",
+        "layout_annotation_layout",
+        "layout_review_file",
+        "layout_nodes_file",
+        "decomposition_confirmation_id",
+        "scene_id",
+        "state_id",
+        "user_original_text",
+        "decision_record_file",
+        "user_decision_receipt_file",
+        "accepted_at"
+      ],
+      "properties": {
+        "confirmation_schema": {
+          "const": "layout-annotation-confirmation/1.0"
+        },
+        "confirmation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confirmation_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "status": {
+          "const": "accepted"
+        },
+        "confirmation_mode": {
+          "const": "manual"
+        },
+        "layout_annotation_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_annotation_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_annotation_width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "layout_annotation_height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "layout_annotation_schema": {
+          "const": "layout-annotation/png/1"
+        },
+        "layout_annotation_layout": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_annotation_metadata_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_annotation_identity_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_review_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_review_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_review_identity_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layout_nodes_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_nodes_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "decomposition_confirmation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decomposition_confirmation_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "proposal_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "user_original_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "user_message_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "decision_record_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision_record_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "user_decision_receipt_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "user_decision_receipt_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "accepted_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": true
+    },
+    "sceneTextDecomposition": {
+      "type": "object",
+      "description": "效果图中的独立文本拆解；has-text 必须逐节点冻结字体/字形事实，not-applicable 必须解释没有可见文本。",
+      "required": [
+        "applicability"
+      ],
+      "properties": {
+        "applicability": {
+          "enum": [
+            "has-text",
+            "not-applicable"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text_nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sceneTextNode"
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "applicability": {
+                "const": "has-text"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "text_nodes"
+            ],
+            "properties": {
+              "text_nodes": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "applicability": {
+                "const": "not-applicable"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "text_nodes": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "sceneTextNode": {
+      "type": "object",
+      "description": "稳定文本节点；text_node_id 是语义身份，不得直接复用运行时显示文案。",
+      "required": [
+        "text_node_id",
+        "region_id",
+        "layout_node_id",
+        "semantic_role",
+        "dynamic",
+        "localizable",
+        "target_bounds",
+        "typography_target",
+        "planned_test_id"
+      ],
+      "properties": {
+        "text_node_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "region_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_node_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent_layout_node_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semantic_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dynamic": {
+          "type": "boolean"
+        },
+        "localizable": {
+          "type": "boolean"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_source": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "target_bounds": {
+          "$ref": "#/$defs/textBounds"
+        },
+        "typography_target": {
+          "$ref": "#/$defs/textTypographyTarget"
+        },
+        "implementation_route": {
+          "enum": [
+            "cocos-text",
+            "bitmap-text",
+            "image-text",
+            "hybrid"
+          ]
+        },
+        "route_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ownership": {
+          "$ref": "#/$defs/textOwnership"
+        },
+        "required_resources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/textResource"
+          }
+        },
+        "font_resolution": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "accessible_semantic": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "tolerance_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approved_exception_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "runtime_verification": {
+          "$ref": "#/$defs/textRuntimeVerification"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "content"
+          ]
+        },
+        {
+          "required": [
+            "content_source"
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "implementation_route"
+            ],
+            "properties": {
+              "implementation_route": {
+                "const": "image-text"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "accessible_semantic"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "dynamic",
+              "implementation_route"
+            ],
+            "properties": {
+              "dynamic": {
+                "const": true
+              },
+              "implementation_route": {
+                "const": "image-text"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "implementation_route": {
+                "enum": [
+                  "cocos-text",
+                  "bitmap-text",
+                  "hybrid"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "localizable",
+              "implementation_route"
+            ],
+            "properties": {
+              "localizable": {
+                "const": true
+              },
+              "implementation_route": {
+                "const": "image-text"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "implementation_route": {
+                "enum": [
+                  "cocos-text",
+                  "bitmap-text",
+                  "hybrid"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "implementation_route"
+            ]
+          },
+          "then": {
+            "required": [
+              "route_reason",
+              "ownership",
+              "required_resources"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "implementation_route"
+            ],
+            "properties": {
+              "implementation_route": {
+                "const": "cocos-text"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "required_resources": {
+                "contains": {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "path"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "font",
+                        "font-file"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "implementation_route"
+            ],
+            "properties": {
+              "implementation_route": {
+                "const": "bitmap-text"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "required_resources": {
+                "allOf": [
+                  {
+                    "contains": {
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "bitmap-font-descriptor",
+                            "bitmap_descriptor"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "contains": {
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "bitmap-font-texture",
+                            "bitmap_texture"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "implementation_route"
+            ],
+            "properties": {
+              "implementation_route": {
+                "const": "image-text"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "required_resources": {
+                "contains": {
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "image",
+                        "image-text",
+                        "raster-image"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "textBounds": {
+      "type": "object",
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "textTypographyTarget": {
+      "type": "object",
+      "required": [
+        "font_identity",
+        "font_size",
+        "font_size_unit",
+        "font_weight",
+        "font_style",
+        "line_height",
+        "letter_spacing",
+        "alignment",
+        "baseline",
+        "fill",
+        "stroke",
+        "shadow",
+        "wrap",
+        "expected_line_count",
+        "reference_pixel_bounds",
+        "target_glyph_bounds",
+        "reference_dpr",
+        "logical_coordinate_space"
+      ],
+      "properties": {
+        "font_identity": {
+          "$ref": "#/$defs/textFontIdentity"
+        },
+        "font_size": {
+          "oneOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "object",
+              "required": [
+                "value"
+              ],
+              "properties": {
+                "value": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "unit": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": true
+            }
+          ]
+        },
+        "font_size_unit": {
+          "enum": [
+            "logical-px",
+            "logical",
+            "game-px"
+          ]
+        },
+        "font_weight": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "minLength": 1
+        },
+        "font_style": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "line_height": {
+          "oneOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "letter_spacing": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "alignment": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "baseline": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "fill": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "stroke": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "shadow": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "wrap": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "expected_line_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reference_pixel_bounds": {
+          "$ref": "#/$defs/textBounds"
+        },
+        "target_glyph_bounds": {
+          "$ref": "#/$defs/textBounds"
+        },
+        "reference_dpr": {
+          "$ref": "#/$defs/workflowDpr"
+        },
+        "logical_coordinate_space": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "textFontIdentity": {
+      "type": "object",
+      "required": [
+        "status",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "resolved",
+            "unresolved"
+          ]
+        },
+        "confidence": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observable_facts": {
+          "type": "object",
+          "minProperties": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "resolved"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "family"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "unresolved"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "observable_facts"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "family"
+                  ]
+                },
+                {
+                  "required": [
+                    "font_family"
+                  ]
+                },
+                {
+                  "required": [
+                    "font_name"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "textOwnership": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "minProperties": 1
+        }
+      ]
+    },
+    "textResource": {
+      "type": "object",
+      "required": [
+        "kind",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        }
+      },
+      "additionalProperties": true
+    },
+    "textRuntimeVerification": {
+      "type": "object",
+      "required": [
+        "renderer",
+        "actual_bounds",
+        "glyph_bounds",
+        "baseline",
+        "actual_test_id",
+        "evidence",
+        "passed"
+      ],
+      "properties": {
+        "renderer": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "array",
+              "minItems": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "font_loaded": {
+          "type": "boolean"
+        },
+        "fallback_detected": {
+          "type": "boolean"
+        },
+        "actual_bounds": {
+          "$ref": "#/$defs/textBounds"
+        },
+        "glyph_bounds": {
+          "$ref": "#/$defs/textBounds"
+        },
+        "baseline": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "minProperties": 1
+            }
+          ]
+        },
+        "actual_test_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "passed": {
+          "const": true
+        },
+        "asset_consumed": {
+          "type": "boolean"
+        },
+        "semantic_evidence": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "target_bounds": {
+          "$ref": "#/$defs/textBounds"
+        },
+        "candidate_bounds": {
+          "$ref": "#/$defs/textBounds"
+        },
+        "delta": {
+          "type": [
+            "number",
+            "object",
+            "array"
+          ]
+        },
+        "tolerance_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exception_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "target_glyph_bounds": {
+          "$ref": "#/$defs/textBounds"
+        },
+        "candidate_glyph_bounds": {
+          "$ref": "#/$defs/textBounds"
+        },
+        "target_baseline": {
+          "type": [
+            "number",
+            "string",
+            "object"
+          ]
+        },
+        "candidate_baseline": {
+          "type": [
+            "number",
+            "string",
+            "object"
+          ]
+        },
+        "measurement": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "comparison": {
+          "type": "object",
+          "minProperties": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "sceneCoverageRegion": {
+      "type": "object",
+      "required": [
+        "annotation_number",
+        "region_id",
+        "target_bounds",
+        "coordinate_space",
+        "anchor_reference",
+        "relative_alignment",
+        "z_order",
+        "target_visibility",
+        "size_strategy",
+        "spacing",
+        "typography_facts",
+        "color_facts",
+        "material_texture_facts",
+        "lighting_shadow_facts",
+        "decorative_density_facts",
+        "clipping_cropping_facts",
+        "responsive_behavior",
+        "implementation_owner",
+        "implementation_plan",
+        "assembly_analysis",
+        "visual_route_analysis",
+        "applicable_states",
+        "evidence",
+        "tolerance_reference",
+        "approved_exception_ids"
+      ],
+      "properties": {
+        "assembly_analysis": {
+          "$ref": "#/$defs/assemblyAnalysis"
+        },
+        "visual_route_analysis": {
+          "$ref": "#/$defs/sceneVisualRouteAnalysis"
+        },
+        "native_runtime_evidence": {
+          "$ref": "#/$defs/nativeRuntimeEvidence"
+        },
+        "annotation_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "region_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_bounds": {
+          "type": "object",
+          "required": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ]
+        },
+        "coordinate_space": {
+          "type": "string",
+          "minLength": 1
+        },
+        "anchor_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relative_alignment": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "z_order": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "target_visibility": {
+          "type": [
+            "string",
+            "boolean"
+          ]
+        },
+        "size_strategy": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "spacing": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "typography_facts": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "color_facts": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "material_texture_facts": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "lighting_shadow_facts": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "decorative_density_facts": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "clipping_cropping_facts": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "responsive_behavior": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "implementation_owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "implementation_plan": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "applicable_states": {
+          "type": "array",
+          "minItems": 1
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "tolerance_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approved_exception_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "production_method": {
+          "type": "string"
+        },
+        "image_generation_required": {
+          "type": "boolean"
+        },
+        "scene_asset_usage": {
+          "$ref": "#/$defs/sceneAssetUsage"
+        },
+        "expected_assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/visualExpectedAsset"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "required": [
+                  "image_generation_required"
+                ],
+                "properties": {
+                  "image_generation_required": {
+                    "const": true
+                  }
+                }
+              },
+              {
+                "required": [
+                  "production_method"
+                ],
+                "properties": {
+                  "production_method": {
+                    "const": "image-generation"
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "scene_asset_usage"
+            ],
+            "properties": {
+              "scene_asset_usage": {
+                "required": [
+                  "target_display_size",
+                  "intended_scale_range",
+                  "max_dpr",
+                  "padding_policy"
+                ],
+                "properties": {
+                  "max_dpr": {
+                    "const": 1,
+                    "description": "图片生产基线 DPR 固定为 1（逻辑尺寸 1:1）；运行时实际 DPR 仍动态取值并封顶为 2。"
+                  },
+                  "padding_policy": {
+                    "const": "none"
+                  }
+                }
+              },
+              "expected_assets": {
+                "items": {
+                  "$ref": "#/$defs/imageGenerationExpectedAsset"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "assemblyAnalysis": {
+      "type": "object",
+      "description": "只描述场景装配方式；原子图片资产与程序视觉均可被结构化装配。",
+      "required": [
+        "strategy",
+        "uses_full_screen_capture",
+        "allows_atomic_image_assets",
+        "evidence"
+      ],
+      "properties": {
+        "strategy": {
+          "const": "atomic-scene-composition"
+        },
+        "uses_full_screen_capture": {
+          "const": false
+        },
+        "allows_atomic_image_assets": {
+          "const": true
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceValue"
+        }
+      },
+      "additionalProperties": false
+    },
+    "allNativeJustification": {
+      "type": "object",
+      "description": "仅当全部 coverage region 均为 cocos-native 时使用、并绑定独立分析工件的视觉复核。",
+      "required": [
+        "analysis_method",
+        "analysis_id",
+        "producer_role",
+        "analysis_artifact_file",
+        "reviewed_region_ids",
+        "conclusion",
+        "reason",
+        "evidence"
+      ],
+      "properties": {
+        "analysis_method": {
+          "const": "independent-visual-analysis"
+        },
+        "analysis_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "producer_role": {
+          "const": "independent-visual-reviewer"
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "analysis_artifact_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "analysis_artifact_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "reviewed_region_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "conclusion": {
+          "const": "all-native-eligible"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceValue"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sceneVisualRouteAnalysis": {
+      "type": "object",
+      "description": "effect-image 每个 coverage region 的视觉来源路线；必须先冻结美术事实，再决定 Cocos 装配方式。",
+      "required": [
+        "element_type",
+        "visual_complexity",
+        "distinctive_visual",
+        "observed_features",
+        "asset_first_decision",
+        "selected_route",
+        "route_reason",
+        "dynamic_requirements",
+        "native_suitability",
+        "reuse_suitability",
+        "final_owner",
+        "implementation_plan_mode",
+        "production_method",
+        "delivery_kind"
+      ],
+      "properties": {
+        "element_type": {
+          "enum": [
+            "button",
+            "button-skin",
+            "panel",
+            "panel-frame",
+            "background-frame",
+            "icon",
+            "decorative-frame",
+            "decoration",
+            "illustration",
+            "character",
+            "prop",
+            "object",
+            "environment",
+            "background",
+            "portrait",
+            "avatar",
+            "logo",
+            "artwork",
+            "game-piece",
+            "item",
+            "sprite",
+            "nine-slice",
+            "simple-geometry",
+            "dynamic-data",
+            "progress-fill",
+            "mask",
+            "layout",
+            "interaction",
+            "program-effect",
+            "particle",
+            "shader",
+            "text",
+            "text-node",
+            "label",
+            "caption",
+            "other"
+          ]
+        },
+        "visual_complexity": {
+          "enum": [
+            "simple",
+            "distinctive",
+            "mixed"
+          ]
+        },
+        "distinctive_visual": {
+          "type": "boolean"
+        },
+        "observed_features": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "minProperties": 1
+              }
+            ]
+          }
+        },
+        "asset_first_decision": {
+          "enum": [
+            "asset-first",
+            "native-allowed"
+          ]
+        },
+        "selected_route": {
+          "enum": [
+            "image-asset",
+            "cocos-native"
+          ]
+        },
+        "route_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dynamic_requirements": {
+          "type": "object",
+          "required": [
+            "is_dynamic",
+            "description"
+          ],
+          "properties": {
+            "is_dynamic": {
+              "type": "boolean"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state_variants": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "native_suitability": {
+          "type": "object",
+          "required": [
+            "eligible",
+            "primitive_basis",
+            "evidence"
+          ],
+          "properties": {
+            "eligible": {
+              "type": "boolean"
+            },
+            "primitive_basis": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "enum": [
+                  "pure-color",
+                  "basic-geometry",
+                  "regular-line",
+                  "regular-gradient",
+                  "mask",
+                  "progress-fill",
+                  "layout-structure",
+                  "dynamic-data",
+                  "program-effect",
+                  "text",
+                  "not-applicable"
+                ]
+              }
+            },
+            "evidence": {
+              "$ref": "#/$defs/evidenceValue"
+            },
+            "equivalence_evidence": {
+              "$ref": "#/$defs/evidenceValue"
+            },
+            "tolerance_reference": {
+              "type": "string",
+              "minLength": 1
+            },
+            "approved_exception_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "render_contract": {
+              "$ref": "#/$defs/nativeRenderContract"
+            }
+          },
+          "additionalProperties": true
+        },
+        "reuse_suitability": {
+          "type": "object",
+          "required": [
+            "eligible",
+            "exact_asset_identity",
+            "evidence"
+          ],
+          "properties": {
+            "eligible": {
+              "type": "boolean"
+            },
+            "exact_asset_identity": {
+              "oneOf": [
+                {
+                  "const": "not-applicable"
+                },
+                {
+                  "type": "object",
+                  "minProperties": 1,
+                  "properties": {
+                    "asset_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "source_asset_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "source_sha256": {
+                      "description": "仅作为可选摘要记录，不参与验收或放行。"
+                    },
+                    "source_manifest_sha256": {
+                      "description": "仅作为可选摘要记录，不参与验收或放行。"
+                    },
+                    "target_sha256": {
+                      "description": "仅作为可选摘要记录，不参与验收或放行。"
+                    },
+                    "candidate_sha256": {
+                      "description": "仅作为可选摘要记录，不参与验收或放行。"
+                    },
+                    "comparison_id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "anyOf": [
+                    {
+                      "required": [
+                        "asset_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "source_asset_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "comparison_id"
+                      ]
+                    }
+                  ],
+                  "additionalProperties": true
+                }
+              ]
+            },
+            "evidence": {
+              "$ref": "#/$defs/evidenceValue"
+            }
+          },
+          "additionalProperties": true
+        },
+        "final_owner": {
+          "enum": [
+            "fixed-production-visual",
+            "runtime-data",
+            "runtime-rendered",
+            "runtime-program"
+          ]
+        },
+        "implementation_plan_mode": {
+          "enum": [
+            "generate-now",
+            "reuse-existing",
+            "runtime-program"
+          ]
+        },
+        "production_method": {
+          "enum": [
+            "image-generation",
+            "authored-raster",
+            "reuse",
+            "cocos-graphics",
+            "runtime-program"
+          ]
+        },
+        "delivery_kind": {
+          "enum": [
+            "raster-image",
+            "existing-asset",
+            "runtime-drawing",
+            "runtime-program"
+          ]
+        },
+        "text_decomposition_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "selected_route": {
+                "const": "image-asset"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "asset_first_decision": {
+                "const": "asset-first"
+              },
+              "final_owner": {
+                "const": "fixed-production-visual"
+              },
+              "production_method": {
+                "enum": [
+                  "image-generation",
+                  "authored-raster",
+                  "reuse"
+                ]
+              },
+              "delivery_kind": {
+                "enum": [
+                  "raster-image",
+                  "existing-asset"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "selected_route": {
+                "const": "cocos-native"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "asset_first_decision": {
+                "const": "native-allowed"
+              },
+              "final_owner": {
+                "enum": [
+                  "runtime-data",
+                  "runtime-rendered",
+                  "runtime-program"
+                ]
+              },
+              "production_method": {
+                "enum": [
+                  "cocos-graphics",
+                  "runtime-program"
+                ]
+              },
+              "delivery_kind": {
+                "enum": [
+                  "runtime-drawing",
+                  "runtime-program"
+                ]
+              },
+              "native_suitability": {
+                "required": [
+                  "render_contract"
+                ],
+                "properties": {
+                  "eligible": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "selected_route",
+              "distinctive_visual"
+            ],
+            "properties": {
+              "selected_route": {
+                "const": "cocos-native"
+              },
+              "distinctive_visual": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "native_suitability": {
+                "required": [
+                  "equivalence_evidence"
+                ],
+                "anyOf": [
+                  {
+                    "required": [
+                      "tolerance_reference"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "approved_exception_id"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "composite_parts"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "production_method": {
+                "const": "reuse"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "implementation_plan_mode": {
+                "const": "reuse-existing"
+              },
+              "reuse_suitability": {
+                "properties": {
+                  "eligible": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "element_type": {
+                "enum": [
+                  "text",
+                  "text-node",
+                  "label",
+                  "caption"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "text_decomposition_ref"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "combinationPreacceptance": {
+      "type": "object",
+      "required": [
+        "status",
+        "formal_scene_structure",
+        "layout_calculation_identity",
+        "evidence"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "passed",
+            "PASS"
+          ]
+        },
+        "formal_scene_structure": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout_calculation_identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "candidate_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "diff_fingerprint": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        }
+      }
+    },
+    "displayLayerPlanning": {
+      "type": "object",
+      "required": [
+        "version",
+        "scene_master",
+        "inventory"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scene_master": {
+          "$ref": "#/$defs/displaySceneMaster"
+        },
+        "inventory": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/displayLayer"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "displaySceneMaster": {
+      "type": "object",
+      "required": [
+        "scene_id",
+        "state_id",
+        "origin",
+        "viewport",
+        "persistent_layer_ids"
+      ],
+      "properties": {
+        "scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "origin": {
+          "enum": [
+            "provided",
+            "generated"
+          ]
+        },
+        "generation_record": {
+          "$ref": "#/$defs/globalVisualGenerationRecord"
+        },
+        "viewport": {
+          "type": "object",
+          "required": [
+            "width",
+            "height"
+          ]
+        },
+        "persistent_layer_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "origin": {
+                "const": "generated"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "generation_record"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "origin": {
+                "const": "provided"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "generation_record"
+              ]
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "displayLayer": {
+      "type": "object",
+      "required": [
+        "layer_id",
+        "type",
+        "host_scene_id",
+        "persistence",
+        "states",
+        "in_scene_master",
+        "trigger",
+        "dismiss",
+        "input_blocking",
+        "z_order",
+        "backdrop",
+        "focus_restore",
+        "responsive",
+        "relations"
+      ],
+      "properties": {
+        "layer_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "hud",
+            "modal",
+            "popup",
+            "drawer",
+            "toast"
+          ]
+        },
+        "host_scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "persistence": {
+          "enum": [
+            "persistent",
+            "transient"
+          ]
+        },
+        "states": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/displayLayerState"
+          }
+        },
+        "in_scene_master": {
+          "type": "boolean"
+        },
+        "trigger": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "dismiss": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "input_blocking": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/$defs/evidenceValue"
+            }
+          ]
+        },
+        "z_order": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "backdrop": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "focus_restore": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "responsive": {
+          "$ref": "#/$defs/evidenceValue"
+        },
+        "relations": {
+          "$ref": "#/$defs/displayLayerRelations"
+        },
+        "runtime_replay": {
+          "$ref": "#/$defs/displayLayerRuntimeReplay"
+        }
+      },
+      "additionalProperties": false
+    },
+    "displayLayerState": {
+      "type": "object",
+      "required": [
+        "state_id",
+        "required"
+      ],
+      "properties": {
+        "state_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "contextual_effect_image": {
+          "$ref": "#/$defs/contextualEffectImage"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contextualEffectImage": {
+      "type": "object",
+      "required": [
+        "evidence",
+        "origin",
+        "host_scene_id",
+        "viewport",
+        "kind",
+        "isolated_only"
+      ],
+      "properties": {
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "origin": {
+          "enum": [
+            "provided",
+            "generated"
+          ]
+        },
+        "generation_record": {
+          "$ref": "#/$defs/globalVisualGenerationRecord"
+        },
+        "host_scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "host_target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "layer_target_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "viewport": {
+          "type": "object",
+          "required": [
+            "width",
+            "height"
+          ]
+        },
+        "kind": {
+          "const": "host-scene-context"
+        },
+        "isolated_only": {
+          "const": false
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "origin": {
+                "const": "generated"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "generation_record"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "origin": {
+                "const": "provided"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "generation_record"
+              ]
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "displayLayerRelations": {
+      "type": "object",
+      "required": [
+        "mutually_exclusive_layer_ids",
+        "coexists_with_layer_ids"
+      ],
+      "properties": {
+        "mutually_exclusive_layer_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "coexists_with_layer_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "displayLayerRuntimeReplay": {
+      "type": "object",
+      "required": [
+        "status",
+        "host_scene_id",
+        "same_screen_combination",
+        "steps"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "passed",
+            "PASS"
+          ]
+        },
+        "host_scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "same_screen_combination": {
+          "const": true
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "type": "object",
+            "required": [
+              "phase",
+              "evidence"
+            ],
+            "properties": {
+              "phase": {
+                "enum": [
+                  "open",
+                  "interact",
+                  "close",
+                  "restore"
+                ],
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sceneAssetUsage": {
+      "type": "object",
+      "required": [
+        "target_display_size",
+        "intended_scale_range",
+        "origin",
+        "anchor",
+        "nine_slice",
+        "material",
+        "composition_region",
+        "required_neighbors",
+        "typography_ownership",
+        "runtime_foreground_ownership"
+      ],
+      "properties": {
+        "target_display_size": {
+          "type": "object",
+          "required": [
+            "width",
+            "height"
+          ],
+          "properties": {
+            "width": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "height": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "intended_scale_range": {
+          "type": "object",
+          "required": [
+            "min",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "max": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "max_dpr": {
+          "const": 1,
+          "description": "图片生产基线 DPR 固定为 1（逻辑尺寸 1:1）；运行时实际 DPR 仍动态取值并封顶为 2。"
+        },
+        "padding_policy": {
+          "type": "string",
+          "description": "图像生成 individual 必须为 none；非图像生成可不声明该字段。"
+        },
+        "origin": {
+          "type": "object",
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "origin_exception_reason": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "origin_coordinate_conversion": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "anchor": {
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "nine_slice": {
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "material": {
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "composition_region": {
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "required_neighbors": {
+          "type": "array"
+        },
+        "typography_ownership": {
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "runtime_foreground_ownership": {
+          "type": [
+            "object",
+            "string"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "origin": {
+                "properties": {
+                  "x": {
+                    "const": 0.5
+                  },
+                  "y": {
+                    "const": 0.5
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ]
+              }
+            }
+          },
+          "else": {
+            "required": [
+              "origin_exception_reason",
+              "origin_coordinate_conversion"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "visualExpectedAsset": {
+      "type": "object",
+      "required": [
+        "asset_id",
+        "asset_scope",
+        "atomic_visual_key",
+        "component_id",
+        "state_id"
+      ],
+      "properties": {
+        "nine_slice": {
+          "$ref": "#/$defs/nineSliceDecision"
+        },
+        "asset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "asset_scope": {
+          "const": "atomic-component"
+        },
+        "atomic_visual_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "component_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "origin": {
+          "enum": [
+            "provided",
+            "generated"
+          ]
+        },
+        "generation_record": {
+          "$ref": "#/$defs/globalVisualGenerationRecord"
+        },
+        "mime_type": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "alpha": {
+          "type": "boolean"
+        },
+        "transparency_requirements": {
+          "$ref": "#/$defs/transparencyRequirements"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "origin"
+            ],
+            "properties": {
+              "origin": {
+                "const": "generated"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "generation_record"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "origin"
+            ],
+            "properties": {
+              "origin": {
+                "const": "provided"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "generation_record"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "origin",
+              "alpha"
+            ],
+            "properties": {
+              "origin": {
+                "const": "generated"
+              },
+              "alpha": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "transparency_requirements"
+            ]
+          }
+        }
+      ]
+    },
+    "imageGenerationExpectedAsset": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/visualExpectedAsset"
+        },
+        {
+          "type": "object",
+          "required": [
+            "source_file",
+            "runtime_file",
+            "mime_type",
+            "width",
+            "height"
+          ],
+          "properties": {
+            "mime_type": {
+              "enum": [
+                "image/png",
+                "image/jpeg"
+              ]
+            },
+            "source_file": {
+              "type": "string",
+              "pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp](?:[Ee])?[Gg])$"
+            },
+            "runtime_file": {
+              "type": "string",
+              "pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp](?:[Ee])?[Gg])$"
+            },
+            "normalization_record": {
+              "$ref": "#/$defs/imageNormalizationRecord"
+            },
+            "generation_record": {
+              "$ref": "#/$defs/imageGenerationRecord"
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "alpha"
+            ],
+            "properties": {
+              "alpha": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mime_type": {
+                "const": "image/png"
+              },
+              "source_file": {
+                "pattern": "\\.[Pp][Nn][Gg]$"
+              },
+              "runtime_file": {
+                "pattern": "\\.[Pp][Nn][Gg]$"
+              },
+              "generation_record": {
+                "$ref": "#/$defs/transparentBackgroundProductionRecord"
+              }
+            },
+            "required": [
+              "transparency_requirements"
+            ]
+          }
+        }
+      ]
+    },
+    "strings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "cocos-inspect",
+          "cocos-spec-candidate",
+          "cocos-prototype",
+          "cocos-code-change",
+          "cocos-asset-change",
+          "cocos-ui-change",
+          "cocos-audio-change",
+          "cocos-balance-change",
+          "cocos-qa-build",
+          "cocos-integration",
+          "cocos-build-upload",
+          "cocos-backend-config",
+          "cocos-channel-config",
+          "cocos-device-test",
+          "cocos-store-submit",
+          "cocos-release",
+          "cocos-game-rollback"
+        ]
+      }
+    },
+    "automaticCocosActions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "cocos-inspect",
+          "cocos-spec-candidate",
+          "cocos-prototype",
+          "cocos-code-change",
+          "cocos-asset-change",
+          "cocos-ui-change",
+          "cocos-audio-change",
+          "cocos-balance-change",
+          "cocos-qa-build"
+        ]
+      }
+    },
+    "returnRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "reason",
+        "affectedScope",
+        "fromState",
+        "toState",
+        "returnState",
+        "invalidatedArtifacts",
+        "previousValidationBatchId",
+        "invalidatesDownstream",
+        "recordedAt",
+        "resolvedAt"
+      ],
+      "properties": {
+        "classification": {
+          "enum": [
+            "upstream-fact-invalidated",
+            "scope-changed",
+            "hard-gate-would-be-bypassed"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "affectedScope": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?:stage|scene|artifact):[A-Za-z0-9][A-Za-z0-9._/-]*$"
+          }
+        },
+        "fromState": {
+          "type": "string",
+          "minLength": 1
+        },
+        "toState": {
+          "const": "RETURN"
+        },
+        "returnState": {
+          "enum": [
+            "BASELINE",
+            "PROPOSAL",
+            "REVIEW",
+            "IMPLEMENTING"
+          ]
+        },
+        "invalidatedArtifacts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "approvalRecord",
+              "pendingApprovalStatus",
+              "pendingVisualPrerequisiteSnapshot",
+              "pendingApprovalPresentation",
+              "diffAuditRecord",
+              "validationBatchId",
+              "implementationPackageRecord",
+              "executionState",
+              "visualStageEvidenceRefs"
+            ]
+          }
+        },
+        "previousValidationBatchId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "invalidatesDownstream": {
+          "const": true
+        },
+        "recordedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolvedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "responsiveContractFact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "minProperties": 1
+        },
+        {
+          "type": "array",
+          "minItems": 1
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      ]
+    },
+    "responsiveViewportContract": {
+      "type": "object",
+      "required": [
+        "logicalViewportSpace",
+        "designResolutionPolicy",
+        "canvasBackingPolicy",
+        "runtimeDprPolicy",
+        "maxRuntimeDpr",
+        "scaleMode",
+        "cameraViewportPolicy",
+        "cameraZoomPolicy",
+        "cameraOriginPolicy",
+        "inputCoordinatePolicy",
+        "safeAreaPolicy",
+        "resizePolicy",
+        "orientationPolicy",
+        "textResolutionPolicy",
+        "assetResolutionPolicy",
+        "performanceBudget",
+        "representativeViewports",
+        "requiredRuntimeEvidence"
+      ],
+      "properties": {
+        "logicalViewportSpace": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "designResolutionPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "canvasBackingPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "runtimeDprPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "maxRuntimeDpr": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "scaleMode": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "cameraViewportPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "cameraZoomPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "cameraOriginPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "inputCoordinatePolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "safeAreaPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "resizePolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "orientationPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "textResolutionPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "assetResolutionPolicy": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "performanceBudget": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "representativeViewports": {
+          "$ref": "#/$defs/responsiveContractFact"
+        },
+        "requiredRuntimeEvidence": {
+          "$ref": "#/$defs/responsiveContractFact"
+        }
+      },
+      "additionalProperties": false
+    },
+    "visualConfirmationAuthorityRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scene_id",
+        "state_id",
+        "ledger_file",
+        "receipt_id"
+      ],
+      "properties": {
+        "scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ledger_file": {
+          "type": "string",
+          "pattern": "^\\.workflow-control/user-resolutions/[^/]+\\.json$"
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "receipt_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        }
+      }
+    },
+    "transparencyEdgeProfile": {
+      "type": "string",
+      "enum": [
+        "hard-edge",
+        "semi-transparent",
+        "glow",
+        "soft-shadow",
+        "hair",
+        "glass",
+        "mixed"
+      ]
+    },
+    "transparencyRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strategy",
+        "edge_profile"
+      ],
+      "properties": {
+        "strategy": {
+          "enum": [
+            "background-removal",
+            "direct-alpha",
+            "mask-composition"
+          ]
+        },
+        "edge_profile": {
+          "$ref": "#/$defs/transparencyEdgeProfile"
+        }
+      }
+    },
+    "transparencyGenerationCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool",
+        "tool_version",
+        "supports_true_alpha",
+        "output_format",
+        "verified_edge_profiles",
+        "evidence"
+      ],
+      "properties": {
+        "tool": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "supports_true_alpha": {
+          "const": true
+        },
+        "output_format": {
+          "const": "png"
+        },
+        "verified_edge_profiles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/transparencyEdgeProfile"
+          }
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "transparencyMaskRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_file",
+        "mask_file",
+        "output_file",
+        "tool",
+        "tool_version",
+        "parameters",
+        "evidence"
+      ],
+      "properties": {
+        "source_file": {
+          "type": "string",
+          "pattern": "\\.(?:[Pp][Nn][Gg]|[Jj][Pp](?:[Ee])?[Gg])$"
+        },
+        "source_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "mask_file": {
+          "type": "string",
+          "pattern": "\\.[Pp][Nn][Gg]$"
+        },
+        "mask_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "output_file": {
+          "type": "string",
+          "pattern": "\\.[Pp][Nn][Gg]$"
+        },
+        "output_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "tool": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "transparencyPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_file",
+        "light",
+        "dark",
+        "inspection"
+      ],
+      "properties": {
+        "candidate_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "source_file": {
+          "type": "string",
+          "pattern": "\\.[Pp][Nn][Gg]$"
+        },
+        "source_sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "light": {
+          "$ref": "#/$defs/transparencyPreviewImage"
+        },
+        "dark": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/transparencyPreviewImage"
+            },
+            {
+              "properties": {
+                "background_color": {
+                  "const": "#16202E"
+                }
+              }
+            }
+          ]
+        },
+        "inspection": {
+          "$ref": "#/$defs/transparencyPreviewInspection"
+        }
+      },
+      "allOf": [
+        {
+          "properties": {
+            "light": {
+              "properties": {
+                "background_color": {
+                  "const": "#F2E9DF"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "transparencyPreviewImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "background_color"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "\\.[Pp][Nn][Gg]$"
+        },
+        "sha256": {
+          "description": "仅作为可选摘要记录，不参与验收或放行。"
+        },
+        "background_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      }
+    },
+    "transparencyPreviewInspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "checks"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending",
+            "passed"
+          ]
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "subject_integrity",
+            "background_residue",
+            "color_fringe",
+            "semi_transparency"
+          ],
+          "properties": {
+            "subject_integrity": {
+              "enum": [
+                "passed",
+                "not-applicable"
+              ]
+            },
+            "background_residue": {
+              "enum": [
+                "passed",
+                "not-applicable"
+              ]
+            },
+            "color_fringe": {
+              "enum": [
+                "passed",
+                "not-applicable"
+              ]
+            },
+            "semi_transparency": {
+              "enum": [
+                "passed",
+                "not-applicable"
+              ]
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "passed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "evidence"
+            ],
+            "properties": {
+              "evidence": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

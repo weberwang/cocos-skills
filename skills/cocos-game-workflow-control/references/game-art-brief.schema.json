@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cocos-game-art-brief.schema.json",
+  "title": "Cocos4 游戏美术 brief",
+  "description": "记录项目主题、目标玩家、核心循环、观看情境、视觉层级和各反馈层级的刺激预算；内容具体程度由项目决定，不预设通用亮度或时长阈值。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "workItemId", "briefId", "theme", "audience", "coreLoop", "experienceGoals", "viewingContext", "visualHierarchy", "stimulusBudget"],
+  "properties": {
+    "schemaVersion": {"const": "cocos-game-art-brief/1.0"},
+    "workItemId": {"type": "string", "minLength": 1},
+    "briefId": {"type": "string", "minLength": 1},
+    "theme": {"type": "string", "minLength": 1},
+    "audience": {"type": "string", "minLength": 1},
+    "coreLoop": {"type": "string", "minLength": 1},
+    "experienceGoals": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "viewingContext": {"type": "string", "minLength": 1},
+    "visualHierarchy": {"type": "string", "minLength": 1},
+    "stimulusBudget": {"$ref": "#/$defs/stimulusBudget"}
+  },
+  "$defs": {
+    "stimulusLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["brightnessContrast", "screenCoverage", "duration", "triggerFrequency", "maxConcurrent", "recovery", "blendPolicy"],
+      "properties": {
+        "brightnessContrast": {"type": "string", "minLength": 1, "description": "描述该层相对周围内容的亮度与对比取舍，不规定跨项目数值阈值。"},
+        "screenCoverage": {"type": "string", "minLength": 1},
+        "duration": {"type": "string", "minLength": 1},
+        "triggerFrequency": {"type": "string", "minLength": 1},
+        "maxConcurrent": {"type": "integer", "minimum": 0},
+        "recovery": {"type": "string", "minLength": 1},
+        "blendPolicy": {"type": "string", "minLength": 1}
+      }
+    },
+    "stimulusBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline", "interaction", "peak", "measurementMethod"],
+      "properties": {
+        "baseline": {"$ref": "#/$defs/stimulusLayer"},
+        "interaction": {"$ref": "#/$defs/stimulusLayer"},
+        "peak": {"$ref": "#/$defs/stimulusLayer"},
+        "measurementMethod": {"type": "string", "minLength": 1, "description": "说明按何种视口、游玩节奏或人工流程评估刺激预算。"}
+      }
+    }
+  }
+}

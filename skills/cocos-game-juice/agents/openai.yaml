@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 游戏汁水感"
+  short_description: "围绕关键事件设计多通道反馈、组合边界与动态人工验收，并接入现有流程"
+  default_prompt: "使用 $cocos-game-juice 在当前工作项内设计或优化 Cocos 2D 游戏反馈，复用既有玩法、美术、音频和 QA 流程。"

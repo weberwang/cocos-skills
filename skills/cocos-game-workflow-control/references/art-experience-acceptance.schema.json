@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cocos-skills.local/schemas/art-experience-acceptance.schema.json",
+  "title": "持续游玩美术体验验收",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "workItemId",
+    "candidateId",
+    "sceneId",
+    "status",
+    "confirmedAt",
+    "userOriginalText",
+    "viewingContext",
+    "checks",
+    "scenarios"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "cocos-art-experience-acceptance/1.0" },
+    "workItemId": { "type": "string", "minLength": 1 },
+    "candidateId": { "type": "string", "minLength": 1 },
+    "sceneId": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["passed", "failed", "unverified"] },
+    "confirmedAt": { "type": "string", "format": "date-time" },
+    "userOriginalText": { "type": "string", "minLength": 1 },
+    "viewingContext": { "type": "string", "minLength": 1 },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["themeFit", "audienceFit", "readability", "comfort", "craft"],
+      "properties": {
+        "themeFit": { "$ref": "#/$defs/check" },
+        "audienceFit": { "$ref": "#/$defs/check" },
+        "readability": { "$ref": "#/$defs/check" },
+        "comfort": { "$ref": "#/$defs/check" },
+        "craft": { "$ref": "#/$defs/check" }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/scenario" }
+    }
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "enum": ["passed", "failed", "unverified"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "applicability",
+        "reason",
+        "recordingFile",
+        "startSeconds",
+        "endSeconds",
+        "triggerCount",
+        "peakConcurrent",
+        "observation"
+      ],
+      "properties": {
+        "kind": { "enum": ["normal-play", "repeated-feedback", "event-peak", "overlap-peak"] },
+        "applicability": { "enum": ["required", "not-applicable"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "recordingFile": { "type": ["string", "null"] },
+        "startSeconds": { "type": ["number", "null"], "minimum": 0 },
+        "endSeconds": { "type": ["number", "null"], "minimum": 0 },
+        "triggerCount": { "type": ["integer", "null"], "minimum": 0 },
+        "peakConcurrent": { "type": ["integer", "null"], "minimum": 0 },
+        "observation": { "type": ["string", "null"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "applicability": { "const": "required" } } },
+          "then": {
+            "properties": {
+              "recordingFile": { "type": "string", "minLength": 1 },
+              "startSeconds": { "type": "number", "minimum": 0 },
+              "endSeconds": { "type": "number", "exclusiveMinimum": 0 },
+              "triggerCount": { "type": "integer", "minimum": 0 },
+              "peakConcurrent": { "type": "integer", "minimum": 0 },
+              "observation": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "applicability": { "const": "not-applicable" } } },
+          "then": {
+            "properties": {
+              "recordingFile": { "type": "null" },
+              "startSeconds": { "type": "null" },
+              "endSeconds": { "type": "null" },
+              "triggerCount": { "type": "null" },
+              "peakConcurrent": { "type": "null" },
+              "observation": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "normal-play" } } },
+          "then": { "properties": { "applicability": { "const": "required" } } }
+        }
+      ]
+    }
+  }
+}

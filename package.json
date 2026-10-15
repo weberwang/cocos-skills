@@ -1,10 +1,44 @@
 {
   "name": "cocos-skills",
-  "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "Cocos Creator 3.x 移动端游戏协作 skills 的项目级安装器",
   "type": "module",
-  "files": ["skills/", "scripts/"],
-  "engines": { "node": ">=18" },
-  "bin": { "cocos-skills": "scripts/install-skills.mjs" },
-  "scripts": { "test": "node --test tests/install-skills.test.mjs" }
+  "bin": {
+    "cocos-workflow": "./skills/cocos-game-workflow-control/scripts/workflow-control.mjs",
+    "cocos-normalize-image": "./skills/cocos-game-workflow-control/scripts/visual-image-normalization.mjs",
+    "cocos-remove-background": "./skills/cocos-game-asset-integration/scripts/remove-background-local.mjs",
+    "cocos-frame-animation": "./skills/cocos-frame-animation/scripts/video-to-atlas.mjs",
+    "cocos-frame-plan": "./skills/cocos-frame-animation/scripts/image-inbetween-plan.mjs",
+    "cocos-image-frame-animation": "./skills/cocos-frame-animation/scripts/images-to-atlas.mjs",
+    "cocos-skills": "./scripts/install-skills.mjs"
+  },
+  "scripts": {
+    "test:layout": "node scripts/run-tests.mjs skills/cocos-game-workflow-control/scripts/visual-decomposition-confirmation.test.mjs skills/cocos-game-asset-integration/scripts/generate_effect_image_annotation.test.mjs skills/cocos-game-asset-integration/scripts/semantic-grouping-contract.test.mjs skills/cocos-game-asset-integration/scripts/layout_annotation_contract.test.mjs skills/cocos-game-asset-integration/scripts/generate_layout_annotation.test.mjs skills/cocos-game-asset-integration/scripts/layout_review_page.test.mjs skills/cocos-game-asset-integration/scripts/layout_review_bundle.test.mjs skills/cocos-game-workflow-control/scripts/layout_annotation_confirmation.test.mjs skills/cocos-game-asset-integration/scripts/validate_visual_manifest.test.mjs skills/cocos-game-ui-layout/scripts/validate_ui_layout_contract.test.mjs skills/cocos-game-workflow-control/scripts/visual-validation-policy.test.mjs skills/cocos-game-ui-layout/scripts/fixed-design-viewport.test.mjs skills/cocos-game-workflow-control/scripts/responsive-viewport-contract.test.mjs skills/cocos-game-ui-layout/scripts/nine-slice-contract.test.mjs skills/cocos-game-asset-integration/scripts/nine-slice-annotation.test.mjs skills/cocos-game-workflow-control/scripts/visual-generation-size-contract.test.mjs skills/cocos-game-workflow-control/scripts/visual-component-contract.test.mjs skills/cocos-game-asset-integration/scripts/validate_visual_layout_mapping.test.mjs",
+    "test:quick": "node scripts/run-tests.mjs scripts/run-tests.test.mjs skills/cocos-game-workflow-control/scripts/runtime/io.test.mjs skills/cocos-game-workflow-control/scripts/runtime/output.test.mjs skills/cocos-game-workflow-control/scripts/runtime/fingerprint.test.mjs skills/cocos-game-workflow-control/scripts/runtime/stable-commands.test.mjs skills/cocos-game-workflow-control/scripts/runtime/workflow-view.test.mjs skills/cocos-game-workflow-control/scripts/visual-contract-core.test.mjs",
+    "test:workflow": "node scripts/run-tests.mjs skills/cocos-game-workflow-control/scripts/workflow-control.test.mjs skills/cocos-game-workflow-control/scripts/scene-stage-transition.test.mjs skills/cocos-game-workflow-control/scripts/execution-validation.test.mjs skills/cocos-game-workflow-control/scripts/runtime/io.test.mjs skills/cocos-game-workflow-control/scripts/runtime/stable-commands.test.mjs skills/cocos-game-workflow-control/scripts/runtime/validation-context.test.mjs skills/cocos-game-workflow-control/scripts/runtime/workflow-view.test.mjs skills/cocos-game-workflow-control/scripts/visual-contract-core.test.mjs skills/cocos-game-workflow-control/scripts/parallel-plan.test.mjs skills/cocos-game-workflow-control/scripts/workflow-dpr-contract.test.mjs skills/cocos-game-workflow-control/scripts/visual-stage-prerequisites.test.mjs skills/cocos-game-workflow-control/scripts/art-experience-acceptance-contract.test.mjs skills/cocos-game-workflow-control/scripts/visual-production-contract.test.mjs skills/cocos-game-workflow-control/scripts/native-render-contract.test.mjs skills/cocos-game-workflow-control/scripts/native-route-schema.test.mjs skills/cocos-game-workflow-control/scripts/transparent-route-schema.test.mjs skills/cocos-game-workflow-control/scripts/scene-reconstruction-contract.test.mjs skills/cocos-game-workflow-control/scripts/display-layer-planning-contract.test.mjs skills/cocos-game-workflow-control/scripts/effect-image-prompt-contract.test.mjs skills/cocos-game-workflow-control/scripts/visual-transparent-background-contract.test.mjs skills/cocos-game-workflow-control/scripts/visual-image-normalization.test.mjs skills/cocos-game-workflow-control/scripts/workflow-return-image-regression.test.mjs skills/cocos-game-workflow-control/scripts/global-visual-consistency-contract.test.mjs skills/cocos-game-workflow-control/scripts/visual-human-review-contract.test.mjs skills/cocos-game-workflow-control/scripts/visual-generation-size-contract.test.mjs skills/cocos-game-workflow-control/scripts/visual-decomposition-confirmation.test.mjs skills/cocos-game-workflow-control/scripts/high-fidelity-prerequisite.test.mjs skills/cocos-game-workflow-control/scripts/visual-validation-policy.test.mjs skills/cocos-game-workflow-control/scripts/transparent-route-contract.test.mjs skills/cocos-game-asset-integration/scripts/transparent-raster.test.mjs skills/cocos-game-workflow-control/scripts/visual-component-contract.test.mjs",
+    "test:full": "node scripts/run-all-tests.mjs",
+    "test": "npm run test:full && npm run test:install",
+    "test:high-fidelity": "node scripts/run-tests.mjs skills/cocos-game-workflow-control/scripts/high-fidelity-prerequisite.test.mjs",
+    "test:frame-animation": "node scripts/run-tests.mjs skills/cocos-game-asset-integration/scripts/frame-animation-workflow-contract.test.mjs skills/cocos-frame-animation/scripts/video-to-atlas.test.mjs skills/cocos-frame-animation/scripts/image-inbetween-plan.test.mjs skills/cocos-frame-animation/scripts/image-frame-source.test.mjs skills/cocos-frame-animation/scripts/images-to-atlas.test.mjs skills/cocos-game-asset-integration/scripts/image-frame-animation-workflow-contract.test.mjs",
+    "remove:background": "node skills/cocos-game-asset-integration/scripts/remove-background-local.mjs",
+    "normalize:image": "node skills/cocos-game-workflow-control/scripts/visual-image-normalization.mjs",
+    "lint:workflow": "node skills/cocos-game-workflow-control/scripts/workflow-control.mjs lint --repository .",
+    "test:install": "node --test tests/install-skills.test.mjs"
+  },
+  "engines": {
+    "node": ">=22.20.0"
+  },
+  "dependencies": {
+    "sharp": "^0.35.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weberwang/cocos-skills.git"
+  },
+  "license": "MIT",
+  "files": [
+    "skills/",
+    "scripts/"
+  ],
+  "private": true
 }

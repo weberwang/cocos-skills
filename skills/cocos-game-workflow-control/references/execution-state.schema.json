@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cocos-execution-state.schema.json",
+  "title": "实施顺序状态",
+  "description": "由 unit-check 原子更新的当前实施单元和下一任务状态；状态必须绑定 Work Item、Implementation Package、基线和 executionUnits 数组顺序。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion","stateId","workItemId","packageId","baselineVersion","stageId","visualStage","visualStageState","executionUnitIds","units","unitSequenceState","workflowState","nextTask","updatedAt","lastTransition"],
+  "properties": {
+    "schemaVersion": {"const": "cocos-execution-state/1.0"},
+    "stateId": {"type": "string", "minLength": 1},
+    "workItemId": {"type": "string", "minLength": 1},
+    "packageId": {"type": "string", "minLength": 1},
+    "baselineVersion": {"type": "string", "minLength": 1},
+    "baselineHash": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "stageId": {"type": "string", "minLength": 1},
+    "visualStage": {"type": ["string", "null"], "enum": ["V0", "V1", "V2", "V3", "V4", null]},
+    "visualStageState": {"type": ["string", "null"], "minLength": 1},
+    "executionUnitIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "executionPlanFingerprint": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "units": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/unitState"}},
+    "unitSequenceState": {"enum": ["IN_PROGRESS", "COMPLETE"]},
+    "workflowState": {"enum": ["IN_PROGRESS", "BLOCKED", "COMPLETE"]},
+    "nextTask": {"$ref": "#/$defs/nextTask"},
+    "updatedAt": {"type": "string", "format": "date-time"},
+    "lastTransition": {"$ref": "#/$defs/lastTransition"}
+  },
+  "$defs": {
+    "unitState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unitId","order","parallelMode","parallelGroup","state","resultId","resultPath","startedAt","completedAt"],
+      "properties": {
+        "unitId": {"type": "string", "minLength": 1},
+        "order": {"type": "integer", "minimum": 0},
+        "parallelMode": {"enum": ["SERIAL", "PARALLEL"]},
+        "parallelGroup": {"type": ["string", "null"], "minLength": 1},
+        "state": {"enum": ["PENDING", "IN_PROGRESS", "COMPLETE"]},
+        "resultId": {"type": ["string", "null"], "minLength": 1},
+        "resultPath": {"type": ["string", "null"], "minLength": 1},
+        "resultFingerprint": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "startedAt": {"type": ["string", "null"], "format": "date-time"},
+        "completedAt": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "nextTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "taskId", "state", "unitIds", "parallelGroup", "gate", "gateStatus", "reason"],
+      "properties": {
+        "kind": {"enum": ["SERIAL_UNIT", "PARALLEL_GROUP", "WORKFLOW_COMPLETE"]},
+        "taskId": {"type": ["string", "null"]},
+        "state": {"enum": ["IN_PROGRESS", "BLOCKED", "COMPLETE"]},
+        "unitIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "parallelGroup": {"type": ["string", "null"], "minLength": 1},
+        "gate": {"type": ["string", "null"]},
+        "gateStatus": {"enum": ["PASS", "BLOCKED", "NOT_REQUIRED"]},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "lastTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "unitId", "resultId"],
+      "properties": {
+        "type": {"enum": ["INITIALIZE", "UNIT_COMPLETE", "WORKFLOW_COMPLETE", "STAGE_ADVANCE"]},
+        "unitId": {"type": ["string", "null"]},
+        "resultId": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

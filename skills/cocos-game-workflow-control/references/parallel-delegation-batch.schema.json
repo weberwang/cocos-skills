@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cocos-parallel-delegation-batch.schema.json",
+  "title": "原子并行委派批次",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["batchId","workItemId","packageId","parallelGroup","delegationFiles","executionUnitIds","assignedAgents","createdAt"],
+  "properties": {
+    "batchId": {"type": "string", "minLength": 1},
+    "workItemId": {"type": "string", "minLength": 1},
+    "packageId": {"type": "string", "minLength": 1},
+    "baselineHash": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "parallelGroup": {"type": "string", "minLength": 1},
+    "delegationFiles": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "delegationHashes": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "executionUnitIds": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "assignedAgents": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "fingerprint": {"description":"仅作为可选摘要记录，不参与验收或放行。"}
+  }
+}

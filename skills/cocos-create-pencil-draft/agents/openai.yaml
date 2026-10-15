@@ -1,4 +1,0 @@
-interface:
-  display_name: "Cocos 创建 Pencil 草图"
-  short_description: "Create auditable game-scene and UI wireframes"
-  default_prompt: "Use $cocos-create-pencil-draft to create and approve a precise Pencil layout draft for an assigned Cocos scene or UI."

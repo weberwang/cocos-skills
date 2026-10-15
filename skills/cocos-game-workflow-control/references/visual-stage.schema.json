@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cocos-visual-stage.schema.json",
+  "title": "Cocos Creator 3.x 视觉阶段硬门",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["visualStage", "visualStageState"],
+  "properties": {
+    "visualStage": {"enum": ["V0", "V1", "V2", "V3", "V4"]},
+    "visualStageState": {"enum": ["not-started", "in-progress", "pending", "failed", "stale", "invalid", "global-static-baseline-frozen", "v2-production-planning-complete", "v3-formal-acceptance-complete", "v4-runtime-integration-candidate"]},
+    "globalStaticBaselineState": {"const": "global-static-baseline-frozen", "description": "全局静态 visual_baseline 只有在三张候选效果图经唯一人工选择确认后才能冻结；它不代表任一授权场景已完成 V2 拆解方案。"},
+    "visual_validation": {"$ref": "#/$defs/visualValidationPolicy", "description": "视觉验收模式；缺省为 usability，exact 必须显式声明。"},
+    "globalVisualBaselineSelectionRef": {"$ref": "#/$defs/globalVisualBaselineSelectionReference", "description": "不可变三候选人工选择证据引用；通过 path+sha256 跨 Work Item 复用，冻结状态缺失该引用时必须拒绝。"},
+    "visualStageEvidenceRefs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "V2": {"$ref": "#/$defs/evidenceReference"},
+        "V3": {"$ref": "#/$defs/evidenceReference"},
+        "V4": {"$ref": "#/$defs/evidenceReference"}
+      }
+    }
+  },
+  "$defs": {
+    "evidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "workItemId": {"type": "string", "minLength": 1},
+        "resultId": {"type": "string", "minLength": 1},
+        "unitResultId": {"type": "string", "minLength": 1}
+      }
+    },
+    "globalVisualBaselineSelectionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+        "workItemId": {"type": "string", "minLength": 1, "description": "可选的根证据生产者 Work Item 身份；不是当前消费者 Work Item。"}
+      }
+    },
+    "visualValidationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {"mode": {"enum": ["usability", "exact"]}}
+    }
+  },
+  "allOf": [
+    {"if": {"required": ["visualStage"], "properties": {"visualStage": {"const": "V4"}}}, "then": {"required": ["visualStageEvidenceRefs"], "properties": {"visualStageEvidenceRefs": {"required": ["V2", "V3"]}}}},
+    {"if": {"required": ["visualStageState"], "properties": {"visualStageState": {"const": "v4-runtime-integration-candidate"}}}, "then": {"required": ["visualStageEvidenceRefs"], "properties": {"visualStageEvidenceRefs": {"required": ["V4"]}}}},
+    {
+      "if": {
+        "anyOf": [
+          {"required": ["globalStaticBaselineState"]},
+          {"required": ["visualStage", "visualStageState"], "properties": {"visualStage": {"enum": ["V0", "V1"]}, "visualStageState": {"const": "global-static-baseline-frozen"}}}
+        ]
+      },
+      "then": {"required": ["globalVisualBaselineSelectionRef"]}
+    },
+    {"if": {"properties": {"visualStage": {"enum": ["V0", "V1"]}}}, "then": {"properties": {"visualStageState": {"enum": ["not-started", "in-progress", "pending", "failed", "stale", "invalid", "global-static-baseline-frozen"]}}}},
+    {"if": {"properties": {"visualStage": {"const": "V2"}}}, "then": {"properties": {"visualStageState": {"enum": ["not-started", "in-progress", "pending", "failed", "stale", "invalid", "v2-production-planning-complete"]}}}},
+    {"if": {"properties": {"visualStage": {"const": "V3"}}}, "then": {"properties": {"visualStageState": {"enum": ["not-started", "in-progress", "pending", "failed", "stale", "invalid", "v3-formal-acceptance-complete"]}}}},
+    {"if": {"properties": {"visualStage": {"const": "V4"}}}, "then": {"properties": {"visualStageState": {"enum": ["not-started", "in-progress", "pending", "failed", "stale", "invalid", "v4-runtime-integration-candidate"]}}}}
+  ]
+}

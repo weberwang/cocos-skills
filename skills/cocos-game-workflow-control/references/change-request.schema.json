@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cocos-change-request.schema.json",
+  "title": "变更请求",
+  "type": "object",
+  "required": ["changeRequestId","workItemId","change","reason","affectedModules","invalidatedApprovalIds","newRisk","newAcceptance","userDecisionRequest","status"],
+  "properties": {
+    "changeRequestId": {"type": "string", "minLength": 1},
+    "workItemId": {"type": "string", "minLength": 1},
+    "change": {"type": "string", "minLength": 1},
+    "reason": {"type": "string", "minLength": 1},
+    "affectedModules": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "affectedBaselineHash": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "invalidatedApprovalIds": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "newRisk": {"type": "string", "minLength": 1},
+    "newAcceptance": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "userDecisionRequest": {"type": "string", "minLength": 1},
+    "status": {"enum": ["PENDING", "ACCEPTED", "REJECTED"]},
+    "candidateVersion": {"type": "string", "minLength": 1},
+    "candidate_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "target_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "baseline_sha256": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "diff_fingerprint": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "user_original_text": {"type": "string", "minLength": 1},
+    "userOriginalText": {"type": "string", "minLength": 1},
+    "accepted_at": {"type": "string", "format": "date-time"},
+    "acceptedAt": {"type": "string", "format": "date-time"},
+    "decided_at": {"type": "string", "format": "date-time"},
+    "decidedAt": {"type": "string", "format": "date-time"},
+    "production_method_changes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/productionMethodChange"}},
+    "productionMethodChanges": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/productionMethodChange"}}
+  },
+  "allOf": [
+    {
+      "if": {"anyOf": [{"required": ["production_method_changes"]}, {"required": ["productionMethodChanges"]}]},
+      "then": {"required": ["candidateVersion","user_original_text","accepted_at"]}
+    }
+  ],
+  "$defs": {
+    "productionMethodChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["annotation_number", "region_id", "previous_method", "proposed_method"],
+      "properties": {
+        "annotation_number": {"type": "integer", "minimum": 1},
+        "region_id": {"type": "string", "minLength": 1},
+        "previous_method": {"type": "string", "minLength": 1},
+        "proposed_method": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

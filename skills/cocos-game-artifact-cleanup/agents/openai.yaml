@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Creator 3.x 记录与产物清理"
+  short_description: "核对引用与保留策略，清理过期记录和未使用中间产物并保留有效证据"
+  default_prompt: "使用 $cocos-game-artifact-cleanup 检查当前项目的过期记录和未使用中间产物，在任务范围内清理并报告验证结果。"

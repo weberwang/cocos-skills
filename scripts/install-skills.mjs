@@ -4,6 +4,7 @@ import { cp, lstat, mkdir, readFile, readdir, rename, rm, stat } from "node:fs/p
 import { randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join, relative, resolve, sep, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
+import { prepareSkillRuntime } from "./install-runtime.mjs";
 
 /** 判断文件或目录是否存在；除不存在外的读取错误必须继续暴露。 */
 async function exists(filePath) {
@@ -188,7 +189,7 @@ async function prepareManagedTarget(target) {
 }
 
 /** 用同卷暂存、验证和可回滚的目录替换完成一次全量覆盖安装。 */
-export async function installSkills({ sourceRoot, projectRoot, log, copyDirectory = cp, renameDirectory = rename }) {
+export async function installSkills({ sourceRoot, projectRoot, log, copyDirectory = cp, renameDirectory = rename, prepareRuntime }) {
   const names = await discoverSkillDirectories(sourceRoot);
 
   if (names.length === 0) {
@@ -214,6 +215,9 @@ export async function installSkills({ sourceRoot, projectRoot, log, copyDirector
       await copyDirectory(join(sourceRoot, name), stagedTarget, { recursive: true });
       await validateSourceSkillDirectory(stagedTarget);
     }
+
+    // 原生图片依赖在暂存区内准备；任何失败都发生在替换旧安装之前。
+    if (prepareRuntime) await prepareRuntime(stageRoot);
 
     await mkdir(backupRoot);
     for (const name of names) {
@@ -255,15 +259,24 @@ export async function installSkills({ sourceRoot, projectRoot, log, copyDirector
 
 /** 以当前执行目录作为目标项目根目录运行安装器。 */
 async function main() {
+  const [requestedPath, ...extraArguments] = process.argv.slice(2);
+  if (requestedPath === "--help" || requestedPath === "-h") {
+    console.log("用法：cocos-skills [目标项目目录]");
+    return;
+  }
+  if (extraArguments.length) throw new Error("最多只能传入一个目标项目目录。");
   const scriptPath = fileURLToPath(import.meta.url);
   const packageRoot = resolve(dirname(scriptPath), "..");
+  const projectRoot = resolve(requestedPath ?? process.cwd());
+  if (!(await stat(projectRoot)).isDirectory()) throw new Error(`目标项目目录不是目录：${projectRoot}`);
   const names = await installSkills({
     sourceRoot: join(packageRoot, "skills"),
-    projectRoot: process.cwd(),
+    projectRoot,
     log: (message) => console.log(message),
+    prepareRuntime: prepareSkillRuntime,
   });
 
-  console.log(`已覆盖安装 ${names.length} 个 Skill 到 ${join(process.cwd(), ".agents", "skills")}`);
+  console.log(`已覆盖安装 ${names.length} 个 Skill 到 ${join(projectRoot, ".agents", "skills")}`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

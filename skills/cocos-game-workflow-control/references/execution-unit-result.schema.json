@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cocos-execution-unit-result.schema.json",
+  "title": "实施单元完成证据",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["resultId","workItemId","packageId","unitId","completedAt","commands","files","verdict"],
+  "properties": {
+    "resultId": {"type": "string", "minLength": 1},
+    "workItemId": {"type": "string", "minLength": 1},
+    "packageId": {"type": "string", "minLength": 1},
+    "unitId": {"type": "string", "minLength": 1},
+    "baselineHash": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "codeFingerprint": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "diffFingerprint": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "completedAt": {"type": "string", "format": "date-time"},
+    "commands": {
+      "type": "array", "minItems": 1,
+      "items": {"type": "object", "additionalProperties": false, "required": ["command","exitCode","outputFile"], "properties": {"command": {"type": "string", "minLength": 1}, "exitCode": {"const": 0}, "outputFile": {"type": "string", "minLength": 1}, "outputHash": {"description":"仅作为可选摘要记录，不参与验收或放行。"}}}
+    },
+    "files": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "fileHashes": {"description":"仅作为可选摘要记录，不参与验收或放行。"},
+    "verdict": {"enum": ["PASS", "FAIL"]}
+  }
+}
