@@ -14,7 +14,7 @@ Creator 编辑器、AssetDB、Scene/Node/Component、Prefab、构建和预览操
 
 ## G1 强制实施序列
 
-基础实施先按[游戏项目目录规范](../../cocos-game-architecture/references/project-structure.md)冻结入口、基础模块、场景、显示层、平台适配、资源、测试和产物的路径与所有权；按实际需要创建目录，后续实施沿同一映射落盘。
+基础实施先按[游戏项目目录规范](../../cocos-game-architecture/references/project-structure.md)冻结入口、基础模块、场景、显示层、平台适配、资源、测试和产物的路径与所有权；产物分别按[产物存放与证据边界](../../cocos-game-architecture/references/artifact-storage.md)写入临时、候选、确认、源素材、正式资源和人工作业审阅/验证目录。根级 `evidence/` 不作为机器 `evidenceRoot`；工作流机器记录和受限证据字段按控制工具真实布局执行。按实际需要创建目录，后续实施沿同一映射落盘。
 
 Android/iOS 原生平台功能按[原生平台插件选型](../../cocos-game-architecture/SKILL.md#原生平台插件选型)优先复用现有插件，再选择适用的官方或社区插件；仅在明确能力缺口下补充自建原生实现。实施包记录插件选型与平台适配边界，必要宿主配置和冷启动/恢复验收仍按对应约束执行。
 
@@ -25,7 +25,7 @@ Android/iOS 原生平台功能按[原生平台插件选型](../../cocos-game-arc
 
 场景 V1 同时冻结[显示节点锚点与层级](../../cocos-game-ui-layout/references/display-object-layering.md)方案：具有 `UITransform` 的渲染 Node 默认锚点为中心 `(0.5, 0.5)`，例外逐对象说明；背景、世界、特效、HUD 和瞬态层按实际职责划分有名根层并明确前后、输入与生命周期。V2 将 Node 锚点和层序映射到布局/显示层合同，V4 在正式场景中检查资源组合、遮挡、最上层命中及关闭/resize 后恢复。这里的渲染分层不把世界对象或特效变成独立 `DISPLAY_LAYER` Work Item。
 
-通用帧动画是场景路线中的动态资源子路线，按[分类入口](../../cocos-frame-animation/SKILL.md#分类入口)选择用途，再按[来源路线](../../cocos-frame-animation/SKILL.md#来源路线)默认视频抽帧；图片递归补帧须用户明确选用。主代理按[执行代理约定](../../cocos-frame-animation/SKILL.md#执行代理)委派动画执行代理，实际图片生成/编辑交图片代理。V2 内部维护行为、阶段、事件、衔接、尺寸、FPS 和批次计划，直接在已有授权内写提示词并制作真实候选，不等待动作时间轴文字确认；只有关键玩法事实存在决定性歧义时询问。视频分辨率与条数按[区域规划](../../cocos-frame-animation/references/region-planning.md)选择并遵守预算；图片默认 768p，确需 2K 时在已有工具与预算授权内直接选择，新增费用或超出授权才询问。V3 验收实际最终抽帧视频后才抽帧，图片首尾、关键帧与递归父图逐张确认后推进，最终验收完整真实序列。只确认文字方案不能代替真实候选验收。保留独立图集、报告、预览、来源与修图成果，V4 完成正式 Cocos 消费和事件验证；完整证据与 schema 分派见[接入合同](../../cocos-frame-animation/references/workflow-integration.md)。
+通用帧动画是场景路线中的动态资源子路线，按[分类入口](../../cocos-frame-animation/SKILL.md#分类入口)选择用途，再按[来源路线](../../cocos-frame-animation/SKILL.md#来源路线)默认视频抽帧；图片递归补帧须用户明确选用。主代理按[执行代理约定](../../cocos-frame-animation/SKILL.md#执行代理)先按观看体验与表演协调难度安排动画导演／动作指导：简单任务由对应专业设计师兼任，复杂任务独立委派导演统一构思，再按用途类型委派设计师细化；混合任务明确表演、事件与空间交接，固定画布/区域不锁死角色朝向、姿态或画内位移，实际图片生成/编辑交图片代理。V2 内部维护行为、阶段、事件、衔接、尺寸、FPS 和批次计划，方案完成后先按[设计理念说明](../../cocos-frame-animation/references/intent-driven-design.md#方案完成后阐述设计理念)向用户阐述目标感受与动作依据，等待用户明确确认当前动作方案后，才在已有授权内写提示词、制作真实候选和推进具体实现；只有关键玩法事实存在决定性歧义时询问。视频分辨率与条数按[区域规划](../../cocos-frame-animation/references/region-planning.md)选择并遵守预算；图片默认 768p，确需 2K 时在已有工具与预算授权内直接选择，新增费用或超出授权才询问。V3 验收实际最终抽帧视频后才抽帧，图片首尾、关键帧与递归父图逐张确认后推进，最终验收完整真实序列。只确认文字方案不能代替真实候选验收。保留独立图集、报告、预览、来源与修图成果，V4 完成正式 Cocos 消费和事件验证；完整证据与 schema 分派见[接入合同](../../cocos-frame-animation/references/workflow-integration.md)。
 
 ## 基础显示约束
 

@@ -69,7 +69,7 @@ V3 资源验收通过后，V4 直接激活正式实施包并读取当前 V2 拆�
 
 `highFidelityPrerequisite` 必须是不可变引用：`workItemId`、`status=COMPLETE`、`stage=V2`、`frozen=true`、`sceneId`/`displayLayerId`/`hostSceneId`、仓库内相对 `evidenceFile`；摘要字段可选且不参与验收。证据文件须为 `cocos-scene-v2-reconstruction-plan/1.0` 的单一场景根结果：根提供 `sceneMaster`、`sceneReconstructionContract`、`decompositionAnnotation`、`technicalDecomposition`、`visualDecompositionConfirmation`、`visualProductionContract`、`visualProductionUnits` 和 `displayLayerContexts[]`。
 
-SCENE 与 DISPLAY_LAYER 使用同一 `evidenceFile`，scene/layer/host 及任务归属必须一致，candidate/diff/target 摘要仅作可选追踪。必要业务字段、格式、路径、越界或缺文件错误先 `repair` 并重验当前门；上游事实未变但机器证据过期/失败时为 `revalidate`。只有上游事实失效、任务范围真实变化或硬门将被绕过才 `return` 到最早受影响阶段；普通候选身份变化不触发回退。
+SCENE 与 DISPLAY_LAYER 分别绑定各自 Work Item 的 V2 证据，并使用独立 `evidenceFile`；不得共用同一证据包或同一文件。各自的 scene/layer/host 及任务归属必须一致，candidate/diff/target 摘要仅作可选追踪。必要业务字段、格式、路径、越界或缺文件错误先 `repair` 并重验当前门；上游事实未变但机器证据过期/失败时为 `revalidate`。只有上游事实失效、任务范围真实变化或硬门将被绕过才 `return` 到最早受影响阶段；普通候选身份变化不触发回退。
 
 V2→V3 是同一场景 Work Item 的阶段推进。V2 拆解与布局确认、V3 正式资源证据、V4 运行态证据分别写入同一 `workItemId` 的不可变阶段引用；V4 正式实施包进入 `IMPLEMENTING` 前必须消费当前 Work Item 的 V2/V3 证据。阶段实施序列完成只表示当前包完成，只有当前 Work Item 的 V4 运行态联合验收证据闭合后才允许场景 `COMPLETE`。
 

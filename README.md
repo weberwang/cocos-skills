@@ -1,8 +1,12 @@
 # Cocos Creator 3.x 游戏协作 Skills
 
-本工作流源自 [phaser-skills](https://github.com/weberwang/phaser-skills) 受跟踪版本 `3518ac3b5331da82b6db27d351d29c85c0b7a797`，现已适配 Cocos Creator 3.x。它以 Creator 项目的 `assets/`、`settings/`、`profiles/` 和 `package.json` 为工程边界，并由全局控制面统一管理任务范围、风险门、实施证据和状态迁移。Creator 编辑器、场景、节点、组件、Prefab、AssetDB 与构建操作按[Creator MCP 协议](skills/cocos-game-workflow-control/references/cocos-mcp-protocol.md)执行。
+本工作流源自 [phaser-skills](https://github.com/weberwang/phaser-skills)，通用工作流约束已同步至其版本 `fc44d251ac2f634c399b0455b66867571e9ffb6f`，并保留 Cocos Creator 3.x 的引擎适配。它以 Creator 项目的 `assets/`、`settings/`、`profiles/` 和 `package.json` 为工程边界，并由全局控制面统一管理任务范围、风险门、实施证据和状态迁移。Creator 编辑器、场景、节点、组件、Prefab、AssetDB 与构建操作按[Creator MCP 协议](skills/cocos-game-workflow-control/references/cocos-mcp-protocol.md)执行。
 
 Android/iOS 原生平台功能优先复用项目现有 Cocos 原生插件；缺少所需能力时，评估 Creator 原生插件和 JSB 桥接，并将宿主 SDK 调用封装在平台适配层。工程边界与实现选择遵循[原生平台插件选型](skills/cocos-game-architecture/SKILL.md#原生平台插件选型)。
+
+所有已采用 SDK 的初始化由 `assets/scripts/platform/initialize-sdks.ts` 统一编排，应用装配入口独立投递各 SDK 任务后立即返回，Creator 首帧不等待整批初始化。真实完成回调、幂等状态和单 SDK 初始化重试集中维护，业务运行期恢复由所属模块负责，见[SDK 统一初始化](skills/cocos-game-architecture/references/sdk-initialization.md)。
+
+MAX 首次初始化前手动设置 `hasUserConsent=false`，关闭内建隐私流程，再正常调用原生 SDK 初始化；该配置本身不阻断广告加载、展示或重试。MAX 与 AppsFlyer 各自独立启动、失败与恢复，不相互等待或复制同意状态；其他真实适用的隐私前置仍按[接入合同](skills/cocos-game-ad-integration/references/applovin-max-contract.md)核验。
 
 ## 安装
 
@@ -35,7 +39,7 @@ node .\scripts\install-skills.mjs E:\Projects\my-cocos-game
 
 单场景视觉任务在“逐场景生产”内按“场景定义 → 拆解与布局确认 → 正式资源验收 → 正式场景实现、校准与运行验收”推进。V4 直接读取 V2 的结构和目标布局、V3 验收通过的正式资源，在实际场景中迭代还原效果。该视图只简化展示；全局状态、G0-G3、V0/V1/V2/V3/V4、A0-A6、F0-F4 和证据硬门继续由控制面维护，详见[控制模型](skills/cocos-game-workflow-control/references/control-model.md)与[状态、阶段与停止门](skills/cocos-game-workflow-control/references/state-gates.md)。
 
-通用帧动画按普通、角色动作、特效或 UI 选择制作规则，默认视频抽帧，图片递归补帧仅在用户明确选用时启用。内部完成动作分析、时间轴、尺寸与批次方案后，在已有授权内直接制作真实视频或关键帧，不等待文字设计确认；只有玩法事件、时长或行为边界有决定性歧义时才询问。真实视频人工验收后才能抽帧；图片首尾、关键帧和递归父图逐张确认后继续制作，最终真实序列仍由用户验收。分辨率、条数、预算、来源证据和 Cocos 接入见[通用帧动画技能](skills/cocos-frame-animation/SKILL.md)与[区域规划](skills/cocos-frame-animation/references/region-planning.md)。
+通用帧动画按普通、角色动作、特效或 UI 选择制作规则，默认视频抽帧，图片递归补帧仅在用户明确选用时启用。内部完成动作分析、时间轴、尺寸与批次方案后，先向用户说明目标感受、动作依据和节奏取舍，等待用户明确确认当前动作方案后，再在已有授权内制作真实视频或关键帧；只有玩法事件、时长或行为边界有决定性歧义时才询问。按复杂度安排专业设计师兼任或独立动画导演，先确定完整表演再安排制作容器。真实视频人工验收后才能抽帧；图片首尾、关键帧和递归父图逐张确认后继续制作，最终真实序列仍由用户验收。分辨率、条数、预算、来源证据和 Cocos 接入见[通用帧动画技能](skills/cocos-frame-animation/SKILL.md)与[区域规划](skills/cocos-frame-animation/references/region-planning.md)。
 
 先在目标 Cocos 项目根目录初始化一个 Work Item。下面的 PowerShell 示例会以当前 Git HEAD 作为不可变基线，可直接复制执行：
 
@@ -55,15 +59,17 @@ node .\.agents\skills\cocos-game-workflow-control\scripts\workflow-control.mjs s
 
 `run` 只读取、校验、推导路线，并连续推进已满足条件的安全控制面状态，进入实施或遇到缺证据、用户决定时停止；它不运行业务代码、测试、服务、外部动作或发布，也不会自动选择 `RETURN`。`check` 完全只读。三个入口可重复传入 `--input <file>` 绑定显式关键输入，默认文本优先显示六阶段/四步视图；JSON 仍输出稳定的 `status/stage/changed/blocking/next/metadata`，并在 `metadata.workflowView` 提供展示映射、`metadata.planFingerprint` 返回不含时间戳的确定性计划指纹。
 
-图片与动画任务遵循[图片优先的确认方式](skills/cocos-game-workflow-control/references/simplified-workflow.md#图片优先的确认方式)：技术记录、拆解分析、布局决策和提示词由代理内部维护，直接展示真实图片或预览供用户确认；同目标返修直接展示前后对照。
+图片与动画任务遵循[图片优先的确认方式](skills/cocos-game-workflow-control/references/simplified-workflow.md#图片优先的确认方式)：除帧动画先确认动作方案外，技术记录、拆解分析、布局决策和提示词由代理内部维护，直接展示真实图片或预览供用户确认；同目标返修直接展示前后对照。
 
 ## 控制面边界
+
+游戏产物按[目录规范](skills/cocos-game-architecture/references/project-structure.md)与[产物存放及证据边界](skills/cocos-game-architecture/references/artifact-storage.md)落盘：`output/intermediate/` 保存可再生成中间文件，`output/candidates/` 保存未送审候选，`docs/confirmed/` 保存确认后的非运行成果，`assets-source/` 保存生产输入，Creator `assets/` 保存正式运行资源及其 `.meta`。根级 `evidence/<workItemId>/reviews/` 和 `validation/` 用于人工审阅及验证，不等于机器 `evidenceRoot`；机器记录及视觉确认账本继续使用 `.workflow-control/` 下工具实际路径，受限字段不得填写外部目录。已冻结引用保持原位，不批量搬迁或改写。
 
 - `$cocos-game-workflow-control` 独占全局状态、风险门、任务范围、状态迁移和证据一致性。普通 A0-A3 工作直接依据当前用户任务，不创建独立授权记录，也不设置 F0 授权有效硬门。
 - 任务内可以调整实现方案、文件路径、资源清单和测试范围；同步更新 Work Item/实施包并重验受影响部分即可。无外部副作用的本地 A4 集成可按任务执行；涉及外部写入、付费、真机、破坏性或外部删除、发布的 A4-A6 操作仍必须逐对象建立 pending 并获得显式批准。控制面只校验和记录，不代执行这些动作。
 - V0→V1→V2→V3→V4 的视觉硬门、全局静态基线、场景拆解与布局确认、高保真前置继续使用带真实路径和任务归属的证据；V4 直接消费当前 V2/V3 产物并对正式场景调整验收。缺失或失效时 fail closed。阶段与字段以控制面文档和 Schema 为准。
 - 共享工作区不自动回滚、不覆盖他人修改；启动本地验证服务前先查找同项目健康实例并复用。
-- 阶段任务验收完成后，执行代理自动按需维护 `.gitignore`，只提交本次任务涉及的文件并报告提交哈希；使用当前分支，不自动推送。具体规则见[阶段收尾与 Git 提交](skills/cocos-game-workflow-control/SKILL.md#阶段收尾与-git-提交)。
+- 阶段任务验收完成后，执行代理按[最小 Git 提交集](skills/cocos-game-workflow-control/references/minimal-git.md)维护 `.gitignore`：只提交本任务运行/构建必需文件与当前工作项有效引用的必要记录和实际产物，逐层纳入仍需的图片、视频、Spine 文件、审阅页、截图、日志和源输入，不能只留下路径字符串。产物目录默认忽略文件再逐文件精确放行，未入库不代表可删除；Creator 正式资源及 `.meta`、工程设置和必要原生源配置不能整体忽略。使用当前分支提交并报告哈希，不自动推送。详见[阶段收尾与 Git 提交](skills/cocos-game-workflow-control/SKILL.md#阶段收尾与-git-提交)和[忽略模板](skills/cocos-game-workflow-control/assets/minimal-project.gitignore)。
 
 视觉几何与测试默认以可用性为准：位置、尺寸、边距、换行允许合理偏差，越界、裁切、关键遮挡、不可读和交互失效必须修复。像素级容差、全视口/全状态矩阵只在任务明确要求或项目合同明确指定时启用；V2 拆解确认、布局确认、独立资源产物和关键功能证据仍然保留。
 
@@ -87,7 +93,7 @@ UI 响应式验证按合同的 `orientationPolicy.allowed` 选择视口方向：
 - `$cocos-game-architecture`：工程架构与公开契约。
 - `$cocos-gameplay-development`：玩法规则、状态和交互实现。
 - `$cocos-game-asset-integration`、`$cocos-game-ui-layout`：资源、效果图还原和 UI 布局。
-- [`$cocos-frame-animation`](skills/cocos-frame-animation/SKILL.md)：普通、角色、特效、UI 分类规则；内部设计后直接给真实视频或关键帧确认，默认视频抽帧，可明确选用图片递归补帧。分辨率、批次与预算按[区域规划](skills/cocos-frame-animation/references/region-planning.md)执行，输出独立图集与预览。
+- [`$cocos-frame-animation`](skills/cocos-frame-animation/SKILL.md)：普通、角色、特效、UI 分类规则；先说明并确认动作方案，再制作真实视频或关键帧，默认视频抽帧，可明确选用图片递归补帧。分辨率、批次与预算按[区域规划](skills/cocos-frame-animation/references/region-planning.md)执行，输出独立图集与预览。
 - `$cocos-spine-generative-reskin`、`$cocos-game-image-optimization`：Spine 与图片处理。
 - `$cocos-game-audio`、`$cocos-game-balance`：音频和数值平衡。
 - [`$cocos-game-ad-integration`](skills/cocos-game-ad-integration/SKILL.md)：通过 Cocos 原生插件适配 AppLovin MAX SDK，接入移动端 Banner、插页与激励视频，管理全屏广告位静默预加载与持续重试、Banner 按需创建与布局刷新、视频不可用提示和隐私验收。
@@ -129,12 +135,14 @@ npm run remove:background -- --source art/raw.png --output art/transparent.png -
 
 ```powershell
 npm run test:quick
+npm run test:minimal-git
 npm run test:workflow
 npm run test:frame-animation
+npm run test:production-build
 npm run test:full
 npm test
 ```
 
-`test:quick` 覆盖稳定输出与指纹，`test:workflow` 覆盖控制面和视觉工作流，`test:frame-animation` 覆盖视频抽帧、图片规划/来源/打包及 accepted 文件门，`test:full`/`test` 保留全量回归。工作流先按风险推荐 T0（仅静态检查）、T1（定向验证）、T2（受影响模块）或 T3（完整验证），说明理由、覆盖和命令后自动执行适用等级；不等待人工选择。T3 仍不包含隐式真机、外部写入或发布。
+`test:quick` 覆盖稳定输出、指纹和最小提交规则，`test:minimal-git` 单独验证 Creator 源文件保留、产物精确放行和必要附件提交；`test:workflow` 覆盖控制面和视觉工作流，`test:frame-animation` 覆盖视频抽帧、图片规划/来源/打包及 accepted 文件门，`test:production-build` 验证最终公开产物的 Source Map 检查器，`test:full`/`test` 保留全量回归。工作流先按风险推荐 T0（仅静态检查）、T1（定向验证）、T2（受影响模块）或 T3（完整验证），说明理由、覆盖和命令后自动执行适用等级；不等待人工选择。T3 仍不包含隐式真机、外部写入或发布。
 
 这些 Node 测试入口统一使用隔离运行器：每次运行的临时目录会在正常结束、失败、超时或可处理信号后回收。默认总超时为 10 分钟，可通过 `COCOS_TEST_TIMEOUT_MS`（毫秒）覆盖；超时返回 `124`。运行器只终止本次创建的测试进程树，不会停止已有 Cocos Creator 或外部服务，也不会删除显式项目路径下的证据输出。

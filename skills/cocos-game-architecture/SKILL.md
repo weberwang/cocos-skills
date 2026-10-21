@@ -15,6 +15,8 @@ description: Cocos Creator 3.x 游戏的技术架构角色。需要划分或评�
 - Creator 项目运行时资产通常位于 `assets/`：场景、预制体、脚本、纹理、音频和数据配置由项目约定分层。Creator 导入的资源由 AssetDB 管理，并通过 `.meta` 中的 UUID 建立稳定引用；引用前核验导入结果和所需子资源。不要手工伪造 UUID 或只凭文件路径存在判断资源已就绪。
 - 运行时结构由 `Scene`、`Node`、`Component`、`Prefab` 和资源引用组成。职责放在组件和模块中，场景保留清晰节点树；复用时使用预制体或共享服务。
 - 维护模块职责与依赖方向：玩法规则和状态、表现配置、资源加载、音频、平台适配和第三方服务分别有明确所有者。Scene 之间通过已声明的服务或数据契约协作，不直接依赖其他 Scene 的私有节点和状态。
+- 实际采用的第三方 SDK 初始化统一遵循[SDK 统一初始化](references/sdk-initialization.md)：唯一应用装配入口调用 `assets/scripts/platform/initialize-sdks.ts` 独立投递任务；启动场景/最小 Boot 组件只做应用装配，不承载场景玩法初始化，也不等待 SDK 完成。Creator 引擎和 AssetDB 保持自身生命周期，不放进第三方 SDK 初始化模块。
+- 资源候选、确认成果、Creator 正式资源、审阅证据和机器记录按[产物存放与证据边界](references/artifact-storage.md)归档。新建或调整发布构建、准备发布候选时按[生产构建与发布检查](references/production-build.md)核对 Creator 版本对应的有效配置与最终包。
 - 用 Creator 编辑器、AssetDB、构建配置和目标平台验证工程行为。Web、小游戏和原生平台的能力分别按项目实际构建目标核对。
 
 ## 场景、资源与编辑器写入边界
@@ -28,6 +30,11 @@ description: Cocos Creator 3.x 游戏的技术架构角色。需要划分或评�
 
 - 2D 渲染对象使用 Creator 的 `Node` 与相应渲染组件；需要 UI 几何时通过 `UITransform` 管理尺寸和锚点。`Canvas` 是 UI 根，`Widget` 表达相对父节点或 Canvas 边界的对齐约束；世界空间由场景节点和 `Camera` 组织。具体组件、坐标空间和序列化字段以项目锁定版本的 Creator 文档为准。
 - UI 同级顺序应通过节点树顺序和项目明确采用的排序配置实现；跨 Camera 或世界/UI 层的合成必须在 TDD 中说明。
+
+## 原生平台插件选型
+
+- 按顺序复用项目现有原生实现、Creator 或提供方官方方案，再评估维护状态、Creator/Android/iOS 版本支持及许可证适用的社区方案；只有确认存在明确能力缺口时才自建或扩展插件。
+- 选型和实现前锁定 Creator 与 Android/iOS 工具链版本，并核验所需权限、宿主生命周期、线程约束、构建方式和失败语义。平台接口必须明确报告 Web/小游戏不支持，不得伪造或模拟原生能力。
 - 新增原生能力时先检查项目已有 Creator 原生插件和适配层。Creator 的 JSB `native.bridge` 在官方支持的环境中可用作 JS/native 消息桥；桥接负载按目标版本的官方接口约束编码，原生侧 SDK 调用、线程与生命周期责任由插件适配层承担。它不是 AppLovin 或其他 SDK 的通用 JS API，也不应绕过业务契约。
 - 仅在明确能力缺口时实现或扩展原生插件，并记录目标平台、Creator 版本、权限、生命周期、失败语义和验证范围。广告、Spine 等领域按各自 Skill 合同管理，不在架构 Skill 中虚构第三方插件 API。
 

@@ -26,8 +26,8 @@ Creator 编辑器、AssetDB、Scene/Node/Component、Prefab、构建和预览操
 
 - 阶段验收后需要清理本任务临时文件时，使用 [`cocos-game-artifact-cleanup`](../cocos-game-artifact-cleanup/SKILL.md) 核对引用与再生成条件后执行；用户要求历史记录或中间产物清理时也路由到该 Skill。保留有效证据和审计链，不因记录失效、任务终态或 Git 忽略自动删除；清理范围与风险仍由本控制面管理。
 - 每个阶段任务完成并通过适用验证后，执行代理自动在当前分支创建本地 Git 提交，无需再次询问；不自动创建分支、worktree 或推送远端。`run`、`check` 和状态迁移命令本身不执行 Git 提交。
-- 任务开始时记录已有工作区和暂存区改动；收尾时核对实际 diff 与任务文件所有权，只暂存、提交本次任务涉及的新增、修改和删除。禁止无差别 `git add .` 或 `git add -A`；同一文件混有他人改动时按块隔离，无法可靠分离则保留现场并报告阻塞，不夹带已有暂存内容。
-- 提交前自动检查本次产生的未跟踪文件和现有忽略规则，按需新增或更新项目 `.gitignore`，以最小范围忽略依赖目录、缓存、临时文件、本地日志、可再生成构建产物和本地秘密配置；将本次 `.gitignore` 修改一并纳入提交。不得忽略源码、必要资源、锁文件、交付物或验收所需证据，也不得用宽泛规则掩盖未完成工作。
+- 任务开始时记录已有工作区和暂存区改动；阶段收尾按[最小 Git 提交集](references/minimal-git.md)和[产物存放与证据边界](../cocos-game-architecture/references/artifact-storage.md)核对实际 diff、文件所有权和当前 Work Item 的真实引用，逐层收齐恢复当前工作所需的文件。Creator 正式 `assets/` 资源与对应 `.meta` 必须一并保留；`settings/`、`profiles/`、必要的 `native/` 与 `extensions/` 源配置保持可跟踪。按 Creator 工程约定忽略 `library/`、`temp/`、`local/`、`build/`、`cache/` 等可再生成目录，不整体忽略源码或正式资源。禁止无差别 `git add .` 或 `git add -A`；同一文件混有他人改动时按块隔离，无法可靠分离则保留现场并报告阻塞，不夹带已有暂存内容。
+- 提交前将最小忽略模板合并到项目 `.gitignore`：`output/`、根级 `evidence/`、`docs/`、源素材和 `.workflow-control/` 默认忽略文件并保持父目录可遍历，再按真实引用逐文件放行；不能整体放行某个工作项或产物目录。用户确认账本和回执实际位于 `.workflow-control/user-resolutions/`，沿用此路径，不另造控制目录。人工作业 `evidence/<workItemId>/reviews/` 与 `validation/` 不等于机器 `evidenceRoot`；受 `evidenceRoot` 限制的字段只能引用对应 Work Item 实际配置根目录中的文件。本地秘密配置与凭据不入库。将必要 `.gitignore` 修改纳入提交，并逐文件用 `git check-ignore --no-index` 检查最终规则；不得用宽泛规则掩盖未完成工作。
 - `.gitignore` 不会取消已跟踪文件的跟踪；仅对确认属于本次任务且不应入库的产物移出索引并保留本地文件，不批量清理其他历史文件，不强制添加被忽略的秘密配置。
 - 提交前检查选定差异与暂存内容，使用简洁中文提交说明；提交后核对提交包含的文件和剩余工作区状态，报告提交哈希、验证结果及未提交项。没有本次可提交差异时跳过空提交。验证失败、提交失败或文件归属不明时报告原因，不宣称收尾完成，不跳过 Git 钩子或自动回滚。
 
@@ -38,6 +38,7 @@ Creator 编辑器、AssetDB、Scene/Node/Component、Prefab、构建和预览操
 - 需要工件字段：按命令读取对应 `references/*.schema.json`，不要预加载全部 Schema。
 - 需要视觉任务：读取 `references/visual-stage.schema.json` 及对应领域合同；效果图、生成式位图、全局基线和高保真前置只在适用时读取。
 - 需要 A3 委派、执行或证据：读取对应的 `implementation-package`、`delegation`、`execution-state`、`evidence` Schema。
+- 阶段收尾或检查提交范围：读取 `references/minimal-git.md` 与架构 Skill 的 `references/artifact-storage.md`。
 
 ## 不可绕过约束
 
@@ -55,7 +56,7 @@ Creator 编辑器、AssetDB、Scene/Node/Component、Prefab、构建和预览操
 
 效果图生成与界面实现共用[游戏内文案](../cocos-game-ui-layout/references/game-copy.md)规则：内部策划说明与玩家可见表达分开，生成提示词明确可见文字范围，正式界面绑定同一表达与动态数据。全局候选、场景主图、弹窗及无效果图路径均适用；复用现有生成记录、领域文档与人工验收，不新增审批门，也不把机器检查视为文案显示通过。
 
-视觉任务遵循[图片优先的确认方式](references/simplified-workflow.md#图片优先的确认方式)：代理内部维护分析、技术记录与提示词，直接交付真实图片或预览供人工确认，不设常规文字提案、拆解记录、布局决策或动画时间轴的制作前确认门。已确认目标范围内的返修直接给前后对照；有决定性需求歧义才暂停受影响部分。实际拆解、布局、资源、父帧与视频确认及操作授权沿用原门，不能以内部记录替代真实候选。
+视觉任务遵循[图片优先的确认方式](references/simplified-workflow.md#图片优先的确认方式)：代理内部维护分析、技术记录与提示词，直接交付真实图片或预览供人工确认，不设常规文字提案、拆解记录或布局决策的制作前确认门。帧动画例外：先说明动作方案的设计理念并等待用户明确确认，再制作真实素材或进入具体实现。已确认目标范围内的返修直接给前后对照；有决定性需求歧义才暂停受影响部分。实际拆解、布局、资源、父帧与视频确认及操作授权沿用原门，不能以内部记录替代真实候选。
 
 ## 宽松执行原则
 

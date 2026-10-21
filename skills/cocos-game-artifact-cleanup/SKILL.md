@@ -20,12 +20,16 @@ description: 清理 Cocos Creator 3.x 项目中过期或未使用的工作流记
 | 文件类别 | 默认处理 |
 | --- | --- |
 | `.workflow-control/work-items/`、审批账本、状态迁移/返工记录 | 保留；终态也不自动删除，历史记录支撑追踪和审计 |
-| 实施包、`evidence/<workItemId>/execution-state.json`、Result、验证清单、路径与业务归属绑定文件 | 保留有效引用和审计链；失效不等于可删 |
+| 控制面中的实施包、执行状态、Result、Evidence Manifest、验证清单和路径/归属绑定文件 | 按 `.workflow-control/` 下工具实际路径保留，包括 `user-resolutions/` 视觉确认账本与回执；失效不等于可删 |
 | V2 拆解与布局确认、V3 正式资源/生产记录、V4 实现与运行证据 | 保留完整依赖闭包，包括原图、JSON、审阅页、运行证据及宿主上下文 |
 | 明确属于本任务的临时日志、临时导出、失败候选、重复预览、可再生成构建或缓存 | 证明无引用、无运行占用且可再生成后，纳入清理清单 |
 | 源码、正式资源、源素材/视频、用户交付物、锁文件、测试夹具、发布产物 | 默认保留；不是一般中间产物 |
 
-原视频可能用于重新抽帧，去背景原图可能支撑生产记录与质量复核，`review.html` 可能是人工审阅所需的实际产物。不要按扩展名、目录名含 `output`/`temp`，或体积大小批量判断。已有产物目录规范见[游戏项目目录规范](../cocos-game-architecture/references/project-structure.md)，证据语义见[控制模型](../cocos-game-workflow-control/references/control-model.md)。
+原视频可能用于重新抽帧，去背景原图可能支撑生产记录与质量复核，`review.html` 可能是人工审阅所需的实际产物。不要按扩展名、目录名含 `output`/`temp`，或体积大小批量判断。产物路径和人工作业证据与机器证据根的边界见[产物存放与证据边界](../cocos-game-architecture/references/artifact-storage.md)，证据语义见[控制模型](../cocos-game-workflow-control/references/control-model.md)。
+
+`output/intermediate/<workItemId>/<stageId>/<attemptId>/` 与 `output/candidates/<workItemId>/<stageId>/<candidateId>/` 是逐文件核对的临时目录，不是整目录删除授权。`docs/confirmed/` 的确认版本、`assets-source/` 的生产输入、Creator `assets/` 的正式资源及 `.meta`、根级 `evidence/<workItemId>/reviews/` 与 `validation/` 的人工作业文件，以及 `.workflow-control/` 真实 `evidenceRoot` 下的机器证据分别判定并保留依赖；目录本身不证明通过、无引用或可删除。根级 `evidence/` 不是机器 `evidenceRoot`，受限字段不能引用其外部路径。已冻结文件和机器记录按原路径保留，清理不能批量搬迁或自动改写引用；正式资源删除继续遵守 Creator MCP 与 AssetDB 约束。
+
+Git 收尾按[最小提交集](../cocos-game-workflow-control/references/minimal-git.md)纳入运行/构建必需文件和当前工作项有效引用的完整依赖，包括仍需的图片、视频、Spine 文件、审阅页、截图、日志和源输入，不能只提交路径字符串。未入库或被忽略的长期产物仍按本 Skill 保留，不因不属于最小提交集自动清理；本地删除检查继续覆盖所有保留任务的引用，不能只检查本次准备提交的文件。
 
 ## 清理流程
 

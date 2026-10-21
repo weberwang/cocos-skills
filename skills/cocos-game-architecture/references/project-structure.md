@@ -12,6 +12,12 @@ project/
 │   ├── scenes/                   # Scene 资产
 │   ├── prefabs/                  # 可复用 Prefab
 │   ├── scripts/                  # Component 与领域脚本
+│   │   ├── platform/             # 平台适配；initialize-sdks.ts 统一编排第三方 SDK
+│   │   ├── scenes/<scene-id>/     # 场景功能聚合与场景专属逻辑
+│   │   ├── display-layers/<id>/   # 独立弹窗等显示层逻辑
+│   │   └── shared/               # 稳定共享的运行代码（按需）
+│   ├── shared/                   # 稳定共享的正式运行资源
+│   ├── display-layers/<id>/      # 独立弹窗等显示层正式资源
 │   ├── resources/                # 运行时按需加载的资源
 │   ├── textures/                 # 图片、SpriteFrame 来源和图集
 │   ├── audio/                    # 音效与音乐
@@ -21,9 +27,13 @@ project/
 ├── extensions/                   # 项目级 Creator 扩展（按需）
 ├── native/                       # 原生工程/插件相关源文件（按项目与版本需要）
 ├── package.json                  # Creator 项目标识及项目依赖配置
-├── .workflow-control/            # Work Item、控制状态和证据引用
+├── .workflow-control/            # Work Item、控制状态、机器证据与用户决议账本
+│   └── user-resolutions/         # 控制工具固定位置的视觉确认账本与回执
 ├── docs/                         # 设计、技术和交付文档
-└── evidence/                     # 有归属的验证证据（按需）
+├── evidence/                     # 有归属的审阅与验证证据（按需）
+├── assets-source/                # 可编辑源文件与重做输入（按需）
+├── output/                       # 本地中间产物与未送审候选（按需）
+└── tests/                        # 项目测试，不进入 Creator AssetDB（按需）
 ```
 
 Creator 项目实际还可能包含 `library/`、`temp/`、`local/`、`build/` 等编辑器或构建生成目录。它们的生成方式、版本控制策略及平台子目录随 Creator 版本和项目配置变化；依据锁定版本文档与项目 `.gitignore` 管理，不能移动或当作 `assets/` 源内容手工编辑。
@@ -39,9 +49,16 @@ Creator 项目实际还可能包含 `library/`、`temp/`、`local/`、`build/` �
 ## 模块分层
 
 - `assets/scripts/` 下按领域放置脚本，例如 `core/`、`gameplay/`、`ui/`、`platform/`。只有具有稳定共享契约的代码才进入 `core/`；禁止无边界 `common/` 或 `utils/`。
-- Scene 由 `Node` 树、`Component` 和 Prefab 组合构成。场景脚本通过公开服务、状态仓库或事件契约交互，不直接读写其他 Scene 的私有节点。
+- 一个 Scene 的运行规则、实体、专属 UI 和布局代码按功能聚合在 `assets/scripts/scenes/<scene-id>/` 等场景域目录；不把所有场景的私有实现汇集到根级 `entities/`、`managers/` 或 `ui/`。测试不进入 Creator AssetDB 管理的运行时 `assets/`，按同一场景归属放入 `tests/scenes/<scene-id>/` 等项目测试目录。Scene 仍由 Creator 的 `Node` 树、`Component` 和 Prefab 组合，场景脚本通过公开服务、状态仓库或事件契约交互，不直接读写其他 Scene 的私有节点。
+- modal/popup 等瞬态显示层按需进入 `assets/scripts/display-layers/<id>/`，与宿主 Scene 的私有 `ui/` 独立；宿主通过公开接口和上下文协作。共享实现进入 `assets/scripts/shared/` 仅限至少两个已确认场景稳定复用的能力，或运行启动必需的能力；模块不得反向依赖 Scene/显示层。
 - 可复用 UI 或玩法对象优先形成职责明确的 Prefab；Prefab 与场景引用仍以 Creator 资源数据库中确认的 UUID 为准。
 - `extensions/`、`native/` 仅在确有编辑器扩展、构建扩展或原生插件时启用。按项目 Creator 版本记录宿主工程、平台权限与插件构建边界。
+- 第三方 SDK 唯一初始化编排位于 `assets/scripts/platform/initialize-sdks.ts`，由唯一应用装配/最小 Boot 启动点调用；Scene、Component、构造函数和平台适配器不另行初始化 SDK。编辑器/引擎及 AssetDB 生命周期不迁入该文件，细则见[SDK 统一初始化](sdk-initialization.md)。
 - 测试脚本、服务启动配置和生成资源不混入 Creator 运行时 `assets/`，除非项目明确需要将其作为游戏资源。
+
+## 产物与生产构建
+
+- 资源临时文件、候选、确认设计成果、正式资源、人工证据与控制面机器记录按[产物存放与证据边界](artifact-storage.md)流转。正式资源使用 Creator `assets/` 计划路径；源文件与 Creator `.meta` 一并维护，AssetDB 导入和引用需按 Creator MCP 协议核验。
+- 新建或调整 Creator 生产构建及准备发布候选时按[生产构建与发布检查](production-build.md)核对锁定版本对应的 Debug、Source Maps、压缩/混淆、注释处理、最终发布包及 Feature Cropping；构建选项依据工程实际生效配置，不照搬其他引擎配置。
 
 官方参考：[Cocos Creator 3.8 项目结构](https://docs.cocos.com/creator/3.8/manual/en/getting-started/project-structure/index.html)。如项目使用其他 3.x 小版本，改查对应版本文档，不将 3.8 的细节自动推广到所有小版本。

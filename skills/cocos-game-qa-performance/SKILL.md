@@ -27,7 +27,7 @@ description: Cocos Creator 3.x 移动端 2D 游戏的测试与性能角色。用
 9. V4 检查结构化集成、玩法所有权、低保真零引用、性能峰值和功能契约，并提交动态证据供 F3。修订候选重跑受影响 F0-F3；只有带外部写入、付费、真机、破坏性或外部删除、发布副作用的 A4-A6 操作重跑 F4 批准门。模块边界变化仅有实质取舍时进入 grilling。
    具有动态美术范围时，按 brief 的典型单局/连续游玩情境采集正常操作、高频重复、关键事件和叠加峰值的适用片段，记录事件次数、并发、持续时间、混合与收尾参数，并交由用户检查焦点和舒适度。复用当前健康服务，不自动发起真机验收；静态通过不能推导持续游玩通过，缺少人工结果时记录未验证。
    涉及汁水感时按需参考[事件覆盖与反馈规则](../cocos-game-juice/references/design-guide.md)；QA 核对触发、结果、重复合并、中断、并发、资源生命周期和性能，动态显示、观看舒适度及实际手感继续由用户人工验收。
-10. 共享基础完成后验证 Creator 项目启动、Boot/首场景、资源加载和适用插件；关键玩法流完成后在主目标平台验证核心循环与失败恢复；只有最终集成/G3/release 执行完整渠道/平台矩阵。Creator 编辑器、AssetDB、Scene/Node/Component、Prefab、构建和预览操作按[Creator MCP 协议](../cocos-game-workflow-control/references/cocos-mcp-protocol.md)执行。当前 MCP 的运行/构建工具只打开构建面板或报告 worker ready，不表示预览或构建完成；实际运行和构建没有证据时保持 pending/blocked。局部任务证据不得宣称全平台通过，不得自动发起真机验收。
+10. 共享基础完成后验证 Creator 项目启动、Boot/首场景、资源加载和适用插件；关键玩法流完成后在主目标平台验证核心循环与失败恢复；只有最终集成/G3/release 执行完整渠道/平台矩阵。G3/release 候选还按[Creator 生产构建与发布检查](../cocos-game-architecture/references/production-build.md)核验实际 release 构建配置、最终已解包包体中的 Source Map 文件/引用、压缩与注释处理、Feature Cropping 采用结果和构建资源路径；不将生产配置截图当作最终包检查。Creator 编辑器、AssetDB、Scene/Node/Component、Prefab、构建和预览操作按[Creator MCP 协议](../cocos-game-workflow-control/references/cocos-mcp-protocol.md)执行。当前 MCP 的运行/构建工具只打开构建面板或报告 worker ready，不表示预览或构建完成；实际运行和构建没有证据时保持 pending/blocked。局部任务证据不得宣称全平台通过，不得自动发起真机验收。
 
 没有可复现证据时标记“未验证”。V1/V2 条件门必须绑定当前候选；沉默、继续工作或旧决定不能替代真正需要的 `USER_DECISION`，用户决定也不能跳过 V2 拆解与布局确认所需的确定性机器 F2。固定宽/固定高模式的声明不证明满屏或响应式重排；禁止用构建面板打开、元素存在或无控制台错误假通过。
 

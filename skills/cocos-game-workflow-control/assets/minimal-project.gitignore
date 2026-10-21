@@ -1,0 +1,38 @@
+# 依赖、Creator 生成缓存和可再生成构建产物不进入阶段提交。
+/node_modules/
+/library/
+/temp/
+/local/
+/build/
+/cache/
+/.cache/
+/dist/
+
+# 本地秘密配置与签名凭据不入库；示例文件可以跟踪。
+/.env
+/.env.*
+!/.env.example
+/secrets/
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+
+# 临时与候选产物默认忽略文件，保持目录可遍历，供有效引用逐文件放行。
+/output/**
+!/output/**/
+# 人工审阅与验证文件按当前有效引用精确放行。
+/evidence/**
+!/evidence/**/
+/docs/**
+!/docs/**/
+/assets-source/**
+!/assets-source/**/
+/.workflow-control/**
+!/.workflow-control/**/
+
+# Creator 正式 assets/、.meta、settings/、profiles/、native/ 与 extensions/ 保持正常可跟踪。
+
+# 工作流必要文件开始
+# 仅追加当前工作项及其有效依赖的具体文件，不放行整个产物目录。
+# 工作流必要文件结束

@@ -1,12 +1,24 @@
 # 项目交付物规范
 
-全局机器事实使用 [`cocos-game-workflow-control`](../../cocos-game-workflow-control/SKILL.md) 定义的 Work Item、Approval Ledger、Implementation Package、Change Request、Delegation Package 和 Evidence Manifest。保存在 `.workflow-control/`；只有全局控制面写全局状态和高影响操作审批，普通任务不建立独立授权记录。
+全局机器事实使用 [`cocos-game-workflow-control`](../../cocos-game-workflow-control/SKILL.md) 定义的 Work Item、Approval Ledger、Implementation Package、Change Request、Delegation Package 和 Evidence Manifest。保存在 `.workflow-control/`；视觉确认账本与回执使用工具固定的 `.workflow-control/user-resolutions/`。只有全局控制面写全局状态和高影响操作审批，普通任务不建立独立授权记录。
 
 首次运行受限 `init`：基于明确 A1 bootstrap 原文一次创建首个 Work Item 及标准目录；仅在需要记录高影响操作时创建 Approval Ledger。重复 init 拒绝，且 init 不创建领域文档。之后 initializer 使用已存在 Work Item 并通过 A1 范围与流程 preflight。
 
 只有涉及外部写入、付费、真机、破坏性或外部删除、发布副作用的 A4-A6 操作由控制 CLI 运行 `prepare-approval`、`handoff` 和 `approve`，并冻结非空影响摘要。A0-A3 和无副作用本地 A4 直接依据当前用户任务。实质取舍记录为 `USER_DECISION` 并回写 Work Item 或权威工件，不得写 Approval Ledger。
 
 总控 `route` 自动推导 A1-A6 风险通道、任务范围依据和缺失工件。A1/A2 直接执行；安全 A3 需要 Implementation Package、真实 diff、独立审查和 F0-F3，随后直接完成。无副作用本地 A4 可直接执行；外部写入、付费、真机、破坏性或外部删除、发布保留精确批准硬门，且不自动执行。
+
+## 产物落盘
+
+目录与流转按[产物存放与证据边界](../../cocos-game-architecture/references/artifact-storage.md)执行：未送审候选和中间文件使用 `output/candidates/`、`output/intermediate/`；已确认非运行成果使用 `docs/confirmed/<owner>/<artifact-id>/<version>/`；源输入和正式资源分别使用 `assets-source/<owner>/`、Creator `assets/` 内已声明的所有权目录。领域审阅与验证文件放根级 `evidence/<workItemId>/reviews/`、`evidence/<workItemId>/validation/`；机器记录保持 `.workflow-control/` 的实际布局。根级 evidence 不是机器 evidenceRoot；受 evidenceRoot 约束的 Manifest、files[]、outputFile 仍写入控制根，领域清单通过自身允许的引用关联外部文件。
+
+待确认文件先完成保留目录落盘和引用更新再展示，确认后按用途归档；原始审阅文件不因归档搬迁覆盖，副本不创建第二套确认状态。TDD 记录项目实际映射，Work Item、实施包及证据清单引用真实文件，不将临时文件作为后续唯一输入。
+
+游戏资源在记录 V3 `accepted` 前安装到计划中的正式路径，经 AssetDB 导入核验 UUID、所需子资源和 `.meta`，更新尚未冻结的生产/归一化记录并重验实际文件；安装到通过之间不得进入正式场景消费、构建或发布。Creator 的目录导入或构建排除必须按实际版本和构建配置验证，不能仅靠命名隐藏候选。通过后冻结路径，返修用新版本，不覆盖仍被有效确认引用的资源，也不在通过后再搬迁文件。
+
+## 最小入库范围
+
+按[最小 Git 提交集](../../cocos-game-workflow-control/references/minimal-git.md)选择本任务运行/构建必需文件，以及恢复当前 Work Item 所需的记录和逐层引用文件。下面的领域工件表是职责索引，不是必须全部创建或提交的清单；只有实际使用的规格、清单、确认和附件入库。长期目录内未被当前工作项使用的版本、普通日志和非必要源素材可只本地保存；使用[忽略模板](../../cocos-game-workflow-control/assets/minimal-project.gitignore)默认忽略产物文件，再为必要文件逐条放行。不能只提交引用 JSON 而遗漏它依赖的真实图片、布局包、回执或结果，也不能为减少 Git 文件裁剪权威记录。Creator 正式资源与 `.meta` 一并纳入，原生必要源配置保持可跟踪。
 
 ## 领域工件
 
@@ -21,7 +33,7 @@
 | `docs/game-feel.md`（按需） | 当前任务需要独立记录动态反馈意图、事件语义或组合规则时使用；也可复用 GDD/视觉设计文档，不是默认工件或机器必需字段，参考[汁水感设计指南](../../cocos-game-juice/references/design-guide.md) |
 | `docs/asset-license-register.md` | 资源/音频来源、授权与发布资格 |
 | `docs/visual-assets.json` | 含场景或 shared 归属的视觉资源机器清单，不驱动全局状态 |
-| 场景 V2 布局候选目录 | 同批 `layout.png`、`layout-nodes.json`、`layout-decision.json`、离线 `review.html`、`generation-result.json` 及真实 SHA；审阅页规则见[离线布局审阅产物](../../cocos-game-ui-layout/references/layout-review-artifacts.md) |
+| `docs/confirmed/scenes/<scene-id>/<artifact-id>/<version>/`（显示层使用 `display-layers/<displayLayerId>`） | 同批 `layout.png`、`layout-nodes.json`、`layout-decision.json`、离线 `review.html`、`generation-result.json`；在展示前固定引用路径，审阅页规则见[离线布局审阅产物](../../cocos-game-ui-layout/references/layout-review-artifacts.md) |
 | `docs/qa-plan.md` | 测试策略，不得自填通过状态 |
 | `docs/platform-matrix.md` | 分层平台证据；不自动触发真机 |
 | `docs/release-checklist.md` | 独立发布工作项的候选清单，不是发布授权 |
