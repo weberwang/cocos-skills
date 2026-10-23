@@ -8,6 +8,7 @@ import { assertGlobalVisualBaselineSelection } from './global-visual-baseline-co
 import { assertFormalExecutionAfterV3, assertFormalImplementationAfterV2, assertHighFidelityPrerequisite, validateHighFidelityPrerequisiteShape } from './high-fidelity-prerequisite.mjs';
 import { encodePngRgba } from '../../cocos-game-asset-integration/scripts/effect_image_raster.mjs';
 import { bindVisualEvidenceFixture } from './workflow-visual-evidence-fixture.mjs';
+import { writeFixtureV2Layout } from './v2-layout-source-test-fixtures.mjs';
 
 const TARGET_SHA = `sha256:${'a'.repeat(64)}`;
 const CANDIDATE_SHA = `sha256:${'b'.repeat(64)}`;
@@ -152,7 +153,6 @@ function makeFixture(unitType = 'SCENE', selectedLayer = 'pause') {
     reconstructionContract: join(repo, 'docs', 'scene-reconstruction-contract.json'),
     decompositionAnnotation: join(repo, 'docs', 'decomposition-annotation.png'),
     technicalDecomposition: join(repo, 'docs', 'technical-decomposition.json'),
-    layoutNodes: join(repo, 'docs', 'layout-nodes.json'),
     confirmation: join(repo, 'docs', 'v2-decomposition-confirmation.json'),
     pauseContext: join(repo, 'docs', 'pause-context.png'),
     settingsContext: join(repo, 'docs', 'settings-context.png'),
@@ -160,8 +160,9 @@ function makeFixture(unitType = 'SCENE', selectedLayer = 'pause') {
   Object.values(files).forEach((path) => writeFileSync(path, `${path}\n`));
   const layoutNode = { layout_node_id: 'scene-root', parent_layout_node_id: 'viewport', region_id: 'scene', target_bounds: { x: 0, y: 0, width: 390, height: 844 } };
   const viewport = { width: 390, height: 844 };
-  writeFileSync(files.layoutNodes, `${JSON.stringify({ schema: 'cocos-layout-nodes/1.0', scene_id: 'play', state_id: 'default', viewport, layout_nodes: [layoutNode] }, null, 2)}\n`);
-  writeFileSync(files.reconstructionContract, `${JSON.stringify({ target_conditions: { scene_id: 'play', state_id: 'default', viewport }, layout_decomposition: { layout_nodes: [layoutNode], layout_annotation: { layout_nodes_file: 'docs/layout-nodes.json' } } }, null, 2)}\n`);
+  const reconstructionContract = { target_conditions: { scene_id: 'play', state_id: 'default', viewport }, layout_decomposition: { layout_annotation: {}, layout_annotation_confirmation: {} } };
+  writeFixtureV2Layout(repo, reconstructionContract, [layoutNode]);
+  writeFileSync(files.reconstructionContract, `${JSON.stringify(reconstructionContract, null, 2)}\n`);
   const workItemId = unitType === 'SCENE' ? 'WI-1' : `WI-DISPLAY-${selectedLayer}`;
   const expected = unitType === 'SCENE' ? { sceneId: 'play', displayLayerId: null, hostSceneId: null } : { sceneId: 'play', displayLayerId: selectedLayer, hostSceneId: 'play' };
   const artifact = (path) => ({ file: path.slice(repo.length + 1).replaceAll('\\', '/'), sha256: hashFile(path), sceneId: 'play' });

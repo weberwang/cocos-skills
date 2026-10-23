@@ -6,6 +6,7 @@
  */
 import { buildVisualConfirmationAuthorityByRegion, validateVisualDecompositionConfirmations } from "../../cocos-game-workflow-control/scripts/visual-decomposition-confirmation.mjs";
 import { validateLayoutAnnotationConfirmation } from "../../cocos-game-workflow-control/scripts/layout_annotation_confirmation.mjs";
+import { resolveSceneV2LayoutSource } from "../../cocos-game-workflow-control/scripts/scene-layout-decomposition-contract.mjs";
 import { auditProductionContract, resolveProductionContract, validateV4ProductionGate } from "../../cocos-game-workflow-control/scripts/visual-production-contract.mjs";
 
 
@@ -133,7 +134,12 @@ export function validateConfirmationGroups(data, options = {}) {
     // 一个场景还原合同只描述一个目标状态，不能拿它的布局确认去校验其他拆解组。
     if (isObject(layoutConfirmation) && group.sceneId === layoutTarget?.scene_id && group.stateId === layoutTarget?.state_id) {
       const decompositionConfirmation = data.scene_reconstruction_contract?.visual_decomposition_confirmation ?? first;
-      validateLayoutAnnotationConfirmation(layoutConfirmation, { projectRoot: options.projectRoot, checkFiles: options.checkFiles === true, targetSha256: data.reference_target?.target_sha256, sceneId: group.sceneId, stateId: group.stateId, viewport: layoutTarget?.viewport, referenceFile: data.reference_target?.original_file, proposalFile: decompositionConfirmation?.proposal_file, decompositionConfirmationId: decompositionConfirmation?.confirmation_id, decompositionConfirmationSha256: decompositionConfirmation?.confirmation_sha256, proposalSha256: decompositionConfirmation?.proposal_sha256, layoutNodes: decomposition?.layout_nodes }, errors, `scene_reconstruction_contract.layout_decomposition.layout_annotation_confirmation[${group.sceneId}/${group.stateId}]`);
+      let layoutNodes;
+      try {
+        // 真实确认文件门必须再次读取规范源，不能用调用方传入的结构快照替代。
+        layoutNodes = resolveSceneV2LayoutSource(data.scene_reconstruction_contract, { ...options, forceLayoutSourceFiles: options.checkFiles === true }).nodes;
+      } catch (error) { errors.push(`layout_source：${error.message}`); }
+      validateLayoutAnnotationConfirmation(layoutConfirmation, { projectRoot: options.projectRoot, checkFiles: options.checkFiles === true, targetSha256: data.reference_target?.target_sha256, sceneId: group.sceneId, stateId: group.stateId, viewport: layoutTarget?.viewport, referenceFile: data.reference_target?.original_file, proposalFile: decompositionConfirmation?.proposal_file, decompositionConfirmationId: decompositionConfirmation?.confirmation_id, decompositionConfirmationSha256: decompositionConfirmation?.confirmation_sha256, proposalSha256: decompositionConfirmation?.proposal_sha256, layoutNodes, layoutSourceFile: decomposition?.layout_source?.nodes_file }, errors, `scene_reconstruction_contract.layout_decomposition.layout_annotation_confirmation[${group.sceneId}/${group.stateId}]`);
     }
     if (!isObject(first)) continue;
     for (const field of ["confirmation_id", "proposal_id", "proposal_file", "annotation_file", "decision_record_file", "user_decision_receipt_file"]) {

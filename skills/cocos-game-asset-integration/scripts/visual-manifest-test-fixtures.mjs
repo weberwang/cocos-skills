@@ -1,3 +1,4 @@
+import { registerFixtureV2Layout, fixtureLayoutNodes, fixtureLayoutDocument, fixtureLayoutSourceOptions, layoutSourceDocuments } from '../../cocos-game-workflow-control/scripts/v2-layout-source-test-fixtures.mjs';
 import { deriveLayoutExecutionPlans } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
 import { attachLayoutRuntimeSnapshots } from "../../cocos-game-ui-layout/scripts/widget-runtime-test-fixtures.mjs";
 import { deriveSpriteGeometry } from "../../cocos-game-ui-layout/scripts/sprite-layout-sizing.mjs";
@@ -304,6 +305,7 @@ function attachSceneReconstructionContract(manifest) {
     },
     combination_preacceptance: { status: "passed", formal_scene_structure: "MainGameplayScene/ContainerGraph", formal_assets: manifest.assets.map((asset) => asset.id), formal_layout_structure: "MainGameplayScene/ContainerGraph", layout_geometry: layoutGeometry, visual_fidelity: { contour: "passed", proportion: "passed", pose: "passed", icon_semantics: "passed", full_scene_composition: "passed" }, redesign_check: "none", layout_calculation_identity: "layout:main-gameplay:1", evidence: ["evidence/visual/combined.png"], target_sha256: targetSha, candidate_sha256: candidateSha, diff_fingerprint: manifest.candidate_identity.diff_fingerprint },
   };
+  registerFixtureV2Layout(manifest.scene_reconstruction_contract, layoutNodes);
   const fidelity = manifest.fidelity_cases[0];
   Object.assign(fidelity, {
     target_identity: { sha256: targetSha },
@@ -403,7 +405,7 @@ function bitmapManifest() {
 function multiConfirmationGroupManifest() {
   const manifest = bitmapManifest();
   const second = manifest.coverage_audit.regions[2];
-  second.state_id = "victory"; /* 当前布局只绑定 default 提案，迁出的胜利态元素不得留在其中。 */ manifest.scene_reconstruction_contract.layout_decomposition.layout_nodes = manifest.scene_reconstruction_contract.layout_decomposition.layout_nodes.filter((node) => node.region_id !== second.id);
+  second.state_id = "victory"; /* 当前布局只绑定 default 提案，迁出的胜利态元素不得留在其中。 */ registerFixtureV2Layout(manifest.scene_reconstruction_contract, fixtureLayoutNodes(manifest.scene_reconstruction_contract).filter((node) => node.region_id !== second.id));
   manifest.reference_target.state_ids = ["default", "victory"];
   manifest.coverage_audit.canvases.push({ scene_id: "main-gameplay", state_id: "victory", width: 390, height: 844 });
   manifest.coverage_audit.summaries.push({ scene_id: "main-gameplay", state_id: "victory", coverage_ratio: 1, uncovered: [], status: "passed", evidence: "evidence/coverage/summary.md" });

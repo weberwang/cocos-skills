@@ -16,7 +16,7 @@ V1 内生成或接收并冻结参考身份、版本、权属、原始文件指�
 
 V2 直接基于 V1 冻结图做完整拆解，并按两个串行图像确认阶段推进：阶段 A 由用户确认拆解 PNG，阶段 B 由用户确认布局 PNG/审阅页。拆解分析、技术 JSON 和布局决策由代理内部维护；用户不需要先阅读或确认文字提案，也不跳过任一真实图片确认。
 
-V2 布局标注在拆解图确认之后串行产出：阶段 A 先从冻结事实生成按确认顺序排列的拆解 PNG、技术 JSON 和 `decomposition_elements`，用户直接看图确认；若需修改，可指出编号/区域，代理更新事实并重出图。阶段 B 由智能视觉判断结合原图构图、视觉重心与元素语义，按同一顺序为每个确认元素生成唯一的 `left/center/right × top/center/bottom` 决策。布局生成器只读取确认 proposal 中的元素和该决策，按原顺序推导后置布局节点并生成独立布局标注 PNG 与 `review.html`，不能读取预存 `layout_nodes`、按距离猜测对齐、生成新的视觉参考图或提供多个布局候选。布局决策由代理内部维护；用户直接检查最终布局图/审阅页并确认，只有图中关系需要修改时再按图上反馈返修。最终确认仍绑定决策文件、布局图及上游拆解身份。
+V2 布局标注在拆解图确认之后串行产出：阶段 A 从冻结事实生成按确认顺序排列的拆解 PNG、技术 JSON 和 `decomposition_elements`；用户直接看图确认，若需修改则按编号/区域更新 Stage A proposal、重出 PNG 并重新确认。已确认 proposal 是布局阶段的历史输入。阶段 B 由智能视觉判断结合原图构图、视觉重心与元素语义，按同一顺序生成唯一 `automatic-layout-decision/1.0`；生成器只读取该确认 proposal 与本次 decision，从其推导唯一的 `layout-nodes.json` 并生成布局 PNG、`review.html` 和结果记录，不能读取预存的第二份节点树、按距离猜测对齐、生成新的视觉参考图或提供多个布局候选。scene contract 通过 `layout_decomposition.layout_source.nodes_file` 引用此同批节点文件；`layout_binding`、annotation 和 confirmation 只记录身份/证据，annotation/confirmation 的 `layout_nodes_file` 必须与 source 路径一致。布局图、review 和派生快照是只读展示投影，不是新的手工事实，也不回写 Stage A proposal。只有布局关系变化时更新 Stage B decision 并重生成全部布局产物；分组或父子关系变化时按原规则更新并重新确认 Stage A。用户直接检查最终布局图/审阅页并独立确认。
 
 - 左原图、右说明栏的 PNG 标注图，覆盖全部 scene/state、区域编号和生产标签。
 - 技术拆解 JSON，记录每个元素的 bounds、尺寸、位置、父子关系、停靠关系、对齐关系、坐标空间、层级、显示层、状态、文本字形事实和响应式关系。
@@ -24,7 +24,7 @@ V2 布局标注在拆解图确认之后串行产出：阶段 A 先从冻结事�
 - `component_inventory` 与 `state_analysis`，先状态、后组件，每个 component × required state 都有生产要求。
 - `visual_route_analysis` 与 `visualProductionContract`，明确 runtime-data、runtime-rendered、fixed-production-visual、reuse-existing、runtime-program 或 generate-now 的边界。
 - `visualProductionUnits` 生产计划，逐 annotation number / region ID 绑定 owner、路径、格式、资源、组件状态、交互热区和输出。
-- `visual-decomposition-confirmation/1.0`，由用户确认实际展示的拆解 PNG，关联实际 annotation/proposal/decision 文件、work item、scene/state、全部编号和用户原文；技术 JSON 仅供后台校验与追溯，不另设文字确认。布局另以 `layout-annotation-confirmation/1.0` 绑定用户检查的最终布局 PNG/审阅页、决策文件及上游身份。
+- `visual-decomposition-confirmation/1.0`，由用户确认实际展示的拆解 PNG，关联 Stage A annotation/proposal、对应用户决定记录与 receipt、work item、scene/state、全部编号和用户原文；技术 JSON 仅供后台校验与追溯，不另设文字确认。Stage B 布局另以 `layout-annotation-confirmation/1.0` 绑定用户检查的最终布局 PNG/审阅页、Stage B layout decision、唯一 `layout_nodes_file` 及上游身份。
 
 确认只冻结还原方案与生产边界，不改变玩法、布局或视觉事实的责任归属。提案、目标、区域定义、用户原文、候选身份或布局字段漂移时，确认失效并回到当前 Work Item 的 V2 重做拆解确认；普通运行候选演进只重验受影响证据。
 
@@ -44,7 +44,7 @@ V2 布局标注在拆解图确认之后串行产出：阶段 A 先从冻结事�
 
 效果图拆解必须先看整屏构图，再冻结 `decomposition_elements`、视觉元素/组件、状态事实和 `display_layer_planning`；不能先拆资产、最后凭感觉补坐标。proposal 的 `bounds` 是参考图测量事实，不是运行时硬编码；拆解确认后，布局节点由元素 bounds/role 和显式中心策略推导，允许按 strict/reference 策略平移节点或整组位置。父级或定位参照的整体位移沿关系传播到依赖节点，在非 center 轴也保持其相对间距；相关规则见[居中策略与组合定位](../../cocos-game-ui-layout/references/center-alignment.md)。该过程保留 proposal 原 bounds、节点尺寸、身份和顺序。布局合同负责运行时计算和响应式变换；runtime measurement 只是候选证据，不能回写或替代参考事实。
 
-每个区域必须登记唯一 `annotation_number`、`region_id`、`layout_node_ids`、owner、实现计划和精确 `bounds`。每个 placement 必须有唯一 `layout_node_id`，只能引用本区域节点；没有 placement 的运行时区域必须由 `runtime_implementation.layout_node_ids` 消费。节点不得孤立、跨区域、被多个 placement 重复消费或同时被 placement 与 runtime 重复消费，除非另有显式复用合同和 placement 级证据。
+每个 coverage 区域登记唯一 `annotation_number`、`region_id`、owner、实现计划和精确 `bounds`，并以 `layout_node_ids` 建立到唯一 `layout-nodes.json` 的消费索引；这只是区域覆盖映射，不是第二份节点树。每个 placement 必须有唯一 `layout_node_id`，只能引用本区域节点；没有 placement 的运行时区域必须由 `runtime_implementation.layout_node_ids` 消费。节点不得孤立、跨区域、被多个 placement 重复消费或同时被 placement 与 runtime 重复消费，除非另有显式复用合同和 placement 级证据。
 
 文本节点必须作为独立拆解对象登记 `text_node_id`、content/source、semantic role、动态/本地化标记、目标 bounds、字体身份与置信状态、字号/字重/样式、行高、字距、对齐、baseline、fill/stroke/shadow、wrap、planned test ID 和实现路线。动态或本地化文本禁止 `image-text`；固定品牌字标可用图片，但必须保留可访问语义。
 

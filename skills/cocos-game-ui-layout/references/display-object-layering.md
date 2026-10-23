@@ -28,6 +28,6 @@ Canvas UI 的同级节点顺序属于同一父节点的 sibling order；确需�
 
 显示层顺序只表达谁覆盖谁，不决定功能父子归属。全屏背景、投影、阴影、光晕等即使更大或绘制更靠后，也不能仅凭几何或层序成为前景内容的功能父容器；有底板的简单组件可让底板 Sprite 自身兼任组件根。
 
-V2 的 `regions.z_index`、`layout_nodes.z_order` 和 `display_layer_planning.inventory[].z_order` 是合同中的逻辑层序字段，必须映射到已说明的节点/Camera 组织方案。V4 在正式场景检查背景、世界、HUD、遮罩、弹窗和特效的组合，禁止用整屏图片代替结构化节点；验证代表性状态的遮挡、最上层输入、关闭后宿主恢复及 resize 后层序/锚点稳定，并记录候选与合同身份。
+V2 场景显示层与 coverage 区域的逻辑层序按 `display_layer_planning.inventory[].z_order` 及同批 `layout-nodes.json` 中的显示职责映射到已说明的节点/Camera 组织方案；不要求每个节点重复声明通用 `z_order`。effect-image 的 V2 布局事实由 scene contract 的 `layout_source.nodes_file` 指向同批节点文件，所有节点共用该文件 `doc.viewport` 定义的逻辑坐标空间；UI 引用合同不复制区域或节点列表。V4 在正式场景检查背景、世界、HUD、遮罩、弹窗和特效的组合，禁止用整屏图片代替结构化节点；验证代表性状态的遮挡、最上层输入、关闭后宿主恢复及 resize 后层序/锚点稳定，并记录候选与合同身份。
 
 官方参考：[Cocos 3.8 2D 渲染对象](https://docs.cocos.com/creator/3.8/manual/en/2d-object/2d-render/index.html)、[UITransform](https://docs.cocos.com/creator/3.8/api/en/class/UITransform)、[Node](https://docs.cocos.com/creator/3.8/api/en/class/Node)。

@@ -2169,31 +2169,47 @@
     "layoutDecomposition": {
       "type": "object",
       "required": [
-        "layout_nodes",
+        "layout_source",
         "layout_annotation",
         "layout_annotation_confirmation"
       ],
       "properties": {
-        "layout_nodes": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": [
-              "layout_node_id",
-              "parent_layout_node_id",
-              "target_bounds"
-            ]
-          }
-        },
         "layout_annotation": {
           "$ref": "#/$defs/layoutAnnotation"
         },
         "layout_annotation_confirmation": {
           "$ref": "#/$defs/layoutAnnotationConfirmation"
+        },
+        "layout_source": {
+          "type": "object",
+          "description": "唯一确认的 V2 layout-nodes.json；下游只引用，不复制分组、父子、定位参照或布局策略。",
+          "required": [
+            "nodes_file"
+          ],
+          "properties": {
+            "nodes_file": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
         }
       },
-      "additionalProperties": true
+      "additionalProperties": true,
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "layout_nodes"
+            ]
+          },
+          {
+            "required": [
+              "layoutNodes"
+            ]
+          }
+        ]
+      }
     },
     "layoutAnnotation": {
       "type": "object",

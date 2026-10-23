@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { DPR_POLICY, IMAGE_PRODUCTION_DPR, RUNTIME_MAX_DPR, isDeviceDprInput, isImageProductionDpr, isWorkflowDpr, workflowDprError } from "../../cocos-game-workflow-control/scripts/workflow-dpr-contract.mjs";
 import { DESIGN_RESOLUTIONS } from "./fixed-design-viewport.mjs";
-import { layoutNodeIdentityProjection, validateEffectImageParentChildLayoutNodes } from "../../cocos-game-workflow-control/scripts/layout-node-parent-geometry.mjs";
 import { resolveVisualValidationMode, validateVisualValidationPolicy } from "../../cocos-game-workflow-control/scripts/visual-validation-policy.mjs";
 import { matchesRepresentativeViewport, measuredOrientation, resolveOrientationCoverage } from "../../cocos-game-workflow-control/scripts/orientation-validation-scope.mjs";
-import { validateUiInteractionTree, validateUiLayout } from "../../cocos-game-asset-integration/scripts/ui-layout-organization.mjs";
-import { hasSpriteRendering } from "./display-node-role.mjs";
-import { validateLayoutRuntimeSnapshots } from "./widget-runtime.mjs";
+import { validateSceneReconstructionContract } from "../../cocos-game-workflow-control/scripts/scene-reconstruction-contract.mjs";
+import { getUiLayoutSourceDocument, getUiLayoutSourceFromMap, loadUiLayoutSourceDocuments, resolveSceneV2LayoutSource } from "./ui-layout-contract-sources.mjs";
+import { validateSceneRuntimeEvidenceFiles } from "./ui-layout-scene-file-gate.mjs";
 
 const ROOT_REQUIRED = ["schema_version", "contract_id", "contract_version", "scope", "fidelity", "frozen_visual_target", "logicalViewportSpace", "designResolutionPolicy", "canvasBackingPolicy", "runtimeDprPolicy", "maxRuntimeDpr", "scaleMode", "cameraViewportPolicy", "cameraZoomPolicy", "cameraOriginPolicy", "inputCoordinatePolicy", "safeAreaPolicy", "resizePolicy", "orientationPolicy", "textResolutionPolicy", "assetResolutionPolicy", "performanceBudget", "representativeViewports", "requiredRuntimeEvidence", "targets", "coordinate_spaces", "regions", "layout_nodes", "content", "platform_insets", "scrolling", "dynamic_content", "overlay_rules", "breakpoints", "invariants", "critical_alignments", "parity_cases", "evidence_matrix"];
+const REFERENCE_CONTRACT_FIELDS = ["schema_version", "contract_id", "contract_version", "project_policy_file", "scene_contract_file"];
+const PROJECT_POLICY_FIELDS = ["logicalViewportSpace", "designResolutionPolicy", "canvasBackingPolicy", "runtimeDprPolicy", "maxRuntimeDpr", "scaleMode", "cameraViewportPolicy", "cameraZoomPolicy", "cameraOriginPolicy", "inputCoordinatePolicy", "safeAreaPolicy", "resizePolicy", "orientationPolicy", "textResolutionPolicy", "assetResolutionPolicy", "performanceBudget", "representativeViewports", "requiredRuntimeEvidence", "targets", "coordinate_spaces"];
+const PROJECT_POLICY_METADATA_FIELDS = ["schema_version", "policy_id", "policy_version"];
+const REFERENCE_CONTRACT_ALLOWED_FIELDS = new Set(REFERENCE_CONTRACT_FIELDS);
+const PROJECT_POLICY_ALLOWED_FIELDS = new Set([...PROJECT_POLICY_METADATA_FIELDS, ...PROJECT_POLICY_FIELDS]);
 const REQUIRED_EVIDENCE_AXES = new Set(["breakpoint-neighbors", "width", "height", "orientation", "text-scale", "localization", "safe-area", "action-state", "dpr", "dynamic-values", "scene-lifecycle", "overlay-keyboard-scroll"]);
 const REQUIRED_PROGRAMMATIC_TEXT_LANGUAGES = ["en", "zh-CN", "ja", "ru", "es"];
 const REQUIRED_RUNTIME_EVIDENCE_FIELDS = ["viewportRect", "canvasRect", "designTransform", "logicalSize", "backingSize", "cssDisplaySize", "rawDevicePixelRatio", "effectiveDevicePixelRatio", "logicalToCssScale", "cssToPhysicalScale", "cameraViewport", "cameraZoom", "cameraOrigin", "safeArea", "edgeGaps", "backgroundCoverage", "keyUiRects", "inputHitResults", "resizeTrajectory", "pageReloaded", "screenshot", "sceneId", "stateId", "layoutContractVersion", "visualBaselineVersion"];
@@ -33,68 +36,6 @@ function isCondition(value) { return (isNumber(value) && value >= 0) || isString
 /** 只追加一次诊断，保证命令输出稳定。 */
 function appendUnique(items, value) { if (!items.includes(value)) items.push(value); }
 
-/** 将合同值按键排序后规范化，确保身份哈希不受 JSON 字段书写顺序影响。 */
-function canonicalize(value) {
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (isObject(value)) return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
-  return value;
-}
-
-/**
- * 计算布局合同的稳定身份哈希。
- *
- * 只纳入会改变布局身份的声明字段，排除 layout_contract_sha256 自身、
- * critical/parity 运行证据等易变内容，避免把合同文件做递归自哈希。
- */
-export function computeLayoutContractSha256(document) {
-  const binding = document?.scene_reconstruction_binding ?? document?.sceneReconstructionBinding ?? {};
-  // 布局节点数组的顺序继承已确认拆解元素；身份哈希不能排序后再计算，否则调序会复用旧确认。
-  const nodes = (Array.isArray(document?.layout_nodes) ? document.layout_nodes : []).filter(isObject).map(layoutNodeIdentityProjection);
-  const projection = {
-    contract_id: document?.contract_id ?? null,
-    contract_version: document?.contract_version ?? null,
-    design_resolution_policy: document?.designResolutionPolicy ?? null,
-    target_sha256: binding?.target_sha256 ?? null,
-    scene_id: binding?.scene_id ?? null,
-    state_id: binding?.state_id ?? null,
-    target_viewport: binding?.target_viewport ?? null,
-    visual_baseline_version: binding?.visual_baseline_version ?? null,
-    reconstruction_contract_version: binding?.reconstruction_contract_version ?? null,
-    layout_decomposition_version: binding?.layout_decomposition_version ?? null,
-    // 布局标注图是拆解确认后的独立产物；其文件、元数据和上游身份变化必须让布局合同失效。
-    layout_annotation: isObject(document?.layout_annotation) ? {
-      layout_annotation_sha256: document.layout_annotation.layout_annotation_sha256 ?? null,
-      layout_annotation_width: document.layout_annotation.layout_annotation_width ?? null,
-      layout_annotation_height: document.layout_annotation.layout_annotation_height ?? null,
-      layout_annotation_schema: document.layout_annotation.layout_annotation_schema ?? null,
-      layout_annotation_layout: document.layout_annotation.layout_annotation_layout ?? null,
-      layout_annotation_metadata_sha256: document.layout_annotation.layout_annotation_metadata_sha256 ?? null,
-      layout_annotation_identity_sha256: document.layout_annotation.layout_annotation_identity_sha256 ?? null,
-      layout_review_file: document.layout_annotation.layout_review_file ?? null,
-      layout_review_sha256: document.layout_annotation.layout_review_sha256 ?? null,
-      layout_review_identity_sha256: document.layout_annotation.layout_review_identity_sha256 ?? null,
-      layout_nodes_file: document.layout_annotation.layout_nodes_file ?? null,
-      layout_nodes_sha256: document.layout_annotation.layout_nodes_sha256 ?? null,
-      decomposition_confirmation_id: document.layout_annotation.decomposition_confirmation_id ?? null,
-      decomposition_confirmation_sha256: document.layout_annotation.decomposition_confirmation_sha256 ?? null,
-      proposal_sha256: document.layout_annotation.proposal_sha256 ?? null,
-      layout_decision_file: document.layout_annotation.layout_decision_file ?? null,
-      layout_decision_sha256: document.layout_annotation.layout_decision_sha256 ?? null,
-      layout_decision_id: document.layout_annotation.layout_decision_id ?? null,
-      target_sha256: document.layout_annotation.target_sha256 ?? null,
-      scene_id: document.layout_annotation.scene_id ?? null,
-      state_id: document.layout_annotation.state_id ?? null,
-      layout_node_ids: Array.isArray(document.layout_annotation.layout_node_ids) ? document.layout_annotation.layout_node_ids.slice() : null,
-    } : null,
-    layout_nodes: nodes,
-  };
-  const digest = createHash("sha256").update(JSON.stringify(canonicalize(projection))).digest("hex");
-  return `sha256:${digest}`;
-}
-
-/** 语义别名：供需要表达“稳定身份哈希”而非文件哈希的调用方复用。 */
-export const computeLayoutContractIdentityHash = computeLayoutContractSha256;
-
 /** 验证根对象和根字段。 */
 function validateRoot(document, errors) {
   if (!isObject(document)) { errors.push("根对象必须是 JSON 对象"); return; }
@@ -105,149 +46,16 @@ function validateRoot(document, errors) {
   for (const field of ["scope", "fidelity", "targets", "content", "platform_insets", "scrolling", "dynamic_content", "evidence_matrix", "logicalViewportSpace", "designResolutionPolicy", "canvasBackingPolicy", "runtimeDprPolicy", "cameraViewportPolicy", "cameraZoomPolicy", "cameraOriginPolicy", "inputCoordinatePolicy", "safeAreaPolicy", "resizePolicy", "orientationPolicy", "textResolutionPolicy", "assetResolutionPolicy", "performanceBudget", "requiredRuntimeEvidence"]) if (field in document && !isObject(document[field])) errors.push(`字段 ${field} 必须是对象`);
 }
 
-/** 验证布局忠实度的适用范围和 specified/verified 生命周期。 */
+/** 普通 UI 1.2 只允许非冻结目标语义；效果图路径已在入口迁移到引用合同。 */
 function validateFidelityLifecycle(document, errors) {
   const fidelity = document.fidelity;
   if (!isObject(fidelity)) return null;
-  if (isEffectImageContract(document) && fidelity.applicability !== "frozen-target") errors.push("effect-image 必须使用 fidelity.applicability=frozen-target");
-  if (fidelity.applicability === "not-applicable") {
-    if (fidelity.status !== "not-applicable") errors.push("普通布局 fidelity.status 必须为 not-applicable");
-    if (document.frozen_visual_target != null) errors.push("普通布局不得声明 frozen_visual_target");
-    for (const field of ["layout_nodes", "critical_alignments", "parity_cases"]) if (!Array.isArray(document[field]) || document[field].length > 0) errors.push(`普通布局 ${field} 必须为空数组`);
-    return fidelity;
-  }
-  if (fidelity.applicability !== "frozen-target") errors.push("fidelity.applicability 必须为 not-applicable 或 frozen-target");
-  if (!["specified", "verified"].includes(fidelity.status)) errors.push("frozen-target fidelity.status 必须为 specified 或 verified");
+  if (fidelity.applicability !== "not-applicable") errors.push("普通 UI fidelity.applicability 必须为 not-applicable");
+  if (fidelity.status !== "not-applicable") errors.push("普通 UI fidelity.status 必须为 not-applicable");
+  if (document.frozen_visual_target != null) errors.push("普通 UI 不得声明 frozen_visual_target");
+  for (const field of ["layout_nodes", "critical_alignments", "parity_cases"]) if (!Array.isArray(document[field]) || document[field].length > 0) errors.push(`普通 UI ${field} 必须为空数组`);
   return fidelity;
 }
-
-/** 验证冻结视觉目标身份，供关键对齐与 parity case 共用。 */
-function validateFrozenVisualTarget(target, errors) {
-  if (!isObject(target)) { errors.push("frozen_visual_target 必须是对象"); return; }
-  for (const field of ["candidate_id", "original_file", "visual_baseline_version"]) if (!isString(target[field])) errors.push(`frozen_visual_target.${field} 必须是非空字符串`);
-  if (target.status !== "frozen") errors.push("frozen_visual_target.status 必须为 frozen");
-}
-
-/** 校验效果图还原布局必须绑定 target、scene/state 和场景合同版本。 */
-function validateSceneReconstructionBinding(document, fidelity, errors) {
-  const binding = document.scene_reconstruction_binding ?? document.sceneReconstructionBinding;
-  const requiresSceneBinding = fidelity?.applicability === "frozen-target" || isEffectImageContract(document);
-  // frozen-target 的布局关系是场景还原合同的一部分；普通布局保持 not-applicable 语义。
-  if (binding === undefined) {
-    if (requiresSceneBinding) errors.push("scene_reconstruction_binding 缺失：frozen-target/effect-image 必须绑定场景还原合同");
-    return null;
-  }
-  if (!isObject(binding)) { errors.push("scene_reconstruction_binding 必须是对象"); return null; }
-  for (const field of ["scene_id", "state_id", "visual_baseline_version", "reconstruction_contract_version", "layout_decomposition_version"]) if (!isString(binding[field])) errors.push(`scene_reconstruction_binding.${field} 必须是非空字符串`);
-  if (document.frozen_visual_target?.visual_baseline_version && binding.visual_baseline_version !== document.frozen_visual_target.visual_baseline_version) errors.push("scene_reconstruction_binding.visual_baseline_version 未绑定当前冻结目标");
-  if (!isObject(binding.target_viewport) || !isNumber(binding.target_viewport.width) || !isNumber(binding.target_viewport.height) || binding.target_viewport.width <= 0 || binding.target_viewport.height <= 0) errors.push("scene_reconstruction_binding.target_viewport 必须包含精确正数尺寸");
-  if (binding.legacy_layout_reused === true || binding.uses_generic_layout === true) errors.push("scene_reconstruction_binding 禁止使用与冻结效果图不一致的旧通用布局");
-  return binding;
-}
-
-/** 验证四边几何测量均来自实际目标或运行态。 */
-function validateMeasurement(value, label, errors) {
-  if (!isObject(value) || !["x", "y", "width", "height"].every((field) => isNumber(value[field])) || value.width <= 0 || value.height <= 0) errors.push(`${label} 必须包含数值 x/y 和正数 width/height`);
-}
-
-/** 验证运行时与目标几何的差值；差值允许为负数或零。 */
-function validateDelta(value, label, errors) {
-  if (!isObject(value) || !["x", "y", "width", "height"].every((field) => isNumber(value[field]))) errors.push(`${label} 必须包含数值 x/y/width/height 差值`);
-}
-
-/** 验证冻结视觉目标下的关键 UI/HUD 对齐合同。 */
-function validateCriticalAlignments(items, ids, layoutNodes, status, errors, mode = "usability") {
-  const exact = mode === "exact";
-  if (!Array.isArray(items) || items.length === 0) { errors.push("critical_alignments 必须是非空数组"); return; }
-  const alignmentIds = new Set();
-  items.forEach((item, index) => {
-    const label = `critical_alignments[${index}]`;
-    if (!isObject(item)) { errors.push(`${label} 必须是对象`); return; }
-    // 可用性模式不自动要求像素矩阵，但项目已声明的关键几何容差必须兑现。
-    const declaredTolerance = Object.hasOwn(item, "tolerance");
-    const enforceGeometry = exact || declaredTolerance;
-    for (const field of ["id", "layout_node_id", "element_id", "reference_id", "planned_test_id"]) if (!isString(item[field])) errors.push(`${label}.${field} 必须是非空字符串`);
-    if (isString(item.id)) { if (alignmentIds.has(item.id)) errors.push(`${label}.id 重复：${item.id}`); alignmentIds.add(item.id); }
-    if (!ids.has(item.element_id)) errors.push(`${label}.element_id 引用未知 UI ID：${item.element_id}`);
-    const layoutNode = isString(item.layout_node_id) ? layoutNodes.nodesById.get(item.layout_node_id) : undefined;
-    if (!layoutNode) errors.push(`${label}.layout_node_id 引用未知布局节点：${item.layout_node_id}`);
-    else if (item.element_id !== layoutNode.region_id) errors.push(`${label}.element_id 必须绑定 layout_node_id 对应的 region_id`);
-    const referenceNodeIds = isString(item.reference_id) ? (layoutNodes.regionNodeIds.get(item.reference_id) ?? []) : [];
-    if (item.reference_id !== "viewport" && !ids.has(item.reference_id) && !layoutNodes.nodeIds.has(item.reference_id)) errors.push(`${label}.reference_id 引用未知 UI ID/稳定参照：${item.reference_id}`);
-    if (referenceNodeIds.length > 1) errors.push(`${label}.reference_id 指向包含多个 layout_nodes 的 region，必须改为具体 layout_node_id：${item.reference_id}`);
-    for (const axis of ["horizontal", "vertical"]) {
-      const relation = item[axis];
-      if (!isObject(relation)) errors.push(`${label}.${axis} 缺少关系`);
-      else for (const field of ["type", "element_anchor", "reference_anchor"]) if (!isString(relation[field])) errors.push(`${label}.${axis}.${field} 必须是非空字符串`);
-    }
-    if (enforceGeometry || item.target_measurement != null) validateMeasurement(item.target_measurement, `${label}.target_measurement`, errors);
-    if (enforceGeometry && layoutNode && item.target_measurement != null && !sameBounds(item.target_measurement, layoutNode.target_bounds)) errors.push(`${label}.target_measurement 与绑定布局节点 target_bounds 不一致，存在目标几何漂移`);
-    if (!Array.isArray(item.target_evidence) || item.target_evidence.length === 0 || !item.target_evidence.every(isString)) errors.push(`${label}.target_evidence 必须是非空字符串数组`);
-    const runtimeMeasurement = item.runtime_measurement ?? item.actual_bounds;
-    if (status === "verified") {
-      if (!isString(item.actual_test_id)) errors.push(`${label}.actual_test_id 必须是非空字符串`);
-      else if (item.actual_test_id !== item.planned_test_id) errors.push(`${label}.actual_test_id 必须等于 planned_test_id`);
-      validateMeasurement(runtimeMeasurement, `${label}.runtime_measurement`, errors);
-      if (exact || item.delta != null) validateDelta(item.delta, `${label}.delta`, errors);
-      if (isObject(item.target_measurement) && isObject(runtimeMeasurement) && isObject(item.delta) && ["x", "y", "width", "height"].every((field) => isNumber(item.target_measurement[field]) && isNumber(runtimeMeasurement[field]) && isNumber(item.delta[field]))) {
-        if (enforceGeometry) for (const field of ["x", "y", "width", "height"]) if (item.delta[field] !== runtimeMeasurement[field] - item.target_measurement[field]) errors.push(`${label}.delta.${field} 必须等于 runtime_measurement 与 target_measurement 的差值`);
-      }
-      if (item.test_status !== "passed") errors.push(`${label}.test_status 必须为 passed，未执行测试不得通过`);
-      if (!Array.isArray(item.runtime_evidence) || item.runtime_evidence.length === 0 || !item.runtime_evidence.every(isString)) errors.push(`${label}.runtime_evidence 必须是非空字符串数组`);
-    } else {
-      if (runtimeMeasurement != null) validateMeasurement(runtimeMeasurement, `${label}.runtime_measurement`, errors);
-      if (item.delta != null) validateDelta(item.delta, `${label}.delta`, errors);
-    }
-    if (enforceGeometry) validateAlignmentTolerance(item, runtimeMeasurement, status, label, errors);
-  });
-}
-
-/** 直接比较同坐标空间的实测矩形，不允许手写 passed 或伪造 delta 掩盖关键布局偏差。 */
-function validateAlignmentTolerance(item, runtimeMeasurement, status, label, errors) {
-  const tolerance = item.tolerance;
-  if (!isObject(tolerance) || !isNumber(tolerance.value) || tolerance.value < 0) {
-    errors.push(`${label}.tolerance 必须是项目定义的 unit 与非负 value`);
-    return;
-  }
-  if (!["px", "logical-px", "css-px", "css-logical-px"].includes(tolerance.unit)) {
-    errors.push(`${label}.tolerance.unit 必须是同一布局坐标空间的像素单位`);
-    return;
-  }
-  if (status !== "verified" || !isObject(item.target_measurement) || !isObject(runtimeMeasurement)) return;
-  for (const field of ["x", "y", "width", "height"]) {
-    const targetValue = item.target_measurement[field];
-    const actualValue = runtimeMeasurement[field];
-    if (isNumber(targetValue) && isNumber(actualValue) && Math.abs(actualValue - targetValue) > tolerance.value) {
-      errors.push(`${label}.runtime_measurement.${field} 超出声明容差 ${tolerance.value}${tolerance.unit}`);
-    }
-  }
-}
-
-/** 验证布局 parity case 绑定同一目标、候选和可复现条件。 */
-function validateParityCases(items, scope, contractVersion, target, errors, mode = "usability", coverage = null) {
-  const exact = mode === "exact";
-  if (!Array.isArray(items) || items.length === 0) { if (exact) errors.push("parity_cases 必须是非空数组"); return; }
-  const ids = new Set();
-  items.forEach((item, index) => {
-    const label = `parity_cases[${index}]`;
-    if (!isObject(item)) { errors.push(`${label} 必须是对象`); return; }
-    for (const field of ["id", "scene_id", "state_id", "language", "input_trace", "sample_rule", "layout_contract_version", "visual_baseline_version", "conclusion"]) if (!isString(item[field])) errors.push(`${label}.${field} 必须是非空字符串`);
-    if (!scope?.scenes?.includes(item.scene_id)) errors.push(`${label}.scene_id 不在 scope.scenes 范围内`);
-    if (!scope?.states?.includes(item.state_id)) errors.push(`${label}.state_id 不在 scope.states 范围内`);
-    if (item.layout_contract_version !== contractVersion) errors.push(`${label}.layout_contract_version 与根 contract_version 不一致`);
-    if (item.visual_baseline_version !== target?.visual_baseline_version) errors.push(`${label}.visual_baseline_version 与冻结目标不一致`);
-    if (!isObject(item.viewport) || !isNumber(item.viewport.width) || item.viewport.width <= 0 || !isNumber(item.viewport.height) || item.viewport.height <= 0) errors.push(`${label}.viewport 必须包含正数 width/height`);
-    else if (coverage && !coverage.orientations.includes(measuredOrientation(item.viewport))) errors.push(`${label}.viewport 的方向超出 orientationPolicy.allowed 支持范围`);
-    if (!isWorkflowDpr(item.dpr)) errors.push(`${label}.${workflowDprError("dpr", item.dpr)}`);
-    if (!(Number.isInteger(item.random_seed) || isString(item.random_seed))) errors.push(`${label}.random_seed 必须是整数或非空字符串`);
-    for (const field of ["reference_evidence", "candidate_evidence"]) if (!Array.isArray(item[field]) || item[field].length === 0 || !item[field].every(isString)) errors.push(`${label}.${field} 必须是非空字符串数组`);
-    if (exact && (!isObject(item.tolerance) || !isString(item.tolerance.unit) || !isNumber(item.tolerance.value) || item.tolerance.value < 0)) errors.push(`${label}.tolerance 必须是项目定义的 unit 与非负 value`);
-    if (!Array.isArray(item.exception_ids) || !item.exception_ids.every(isString)) errors.push(`${label}.exception_ids 必须是字符串数组`);
-    if (!["passed", "failed"].includes(item.conclusion)) errors.push(`${label}.conclusion 必须为 passed 或 failed`);
-    if (isString(item.id)) { if (ids.has(item.id)) errors.push(`${label}.id 重复：${item.id}`); ids.add(item.id); }
-  });
-}
-
 /** 验证候选绑定和稳定 UI ID。 */
 function validateScope(scope, errors) {
   if (!isObject(scope)) return;
@@ -325,7 +133,7 @@ function requireResponsiveEvents(value, label, required, coverage, errors) {
 }
 
 /** 验证高分屏布局的统一坐标、DPR、Camera、输入和 resize 合同。 */
-function validateResponsiveContract(document, errors, coverage) {
+function validateResponsiveContract(document, errors, coverage, { referencedPolicy = false } = {}) {
   validateDesignResolutionPolicy(document.designResolutionPolicy, coverage.orientations, errors);
   const logical = document.logicalViewportSpace;
   if (requireObjectFields(logical, "logicalViewportSpace", ["unit", "layoutSpace", "gameSizeSpace", "safeAreaSpace", "source", "coordinateOrigin"], errors)) {
@@ -454,7 +262,7 @@ function validateResponsiveContract(document, errors, coverage) {
   }
 
   validateRepresentativeViewports(document.representativeViewports, coverage, errors);
-  validateRequiredRuntimeEvidence(document.requiredRuntimeEvidence, errors);
+  validateRequiredRuntimeEvidence(document.requiredRuntimeEvidence, errors, { referencedPolicy });
 }
 
 /** 验证默认 usability 覆盖支持方向的代表视口及 DPR 封顶样本。 */
@@ -490,7 +298,7 @@ function validateRepresentativeViewports(viewports, coverage, errors) {
 }
 
 /** 验证正式场景运行证据字段、resize 轨迹和独立 DISPLAY_LAYER 轨迹。 */
-function validateRequiredRuntimeEvidence(evidence, errors) {
+function validateRequiredRuntimeEvidence(evidence, errors, { referencedPolicy = false } = {}) {
   if (!requireObjectFields(evidence, "requiredRuntimeEvidence", ["mode", "requiredFields", "dprAssertions", "resizeAssertions", "displayLayerTrajectory", "evidenceBinding", "missingMeasurement"], errors)) return;
   if (!["usability", "exact"].includes(evidence.mode)) errors.push("requiredRuntimeEvidence.mode 必须为 usability 或 exact");
   requireArrayIncludes(evidence.requiredFields, "requiredRuntimeEvidence.requiredFields", REQUIRED_RUNTIME_EVIDENCE_FIELDS, errors);
@@ -516,7 +324,10 @@ function validateRequiredRuntimeEvidence(evidence, errors) {
   }
   const binding = evidence.evidenceBinding;
   if (requireObjectFields(binding, "requiredRuntimeEvidence.evidenceBinding", ["layoutContractVersion", "scene", "state"], errors)) {
-    if (binding.layoutContractVersion !== "contract_version") errors.push("requiredRuntimeEvidence.evidenceBinding.layoutContractVersion 必须绑定当前布局合同版本");
+    const expectedBinding = referencedPolicy
+      ? { layoutContractVersion: "scene_contract.target_conditions.layout_contract_version", scene: "scene_contract.target_conditions.scene_id", state: "scene_contract.target_conditions.state_id" }
+      : { layoutContractVersion: "contract_version", scene: "scope.scenes", state: "scope.states" };
+    for (const [field, expected] of Object.entries(expectedBinding)) if (binding[field] !== expected) errors.push(`requiredRuntimeEvidence.evidenceBinding.${field} 必须绑定 ${expected}`);
   }
   if (evidence.missingMeasurement !== "unverified") errors.push("requiredRuntimeEvidence.missingMeasurement 必须为 unverified");
 }
@@ -571,96 +382,6 @@ function validateReferenceGraph(document, ids, errors) {
   if (!Array.isArray(document.regions)) return; const graph = new Map();
   document.regions.forEach((region, index) => { if (!isObject(region) || !ids.has(region.id)) return; if (region.reference_id !== "viewport" && !ids.has(region.reference_id)) errors.push(`regions[${index}] 引用不存在的 reference_id：${region.reference_id}`); else if (ids.has(region.reference_id)) graph.set(region.id, region.reference_id); });
   validateGraphCycles(graph, "区域参照存在循环", errors);
-}
-
-/** 验证布局节点的双轴偏移；表达式允许由项目适配器在运行时求值。 */
-function validateLayoutOffset(value, label, errors) {
-  if (!isObject(value)) { errors.push(`${label}.offset 必须是包含 x/y 的对象`); return; }
-  for (const axis of ["x", "y"]) if (!(isNumber(value[axis]) || isString(value[axis]))) errors.push(`${label}.offset.${axis} 必须是数值或非空表达式`);
-}
-
-/** 判断两个目标几何是否逐字段一致，防止拆解合同与关键对齐事实漂移。 */
-function sameBounds(left, right) {
-  return isObject(left) && isObject(right) && ["x", "y", "width", "height"].every((field) => left[field] === right[field]);
-}
-
-/**
- * 验证效果图布局拆解节点及其参照图。
- *
- * layout_nodes 是参考图事实与运行时布局入口之间的唯一桥梁；因此这里
- * 只检查声明关系和目标几何，不引入跨项目的固定像素容差。
- */
-function validateLayoutNodes(document, fidelity, binding, spaces, regionIds, errors) {
-  const nodes = document.layout_nodes;
-  const nodeIds = new Set(); const orderedNodeIds = []; const regionNodeIds = new Map(); const nodesById = new Map();
-  if (!Array.isArray(nodes)) { errors.push("layout_nodes 必须是数组"); return { nodeIds, regionNodeIds, nodesById }; }
-  const requiresLayoutNodes = fidelity?.applicability === "frozen-target" || isEffectImageContract(document);
-  if (fidelity?.applicability === "not-applicable" && !isEffectImageContract(document) && nodes.length > 0) errors.push("普通布局 layout_nodes 必须为空数组");
-  if (requiresLayoutNodes && nodes.length === 0) errors.push("frozen-target/effect-image layout_nodes 必须是非空数组");
-  const scopedIds = new Set((document.scope?.ui_ids ?? []).filter(isString));
-  const viewport = binding?.target_viewport;
-  nodes.forEach((node, index) => {
-    const label = `layout_nodes[${index}]`;
-    if (!isObject(node)) { errors.push(`${label} 必须是对象`); return; }
-    for (const field of ["layout_node_id", "region_id", "coordinate_space", "reference_id", "self_anchor", "reference_anchor", "size_policy", "clip_policy", "responsive_rule", "planned_test_id"]) if (!isString(node[field])) errors.push(`${label}.${field} 必须是非空字符串`);
-    if (isString(node.layout_node_id)) {
-      if (nodeIds.has(node.layout_node_id)) errors.push(`重复布局节点 ID：${node.layout_node_id}`);
-      nodeIds.add(node.layout_node_id); orderedNodeIds.push(node.layout_node_id); nodesById.set(node.layout_node_id, node);
-    }
-    if (isString(node.region_id)) {
-      const boundNodes = regionNodeIds.get(node.region_id) ?? [];
-      boundNodes.push(node.layout_node_id);
-      regionNodeIds.set(node.region_id, boundNodes);
-      if (!regionIds.has(node.region_id)) errors.push(`${label}.region_id 未绑定已声明 regions（孤立布局节点）：${node.region_id}`);
-      if (!scopedIds.has(node.region_id)) errors.push(`${label}.region_id 未绑定 scope.ui_ids：${node.region_id}`);
-    }
-    if (isString(node.coordinate_space) && !spaces.has(node.coordinate_space)) errors.push(`${label}.coordinate_space 引用不存在的坐标空间：${node.coordinate_space}`);
-    if (requiresLayoutNodes) validateUiLayout(node.ui_layout, { rootParent: ["viewport", "safe-area"].includes(node.parent_layout_node_id), container: node.is_container === true || node.element_type === "container", emptyContainer: node.empty_container === true && !hasSpriteRendering(node) }, errors, `${label}.ui_layout`);
-    validateLayoutOffset(node.offset, label, errors);
-    if (!isNumber(node.z_order)) errors.push(`${label}.z_order 必须是有限数值`);
-    validateMeasurement(node.target_bounds, `${label}.target_bounds`, errors);
-    if (isObject(node.target_bounds) && isObject(viewport) && ["x", "y", "width", "height"].every((field) => isNumber(node.target_bounds[field])) && isNumber(viewport.width) && isNumber(viewport.height)) {
-      const bounds = node.target_bounds;
-      if (bounds.x < 0 || bounds.y < 0 || bounds.x + bounds.width > viewport.width || bounds.y + bounds.height > viewport.height) errors.push(`${label}.target_bounds 必须完全位于 scene_reconstruction_binding.target_viewport 内`);
-    }
-  });
-  if (requiresLayoutNodes) validateUiInteractionTree(nodes.map((node) => ({ element_id: node?.layout_node_id, parent_element_id: node?.parent_layout_node_id, ui_layout: node?.ui_layout })), errors, "layout_nodes");
-  if (isEffectImageContract(document)) {
-    // 父容器、相对测量和显式视觉对齐必须与场景拆解入口使用同一规则。
-    for (const issue of validateEffectImageParentChildLayoutNodes(nodes, viewport, { label: "layout_nodes", requireExecutionPlan: true })) errors.push(issue.message);
-    if (document.fidelity?.status === "verified") validateLayoutRuntimeSnapshots(nodes, document.component_snapshots, errors, "component_snapshots");
-  }
-  const graph = new Map(); const stableRoots = new Set(["viewport", "safe-area"]);
-  nodes.forEach((node, index) => {
-    if (!isObject(node) || !isString(node.layout_node_id) || !isString(node.reference_id)) return;
-    const label = `layout_nodes[${index}]`;
-    if (!nodeIds.has(node.reference_id) && !regionIds.has(node.reference_id) && !stableRoots.has(node.reference_id)) errors.push(`${label}.reference_id 引用不存在的稳定参照：${node.reference_id}`);
-    if (node.reference_id === node.layout_node_id || node.reference_id === node.region_id) errors.push(`${label}.reference_id 不能自引用：${node.reference_id}`);
-    if (nodeIds.has(node.reference_id)) graph.set(node.layout_node_id, node.reference_id);
-    else if (regionIds.has(node.reference_id)) {
-      const referencedNodes = regionNodeIds.get(node.reference_id) ?? [];
-      if (referencedNodes.length === 1) graph.set(node.layout_node_id, referencedNodes[0]);
-      else if (referencedNodes.length > 1) errors.push(`${label}.reference_id 指向包含多个 layout_nodes 的 region，必须改为具体 layout_node_id：${node.reference_id}`);
-    }
-  });
-  validateGraphCycles(graph, "布局节点参照存在循环", errors);
-  return { nodeIds, orderedNodeIds, regionNodeIds, nodesById };
-}
-
-/** 校验 effect-image 的独立布局标注身份；布局阶段不能绕过前置拆解确认。 */
-function validateLayoutAnnotationBinding(document, binding, layoutNodes, errors) {
-  if (!isEffectImageContract(document)) return;
-  const annotation = document.layout_annotation;
-  if (!isObject(annotation)) { errors.push("effect-image 必须声明 layout_annotation；布局标注只能后置于拆解确认"); return; }
-  const required = ["layout_annotation_file", "layout_annotation_width", "layout_annotation_height", "layout_annotation_schema", "layout_annotation_layout", "layout_review_file", "layout_nodes_file", "decomposition_confirmation_id", "layout_decision_file", "layout_decision_id", "scene_id", "state_id"];
-  for (const field of required) if (!(field in annotation)) errors.push(`layout_annotation.${field} 必须存在`);
-  for (const field of ["layout_annotation_file", "layout_review_file", "layout_nodes_file", "layout_decision_file", "decomposition_confirmation_id", "layout_decision_id", "scene_id", "state_id"]) if (!isString(annotation[field])) errors.push(`layout_annotation.${field} 必须是非空字符串`);
-  if (annotation.layout_annotation_schema !== "layout-annotation/png/1") errors.push("layout_annotation.layout_annotation_schema 必须为 layout-annotation/png/1");
-  if (annotation.layout_annotation_layout !== "image-plus-right-panel") errors.push("layout_annotation.layout_annotation_layout 必须为 image-plus-right-panel");
-  for (const field of ["layout_annotation_width", "layout_annotation_height"]) if (!Number.isInteger(annotation[field]) || annotation[field] <= 0) errors.push(`layout_annotation.${field} 必须是正整数`);
-  if (binding && (annotation.scene_id !== binding.scene_id || annotation.state_id !== binding.state_id)) errors.push("layout_annotation scene/state 未绑定当前场景");
-  if (!Array.isArray(annotation.layout_node_ids) || annotation.layout_node_ids.length === 0) errors.push("layout_annotation.layout_node_ids 必须是非空数组");
-  else if (JSON.stringify(annotation.layout_node_ids) !== JSON.stringify(layoutNodes.orderedNodeIds)) errors.push("layout_annotation.layout_node_ids 必须按已确认拆解元素原顺序完整绑定");
 }
 
 /** 验证全局几何字段。 */
@@ -744,80 +465,154 @@ function validateProgrammaticTextEvidence(document, errors) {
 }
 
 /** 验证布局合同并返回稳定结果。 */
-export function validateContract(document) {
+export function validateContract(document, options = {}) {
+  if (document?.schema_version === "2.0.0") return validateReferencedContract(document, options);
+  // effect-image 与 frozen-target 的布局事实已迁入场景合同和唯一 layout-nodes 源文件。
+  if (document?.effect_image_reconstruction?.applicability === "effect-image" || document?.fidelity?.applicability === "frozen-target") {
+    return { status: "failed", errors: ["旧 frozen-target/effect-image 内联合同已停用，请迁移到 schema_version=2.0.0 的引用式 UI 合同"], warnings: [], specialized_review: [] };
+  }
   const errors = []; const warnings = []; const specialized = []; validateRoot(document, errors); if (!isObject(document)) return { status: "failed", errors, warnings, specialized_review: specialized };
   const mode = resolveVisualValidationMode(document); validateVisualValidationPolicy(errors, "visual_validation", document);
-  validateScope(document.scope, errors); const fidelity = validateFidelityLifecycle(document, errors); const requiresFrozenLayout = fidelity?.applicability === "frozen-target" || isEffectImageContract(document); if (requiresFrozenLayout) validateFrozenVisualTarget(document.frozen_visual_target, errors); const binding = validateSceneReconstructionBinding(document, fidelity, errors); const coverage = resolveOrientationCoverage(document.orientationPolicy); errors.push(...coverage.errors); validateTargets(document.targets, errors, coverage); validateResponsiveContract(document, errors, coverage); const spaces = validateCoordinateSpaces(document.coordinate_spaces, errors); const ids = validateRegions(document, spaces, errors, specialized); validateScopeRegionIds(document.scope, ids, errors); validateReferenceGraph(document, ids, errors); const layoutNodes = validateLayoutNodes(document, fidelity, binding, spaces, ids, errors); validateLayoutAnnotationBinding(document, binding, layoutNodes, errors); validateContent(document.content, errors); validateBreakpoints(document.breakpoints, errors); validatePlatformAndScrolling(document, ids, errors); validateDynamicContent(document.dynamic_content, ids, errors); validateOverlays(document.overlay_rules, ids, errors, specialized); validateOverlayCoverage(document, ids, errors); validateInvariants(document.invariants, ids, errors, mode);
-  if (requiresFrozenLayout) {
-    validateCriticalAlignments(document.critical_alignments, ids, layoutNodes, fidelity?.status, errors, mode);
-    if (fidelity?.status === "verified") {
-      validateParityCases(document.parity_cases, document.scope, document.contract_version, document.frozen_visual_target, errors, mode, coverage);
-      if (mode === "exact" && Array.isArray(document.parity_cases) && document.parity_cases.some((item) => item?.conclusion !== "passed")) errors.push("verified 的 parity_cases 必须全部 passed");
-    } else if (!Array.isArray(document.parity_cases) || document.parity_cases.length > 0) errors.push("specified 的 parity_cases 必须为空数组");
-  }
+  validateScope(document.scope, errors); validateFidelityLifecycle(document, errors); const coverage = resolveOrientationCoverage(document.orientationPolicy); errors.push(...coverage.errors); validateTargets(document.targets, errors, coverage); validateResponsiveContract(document, errors, coverage); const spaces = validateCoordinateSpaces(document.coordinate_spaces, errors); const ids = validateRegions(document, spaces, errors, specialized); validateScopeRegionIds(document.scope, ids, errors); validateReferenceGraph(document, ids, errors); validateContent(document.content, errors); validateBreakpoints(document.breakpoints, errors); validatePlatformAndScrolling(document, ids, errors); validateDynamicContent(document.dynamic_content, ids, errors); validateOverlays(document.overlay_rules, ids, errors, specialized); validateOverlayCoverage(document, ids, errors); validateInvariants(document.invariants, ids, errors, mode);
   validateEvidenceMatrix(document.evidence_matrix, errors, mode, coverage); validateProgrammaticTextEvidence(document, errors);
   if (isObject(document.dynamic_content?.localization) && !["forbid-critical", "forbid"].includes(document.dynamic_content.localization.truncate_policy)) warnings.push("本地化截断策略未明确禁止关键文本");
   return { status: errors.length ? "failed" : "passed", errors, warnings, specialized_review: specialized };
 }
 
+/** 检查 effect-image UI 引用合同的精简根结构。 */
+function validateReferenceContractRoot(document, errors) {
+  if (!isObject(document)) { errors.push("根对象必须是 JSON 对象"); return false; }
+  for (const field of REFERENCE_CONTRACT_FIELDS) if (!Object.hasOwn(document, field)) errors.push(`缺少根字段：${field}`);
+  for (const field of Object.keys(document)) if (!REFERENCE_CONTRACT_ALLOWED_FIELDS.has(field)) errors.push(`schema 2.0.0 禁止重复布局事实或未定义字段：${field}`);
+  if (document.schema_version !== "2.0.0") errors.push("schema_version 必须为 2.0.0");
+  for (const field of ["contract_id", "contract_version", "project_policy_file", "scene_contract_file"]) if (!isString(document[field])) errors.push(`字段 ${field} 必须是非空字符串`);
+  return true;
+}
+
+/** 只在项目公共策略文件中校验共享坐标、方向、视口和运行策略。 */
+function validateProjectLayoutPolicy(policy, errors) {
+  if (!isObject(policy)) { errors.push("project policy 必须是 JSON 对象"); return null; }
+  for (const field of [...PROJECT_POLICY_METADATA_FIELDS, ...PROJECT_POLICY_FIELDS]) if (!Object.hasOwn(policy, field)) errors.push(`project policy 缺少字段：${field}`);
+  for (const field of Object.keys(policy)) if (!PROJECT_POLICY_ALLOWED_FIELDS.has(field)) errors.push(`project policy 不允许包含场景或布局专属字段：${field}`);
+  if (policy.schema_version !== "1.0.0") errors.push("project policy.schema_version 必须为 1.0.0");
+  for (const field of ["policy_id", "policy_version"]) if (!isString(policy[field])) errors.push(`project policy.${field} 必须是非空字符串`);
+  const coverage = resolveOrientationCoverage(policy.orientationPolicy);
+  errors.push(...coverage.errors.map((item) => `project policy: ${item}`));
+  validateTargets(policy.targets, errors, coverage);
+  validateResponsiveContract(policy, errors, coverage, { referencedPolicy: true });
+  validateCoordinateSpaces(policy.coordinate_spaces, errors);
+  return coverage;
+}
+
+/** 校验项目冻结目标是否落在公共 UI 策略声明的方向与视口范围内。 */
+function validateProjectPolicyTargetCompatibility(policy, scene, errors) {
+  const conditions = scene?.target_conditions ?? scene?.targetConditions;
+  const viewport = conditions?.viewport ?? conditions?.target_viewport ?? conditions?.targetViewport;
+  if (!isObject(viewport) || !isNumber(viewport.width) || !isNumber(viewport.height) || viewport.width <= 0 || viewport.height <= 0) {
+    errors.push("scene_contract.target_conditions.viewport 缺少精确正数尺寸，无法与 project policy 核对");
+    return;
+  }
+  const orientation = measuredOrientation(viewport);
+  if (!orientation) { errors.push("冻结目标 viewport 无法确定方向"); return; }
+  if (!policy?.orientationPolicy?.allowed?.includes(orientation) || !policy?.targets?.orientations?.includes(orientation)) errors.push(`冻结目标方向 ${orientation} 不在 project policy 支持范围内`);
+  const minimum = policy?.targets?.min;
+  const maximum = policy?.targets?.max;
+  if (isObject(minimum) && isObject(maximum) && ["width", "height"].every((field) => isNumber(minimum[field]) && isNumber(maximum[field]))) {
+    for (const field of ["width", "height"]) if (viewport[field] < minimum[field] || viewport[field] > maximum[field]) errors.push(`冻结目标 viewport.${field} 超出 project policy.targets min/max 范围`);
+  }
+  const aspect = policy?.targets?.aspect_ratio;
+  if (isObject(aspect) && isNumber(aspect.min) && isNumber(aspect.max)) {
+    const ratio = viewport.width / viewport.height;
+    if (ratio < aspect.min || ratio > aspect.max) errors.push("冻结目标 viewport 长宽比超出 project policy.targets.aspect_ratio 范围");
+  }
+  if (!isObject(policy?.designResolutionPolicy?.[orientation])) errors.push(`project policy.designResolutionPolicy 缺少冻结目标方向 ${orientation}`);
+}
+
+/** 用相同策略验证入口检查场景与布局源，避免 V2 UI 另存一份节点树。 */
+function validateReferencedContract(document, options = {}) {
+  const errors = [];
+  validateReferenceContractRoot(document, errors);
+  const stage = String(options.stage ?? "V2").toUpperCase();
+  const sourceOptions = { ...options, forceLayoutSourceFiles: options.forceLayoutSourceFiles === true || options.checkFiles === true };
+  if (!["V2", "V4"].includes(stage)) errors.push("stage 只支持 V2 或 V4");
+  let sources;
+  try { sources = getUiLayoutSourceFromMap(document, options); }
+  catch (error) { errors.push(error.message); }
+  const policy = getUiLayoutSourceDocument(sources, document.project_policy_file, "project_policy_file");
+  const scene = getUiLayoutSourceDocument(sources, document.scene_contract_file, "scene_contract_file");
+  if (sources && !isObject(policy)) errors.push("project_policy_file 必须解析为 JSON 对象");
+  if (sources && !isObject(scene)) errors.push("scene_contract_file 必须解析为 JSON 对象");
+  if (isObject(policy)) validateProjectLayoutPolicy(policy, errors);
+  if (isObject(scene)) {
+    errors.push(...validateSceneReconstructionContract(scene, null, { ...sourceOptions, effectImage: true, requireFinalLayout: true, stage }));
+    validateProjectPolicyTargetCompatibility(policy, scene, errors);
+    try {
+      resolveSceneV2LayoutSource(scene, {
+        projectRoot: sourceOptions.projectRoot,
+        layoutSourceDocuments: sourceOptions.layoutSourceDocuments,
+        forceLayoutSourceFiles: sourceOptions.forceLayoutSourceFiles,
+      });
+    } catch (error) { errors.push(`scene_contract V2 唯一布局源无效：${error.message}`); }
+  }
+  return { status: errors.length ? "failed" : "passed", errors, warnings: [], specialized_review: [] };
+}
+
 /** 读取严格 JSON-compatible YAML 合同。 */
 export async function loadContract(path) { return JSON.parse(await readFile(path, "utf8")); }
 
-/** 解析项目内证据路径并拒绝父级或跨盘逃逸。 */
-function projectPath(projectRoot, value) {
-  const candidate = resolve(projectRoot, value); const rel = relative(resolve(projectRoot), candidate);
-  if (isAbsolute(rel) || rel === ".." || rel.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)) throw new Error(`路径逃逸项目根目录：${value}`);
-  return candidate;
-}
-
-/** 检查文件存在，任何目录或缺失路径均返回 false。 */
-async function isFile(value) { try { return (await stat(value)).isFile(); } catch { return false; } }
-
-/** 校验冻结原图哈希和 specified/verified 对齐、parity 证据文件。 */
-export async function checkContractFiles(document, projectRoot) {
-  const errors = []; const paths = [];
-  if (document.fidelity?.applicability !== "frozen-target") return errors;
-  const target = document.frozen_visual_target;
-  if (isString(target?.original_file)) {
-    try {
-      const file = projectPath(projectRoot, target.original_file);
-      if (!await isFile(file)) errors.push(`frozen_visual_target.original_file 文件不存在：${target.original_file}`);
-      else await readFile(file);
-    } catch (error) { errors.push(`frozen_visual_target.original_file：${error.message}`); }
+/** 校验 V2/V4 引用合同，并执行场景确认与 V4 运行证据的官方文件门。 */
+export async function checkContractFiles(document, projectRoot, options = {}) {
+  const errors = [];
+  if (document?.schema_version === "2.0.0") {
+    let sources;
+    try { sources = await loadUiLayoutSourceDocuments(document, projectRoot); }
+    catch (error) { errors.push(error.message); return errors; }
+    const scene = getUiLayoutSourceDocument(sources, document.scene_contract_file, "scene_contract_file");
+    if (!isObject(scene)) errors.push("scene_contract_file 必须解析为 JSON 对象");
+    else {
+      const stage = String(options.stage ?? "V2").toUpperCase();
+      // 使用场景合同现有确认门，确保 PNG、review、layout decision、用户 decision 与 receipt 都真实可读。
+      errors.push(...validateSceneReconstructionContract(scene, null, {
+        stage,
+        effectImage: true,
+        requireFinalLayout: true,
+        projectRoot,
+        forceLayoutSourceFiles: true,
+        checkFiles: true,
+        layoutSourceDocuments: sources,
+      }));
+      try { resolveSceneV2LayoutSource(scene, { projectRoot, layoutSourceDocuments: sources, forceLayoutSourceFiles: true }); }
+      catch (error) { errors.push(`scene_contract V2 唯一布局源无效：${error.message}`); }
+      if (stage === "V4") errors.push(...await validateSceneRuntimeEvidenceFiles(scene, projectRoot));
+    }
+    return errors;
   }
-  if (isObject(document.layout_annotation) && isString(document.layout_annotation.layout_annotation_file)) {
-    try {
-      const file = projectPath(projectRoot, document.layout_annotation.layout_annotation_file);
-      if (!await isFile(file)) errors.push(`layout_annotation.layout_annotation_file 文件不存在：${document.layout_annotation.layout_annotation_file}`);
-      else await readFile(file);
-    } catch (error) { errors.push(`layout_annotation.layout_annotation_file：${error.message}`); }
-  }
-  if (isObject(document.layout_annotation) && isString(document.layout_annotation.layout_decision_file)) {
-    try {
-      const file = projectPath(projectRoot, document.layout_annotation.layout_decision_file);
-      if (!await isFile(file)) errors.push(`layout_annotation.layout_decision_file 文件不存在：${document.layout_annotation.layout_decision_file}`);
-      else await readFile(file);
-    } catch (error) { errors.push(`layout_annotation.layout_decision_file：${error.message}`); }
-  }
-  for (const [index, item] of (document.critical_alignments ?? []).entries()) {
-    for (const field of ["target_evidence", ...(document.fidelity.status === "verified" ? ["runtime_evidence"] : [])]) for (const value of item?.[field] ?? []) paths.push([`critical_alignments[${index}].${field}`, value]);
-  }
-  if (document.fidelity.status === "verified") for (const [index, item] of (document.parity_cases ?? []).entries()) for (const field of ["reference_evidence", "candidate_evidence"]) for (const value of item?.[field] ?? []) paths.push([`parity_cases[${index}].${field}`, value]);
-  for (const [label, value] of paths) { try { if (!await isFile(projectPath(projectRoot, value))) errors.push(`${label} 文件不存在：${value}`); } catch (error) { errors.push(`${label}：${error.message}`); } }
   return errors;
 }
 
 /** 解析合同 CLI 的文件检查开关与项目根目录。 */
 function parseArgs(argv) {
-  const args = { checkFiles: false };
-  for (let index = 0; index < argv.length; index += 1) { const token = argv[index]; if (token === "--json") args.asJson = true; else if (token === "--check-files") args.checkFiles = true; else if (token === "--project-root") args.projectRoot = argv[++index]; else if (!token.startsWith("-") && !args.contract) args.contract = token; else throw new Error(`不支持的参数：${token}`); }
+  const args = { checkFiles: false, stage: "V2" };
+  for (let index = 0; index < argv.length; index += 1) { const token = argv[index]; if (token === "--json") args.asJson = true; else if (token === "--check-files") args.checkFiles = true; else if (token === "--project-root") args.projectRoot = argv[++index]; else if (token === "--stage") { const stage = argv[++index]; if (!stage || stage.startsWith("-")) throw new Error("--stage 必须指定 V2 或 V4"); args.stage = stage; } else if (!token.startsWith("-") && !args.contract) args.contract = token; else throw new Error(`不支持的参数：${token}`); }
   if (!args.contract) throw new Error("必须传入一个合同文件路径"); return args;
 }
 
 /** 解析命令行、验证合同并返回退出码。 */
 export async function main(argv = process.argv.slice(2)) {
   let result; let asJson = false;
-  try { const args = parseArgs(argv); asJson = args.asJson; const document = await loadContract(args.contract); result = validateContract(document); if (args.checkFiles) { result.errors.push(...await checkContractFiles(document, args.projectRoot ?? resolve(args.contract, "..", ".."))); if (result.errors.length) result.status = "failed"; } } catch (error) { result = { status: "failed", errors: [`无法解析合同：${error.message}`], warnings: [], specialized_review: [] }; }
+  try {
+    const args = parseArgs(argv); asJson = args.asJson; const document = await loadContract(args.contract);
+    if (document?.schema_version === "2.0.0") {
+      const projectRoot = args.projectRoot ?? process.cwd();
+      const sources = await loadUiLayoutSourceDocuments(document, projectRoot);
+      result = validateContract(document, { stage: args.stage, projectRoot, checkFiles: args.checkFiles, forceLayoutSourceFiles: true, layoutSourceDocuments: sources });
+      if (args.checkFiles) for (const error of await checkContractFiles(document, projectRoot, { stage: args.stage })) appendUnique(result.errors, error);
+    } else {
+      result = validateContract(document, { stage: args.stage });
+      if (args.checkFiles) result.errors.push(...await checkContractFiles(document, args.projectRoot ?? resolve(args.contract, "..", "..")));
+    }
+    if (result.errors.length) result.status = "failed";
+  } catch (error) { result = { status: "failed", errors: [`无法解析合同：${error.message}`], warnings: [], specialized_review: [] }; }
   if (asJson) console.log(JSON.stringify(result)); else { console.log(`status: ${result.status}`); for (const error of result.errors) console.log(`error: ${error}`); for (const warning of result.warnings) console.log(`warning: ${warning}`); for (const item of result.specialized_review) console.log(`specialized_review: ${item}`); }
   return result.status === "passed" ? 0 : 1;
 }

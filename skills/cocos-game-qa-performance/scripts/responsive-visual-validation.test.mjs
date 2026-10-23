@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 import {
@@ -9,14 +12,19 @@ import {
   computeEdgeGaps,
   evaluateViewport as evaluateViewportRaw,
   evaluateMatrixCoverage,
+  loadResponsiveContract,
+  normalizeContract,
   summarizeReport,
   validateRepresentativeMatrix
 } from "./responsive-visual-validation.mjs";
-import { computeLayoutContractIdentityHash } from "../../cocos-game-ui-layout/scripts/validate_ui_layout_contract.mjs";
+import { effectImageContract as buildSceneContract } from "../../cocos-game-workflow-control/scripts/scene-reconstruction-test-fixtures.mjs";
+import { layoutSourceDocuments } from "../../cocos-game-workflow-control/scripts/v2-layout-source-test-fixtures.mjs";
 
 const identity = { candidate_sha256: `sha256:${"a".repeat(64)}`, scene_id: "main", state_id: "default", layout_contract_version: "1.1.0", visual_baseline_version: "1.0.0" };
 const screenshot = { path: "evidence/viewport.png" };
 const uiTemplate = JSON.parse(readFileSync(new URL("../../cocos-game-ui-layout/assets/ui-layout-contract-template.yaml", import.meta.url), "utf8"));
+const ordinaryUiTemplate = JSON.parse(readFileSync(new URL("../../cocos-game-ui-layout/assets/ordinary-ui-layout-contract-template.yaml", import.meta.url), "utf8"));
+const policyTemplate = JSON.parse(readFileSync(new URL("../../cocos-game-ui-layout/assets/project-ui-layout-policy-template.yaml", import.meta.url), "utf8"));
 
 const hook = {
   version: 1,
@@ -48,10 +56,10 @@ function evaluateViewport(input) {
 /** 构造具备四层 Hook 数据的最小响应式契约，供纯计算测试复用。 */
 function contract(overrides = {}) {
   return {
-    ...structuredClone(uiTemplate),
+    ...structuredClone(ordinaryUiTemplate),
     visual_validation: { mode: "exact" },
     contract_version: identity.layout_contract_version,
-    scope: { ...structuredClone(uiTemplate.scope), scenes: ["main"], bindings: { ...structuredClone(uiTemplate.scope.bindings), code_candidate: identity.candidate_sha256, visual_baseline: identity.visual_baseline_version } },
+    scope: { ...structuredClone(ordinaryUiTemplate.scope), scenes: ["main"], bindings: { ...structuredClone(ordinaryUiTemplate.scope.bindings), code_candidate: identity.candidate_sha256, visual_baseline: identity.visual_baseline_version } },
     viewport: {
       mode: "full-viewport",
       strategy: "FIXED_WIDTH",
@@ -67,24 +75,28 @@ function contract(overrides = {}) {
   };
 }
 
-/** 构造已绑定冻结目标与父子停靠几何的效果图合同，避免不同入口的测试样本发生漂移。 */
-function effectImageContract() {
-  const targetSha = `sha256:${"b".repeat(64)}`;
-  const document = {
-    ...contract(),
-    resize: { required: false },
-    viewports: [],
-    effect_image_reconstruction: { applicability: "effect-image" },
-    fidelity: { applicability: "frozen-target", status: "specified" },
-    frozen_visual_target: { candidate_id: "target-1", target_sha256: targetSha, original_file: "evidence/target.png", visual_baseline_version: identity.visual_baseline_version, status: "frozen" },
-    scene_reconstruction_binding: { target_sha256: targetSha, scene_id: identity.scene_id, state_id: identity.state_id, visual_baseline_version: identity.visual_baseline_version, reconstruction_contract_version: "1.0.0", layout_contract_sha256: "pending", layout_decomposition_version: "layout-v1", target_viewport: { width: 360, height: 800 } },
-    layout_nodes: [{ layout_node_id: "hud.title", region_id: "title", coordinate_space: "ui-space", reference_id: "safe-area", parent_layout_node_id: "safe-area", parent_target_bounds: { x: 0, y: 0, width: 360, height: 800 }, relative_position: { left: 10, right: 250, top: 20, bottom: 740 }, axis_alignment: { horizontal: "left", vertical: "top" }, self_anchor: "top-left", reference_anchor: "top-left", offset: { x: 10, y: 20 }, target_bounds: { x: 10, y: 20, width: 100, height: 40 }, size_policy: "fixed-at-target", ui_layout: { grouping_basis: ["POSITION"], layout_owner: "SELF", size_policy: "CONTENT", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "NONE" }, z_order: 10, clip_policy: "none", responsive_rule: "preserve-center-and-top-gap", planned_test_id: "align-title" }],
-    layout_annotation: { layout_annotation_file: "evidence/layout-annotation.png", layout_annotation_sha256: targetSha, layout_annotation_width: 360, layout_annotation_height: 800, layout_annotation_schema: "layout-annotation/png/1", layout_annotation_layout: "image-plus-right-panel", layout_annotation_metadata_sha256: targetSha, layout_annotation_identity_sha256: targetSha, layout_review_file: "evidence/layout-review.html", layout_review_sha256: targetSha, layout_review_identity_sha256: targetSha, layout_nodes_file: "evidence/layout-nodes.json", layout_nodes_sha256: targetSha, decomposition_confirmation_id: "v2-confirmation", decomposition_confirmation_sha256: targetSha, proposal_sha256: targetSha, layout_decision_file: "evidence/automatic-layout-decision.json", layout_decision_sha256: targetSha, layout_decision_id: "layout-decision-1", target_sha256: targetSha, scene_id: identity.scene_id, state_id: identity.state_id, layout_node_ids: ["hud.title"] },
-    critical_alignments: [{ id: "align-title", layout_node_id: "hud.title", element_id: "title", reference_id: "ui-root", planned_test_id: "align-title", target_sha256: targetSha, candidate_sha256: identity.candidate_sha256, horizontal: { type: "aligned", element_anchor: "center", reference_anchor: "center" }, vertical: { type: "offset", element_anchor: "top", reference_anchor: "top" }, target_measurement: { x: 10, y: 20, width: 100, height: 40 }, target_evidence: ["evidence/target-title.png"], tolerance: { unit: "logical-px", value: 2 } }]
+/** 复用 workflow 的真实场景夹具及其 canonical layout source，避免 QA 维护第二棵手填布局树。 */
+function referencedContractFixture() {
+  const document = structuredClone(uiTemplate);
+  const scene = buildSceneContract();
+  const policy = structuredClone(policyTemplate);
+  const policyPath = document.project_policy_file;
+  const scenePath = document.scene_contract_file;
+  const nodesPath = scene.layout_decomposition.layout_source.nodes_file;
+  const sources = new Map([
+    [policyPath, policy],
+    [scenePath, scene],
+    [nodesPath, layoutSourceDocuments.get(nodesPath)],
+  ]);
+  const target = scene.target_conditions;
+  const v2Identity = {
+    ...identity,
+    scene_id: target.scene_id,
+    state_id: target.state_id,
+    layout_contract_version: target.layout_contract_version,
+    visual_baseline_version: target.visual_baseline_version,
   };
-  // 身份哈希必须在节点与场景绑定完整后计算，确保测试覆盖真实合同而非格式占位。
-  document.scene_reconstruction_binding.layout_contract_sha256 = computeLayoutContractIdentityHash(document);
-  return { document, targetSha };
+  return { document, policy, scene, sources, nodesPath, identity: v2Identity };
 }
 
 test("360x800 中 Canvas [0,80,360,640] 必须失败", () => {
@@ -392,14 +404,52 @@ test("V4 响应式证据直接绑定正式候选身份", () => {
   assert.deepEqual(report.identityErrors, []);
 });
 
-test("效果图还原报告不比较目标摘要，仍复核实际布局合同", () => {
-  const { document, targetSha } = effectImageContract();
-  const missing = summarizeReport([], document, identity); assert.deepEqual(missing.identityErrors, []);
-  const wrong = summarizeReport([], document, { ...identity, target_sha256: `sha256:${"c".repeat(64)}` }); assert.deepEqual(wrong.identityErrors, []);
-  const complete = summarizeReport([], document, { ...identity, target_sha256: targetSha }); assert.deepEqual(complete.identityErrors, []);
+test("V2 响应式 QA 消费公共策略、冻结场景身份和唯一 canonical layout source", () => {
+  const fixture = referencedContractFixture();
+  const normalized = normalizeContract(fixture.document, { stage: "V2", layoutSourceDocuments: fixture.sources });
+  assert.equal(normalized.identityContract.trusted, true, normalized.identityContract.validationErrors.join("；"));
+  assert.equal(normalized.identityContract.sourceKind, "scene-contract");
+  assert.deepEqual(normalized.identityContract.scenes, [fixture.identity.scene_id]);
+  assert.deepEqual(normalized.identityContract.states, [fixture.identity.state_id]);
+  assert.equal(normalized.identityContract.contractVersion, fixture.identity.layout_contract_version);
+  assert.equal(normalized.viewport.mode, "full-viewport");
+  assert.equal(normalized.viewport.allowWhitespace, false);
+  assert.equal(normalized.viewport.backgroundCoverageTarget, 1);
+  assert.deepEqual(normalized.layoutSource.layoutNodeIds, layoutSourceDocuments.get(fixture.nodesPath).layout_nodes.map((node) => node.layout_node_id));
+  assert.deepEqual(summarizeReport([], normalized, fixture.identity).identityErrors, []);
+
+  const mismatched = summarizeReport([], normalized, { ...fixture.identity, scene_id: "other-scene" });
+  assert(mismatched.identityErrors.some((item) => item.includes("scene_contract.target_conditions.scene_id")));
 });
 
-test("响应式入口复用效果图父子停靠几何合同", () => { const { document, targetSha } = effectImageContract(); document.layout_nodes[0].relative_position.left += 1; assert.notEqual(computeLayoutContractIdentityHash(document), document.scene_reconstruction_binding.layout_contract_sha256); assert.equal(summarizeReport([], document, { ...identity, target_sha256: targetSha }).responsivePass, false); });
+test("V2 QA 无法解析引用或 canonical source 不可信时不得建立身份", () => {
+  const fixture = referencedContractFixture();
+  const withoutReferences = normalizeContract(fixture.document);
+  assert.equal(withoutReferences.identityContract.trusted, false);
+  assert(withoutReferences.identityContract.validationErrors.some((item) => item.includes("显式提供 Map")));
+
+  const brokenSources = new Map(fixture.sources);
+  brokenSources.set(fixture.nodesPath, { schema: "wrong" });
+  const broken = normalizeContract(fixture.document, { stage: "V2", layoutSourceDocuments: brokenSources });
+  assert.equal(broken.identityContract.trusted, false);
+  assert(broken.identityContract.validationErrors.some((item) => item.includes("V2 布局源 schema")));
+});
+
+test("V2 QA 文件入口真实读取策略、场景和 canonical source，且与 Map 结构结果一致", async () => {
+  const fixture = referencedContractFixture();
+  const root = await import("node:fs/promises").then(({ mkdtemp }) => mkdtemp(join(tmpdir(), "responsive-v2-source-")));
+  for (const [relativePath, document] of fixture.sources) {
+    const file = join(root, relativePath);
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, JSON.stringify(document));
+  }
+  const structural = normalizeContract(fixture.document, { stage: "V2", layoutSourceDocuments: fixture.sources });
+  const loaded = await loadResponsiveContract(fixture.document, { stage: "V2", projectRoot: root });
+  assert.equal(loaded.identityContract.trusted, true, loaded.identityContract.validationErrors.join("；"));
+  assert.deepEqual(loaded.identityContract, structural.identityContract);
+  assert.deepEqual(loaded.layoutSource, structural.layoutSource);
+  await assert.rejects(loadResponsiveContract(fixture.document), /必须显式提供 projectRoot/);
+});
 
 test("报告身份必须与原始 UI 合同交叉绑定", () => { for (const [field, value, message] of [["scene_id", "other", "scope.scenes"], ["state_id", "paused", "scope.states"], ["layout_contract_version", "9.0.0", "contract_version"], ["visual_baseline_version", "2.0.0", "视觉基线"]]) { const report = summarizeReport([], { ...contract(), resize: { required: false }, viewports: [] }, { ...identity, [field]: value }); assert(report.identityErrors.some((item) => item.includes(message)), field); } });
 

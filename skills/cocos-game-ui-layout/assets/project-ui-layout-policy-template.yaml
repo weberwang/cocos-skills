@@ -1,0 +1,331 @@
+{
+  "schema_version": "1.0.0",
+  "policy_id": "project-ui-layout-policy",
+  "policy_version": "1.0.0",
+  "logicalViewportSpace": {
+    "unit": "css-px",
+    "layoutSpace": "css-logical-px",
+    "gameSizeSpace": "css-logical-px",
+    "safeAreaSpace": "css-logical-px",
+    "source": "canvas-css-client-rect",
+    "coordinateOrigin": "top-left"
+  },
+  "designResolutionPolicy": {
+    "portrait": {
+      "width": 1080,
+      "height": 1920,
+      "fitAxis": "width"
+    },
+    "landscape": {
+      "width": 1920,
+      "height": 1080,
+      "fitAxis": "height"
+    },
+    "canvasFit": "fill-viewport",
+    "crossAxis": "extend-or-crop",
+    "backgroundFit": {
+      "mode": "cover-v1",
+      "sourceFocalPoint": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "targetPoint": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "canvasBackingPolicy": {
+    "cssSpace": "css-logical-px",
+    "backingSpace": "physical-px",
+    "relation": "backing = ceil(CSS logical size × effectiveDPR)",
+    "widthFormula": "ceil(cssWidth * effectiveDevicePixelRatio)",
+    "heightFormula": "ceil(cssHeight * effectiveDevicePixelRatio)",
+    "effectiveDprSource": "runtimeDprPolicy",
+    "rounding": "ceil",
+    "updatesOn": [
+      "resize",
+      "orientation-change",
+      "dpr-change"
+    ],
+    "physicalPixelLayout": "forbidden",
+    "maxBackingSource": "performanceBudget.maxCanvasBacking"
+  },
+  "runtimeDprPolicy": {
+    "policy": "dynamic-capped-2",
+    "source": "device-dynamic",
+    "invalidInput": "fallback-to-1",
+    "invalidFallback": 1,
+    "minExclusive": 0,
+    "maxInclusive": 2,
+    "refreshOn": [
+      "resize",
+      "orientation-change",
+      "display-density-change"
+    ],
+    "notStartupOnly": true,
+    "listenerCleanup": "required"
+  },
+  "maxRuntimeDpr": 2,
+  "scaleMode": "custom",
+  "cameraViewportPolicy": {
+    "coordinateSpace": "css-logical-px",
+    "gameSizeSpace": "css-logical-px",
+    "physicalMapping": "logical → CSS → physical backing",
+    "requiresExplicitViewport": true,
+    "popupInheritance": "inherit-host-viewport"
+  },
+  "cameraZoomPolicy": {
+    "coordinateSpace": "css-logical-px",
+    "defaultZoom": 1,
+    "dprIndependent": true,
+    "resizeBehavior": "preserve-logical-size",
+    "popupInheritance": "inherit-host-zoom"
+  },
+  "cameraOriginPolicy": {
+    "uiOrigin": "top-left",
+    "worldOrigin": "explicit-per-scene-contract",
+    "popupOrigin": "inherit-host-origin",
+    "implicitOrigin": "forbidden",
+    "measurementSpace": "screen-top-left-y-down",
+    "nodeSpace": "anchor-local-y-up",
+    "creatorResolutionPolicy": {
+      "landscape": "FIXED_HEIGHT",
+      "portrait": "FIXED_WIDTH"
+    },
+    "conversion": "Camera projection + UITransform coordinate conversion"
+  },
+  "inputCoordinatePolicy": {
+    "source": "css-client-pixels",
+    "mapping": "CSS client → logical viewport → camera/world",
+    "hitTestSpace": "css-logical-px",
+    "dprAware": true,
+    "cameraAware": true,
+    "physicalPixelInput": "forbidden",
+    "popupInheritance": "inherit-host-input-contract"
+  },
+  "safeAreaPolicy": {
+    "coordinateSpace": "css-logical-px",
+    "source": "runtime-insets",
+    "zeroCase": "content-margins",
+    "refreshOn": [
+      "resize",
+      "orientation-change",
+      "safe-area-change"
+    ],
+    "popupInheritance": "inherit-host-safe-area"
+  },
+  "resizePolicy": {
+    "samePage": true,
+    "pageReloaded": false,
+    "events": [
+      "resize",
+      "orientation-change",
+      "dpr-change",
+      "safe-area-change"
+    ],
+    "recompute": [
+      "logicalViewportSpace",
+      "canvasBackingPolicy",
+      "safeAreaPolicy",
+      "cameraViewportPolicy",
+      "inputCoordinatePolicy",
+      "textResolutionPolicy"
+    ],
+    "listenerCleanup": "required",
+    "idempotent": true,
+    "dprChangeUpdatesCssAndBacking": true
+  },
+  "orientationPolicy": {
+    "allowed": [
+      "portrait",
+      "landscape"
+    ],
+    "source": "runtime-viewport",
+    "reflow": "contract-breakpoints",
+    "resizeRequired": true,
+    "popupInheritance": "inherit-host-orientation"
+  },
+  "textResolutionPolicy": {
+    "coordinateSpace": "css-logical-px",
+    "fontSizeUnit": "logical-px",
+    "dprIndependent": true,
+    "reflowOn": [
+      "resize",
+      "orientation-change",
+      "dpr-change",
+      "locale-change"
+    ],
+    "clarityDegradation": "forbid-silent"
+  },
+  "assetResolutionPolicy": {
+    "productionDpr": 1,
+    "runtimeDprSource": "runtimeDprPolicy",
+    "runtimeProductionSeparated": true,
+    "sourceResolution": "cover-intended-display-scale",
+    "upscaleAsClarityFix": "forbidden",
+    "insufficientAsset": "block-or-explicit-degradation",
+    "degradationDisclosure": "required"
+  },
+  "performanceBudget": {
+    "maxCanvasBacking": {
+      "width": 2732,
+      "height": 2048
+    },
+    "maxCanvasPixels": 5595136,
+    "renderTexturePixels": 2000000,
+    "fullscreenFilterPasses": 1,
+    "transparentFullscreenLayers": 1,
+    "representativeDevices": [
+      "mobile-high-density",
+      "desktop-wide"
+    ],
+    "measuredResults": "evidence/performance/runtime-results.json",
+    "degradationPolicy": "reduce-effects-after-explicit-budget-review; never silently reduce DPR, asset quality, or text clarity"
+  },
+  "representativeViewports": [
+    {
+      "id": "narrow-portrait",
+      "kind": "narrow-portrait",
+      "width": 320,
+      "height": 480,
+      "orientation": "portrait",
+      "rawDpr": 1,
+      "effectiveDpr": 1
+    },
+    {
+      "id": "standard-portrait",
+      "kind": "standard-portrait",
+      "width": 390,
+      "height": 844,
+      "orientation": "portrait",
+      "rawDpr": 1.5,
+      "effectiveDpr": 1.5
+    },
+    {
+      "id": "landscape",
+      "kind": "landscape",
+      "width": 844,
+      "height": 390,
+      "orientation": "landscape",
+      "rawDpr": 2,
+      "effectiveDpr": 2
+    },
+    {
+      "id": "desktop-wide",
+      "kind": "desktop-wide",
+      "width": 1366,
+      "height": 1024,
+      "orientation": "landscape",
+      "rawDpr": 3,
+      "effectiveDpr": 2
+    }
+  ],
+  "requiredRuntimeEvidence": {
+    "mode": "usability",
+    "requiredFields": [
+      "viewportRect",
+      "canvasRect",
+      "designTransform",
+      "logicalSize",
+      "backingSize",
+      "cssDisplaySize",
+      "rawDevicePixelRatio",
+      "effectiveDevicePixelRatio",
+      "logicalToCssScale",
+      "cssToPhysicalScale",
+      "cameraViewport",
+      "cameraZoom",
+      "cameraOrigin",
+      "safeArea",
+      "edgeGaps",
+      "backgroundCoverage",
+      "keyUiRects",
+      "inputHitResults",
+      "resizeTrajectory",
+      "pageReloaded",
+      "screenshot",
+      "sceneId",
+      "stateId",
+      "layoutContractVersion",
+      "visualBaselineVersion"
+    ],
+    "dprAssertions": {
+      "runtimeMeasured": true,
+      "invalidFallback": 1,
+      "maxRuntimeDpr": 2,
+      "rawAboveTwoEffectiveTwo": true,
+      "productionDpr": 1,
+      "productionDprSeparate": true
+    },
+    "resizeAssertions": {
+      "samePage": true,
+      "cssAndBackingUpdateOnDprChange": true,
+      "dprDecreaseToOne": true,
+      "sameDprResize": true
+    },
+    "displayLayerTrajectory": {
+      "required": true,
+      "steps": [
+        "open",
+        "interact",
+        "resize",
+        "close",
+        "host-restore"
+      ],
+      "hostSceneState": true,
+      "independentEvidence": true,
+      "inheritCssLogicalViewport": true,
+      "sameEffectiveDpr": true,
+      "hostPassDoesNotImplyPass": true
+    },
+    "evidenceBinding": {
+      "layoutContractVersion": "scene_contract.target_conditions.layout_contract_version",
+      "scene": "scene_contract.target_conditions.scene_id",
+      "state": "scene_contract.target_conditions.state_id"
+    },
+    "missingMeasurement": "unverified"
+  },
+  "targets": {
+    "min": {
+      "width": 320,
+      "height": 480,
+      "orientation": "portrait"
+    },
+    "preferred": {
+      "width": 390,
+      "height": 844,
+      "orientation": "portrait"
+    },
+    "max": {
+      "width": 1366,
+      "height": 1024,
+      "orientation": "landscape"
+    },
+    "orientations": [
+      "portrait",
+      "landscape"
+    ],
+    "aspect_ratio": {
+      "min": 0.4,
+      "max": 2.0
+    }
+  },
+  "coordinate_spaces": [
+    {
+      "id": "screen-space",
+      "kind": "canvas",
+      "parent": null
+    },
+    {
+      "id": "ui-space",
+      "kind": "screen-container",
+      "parent": "screen-space"
+    },
+    {
+      "id": "scroll-space",
+      "kind": "ui-scroll-content",
+      "parent": "ui-space"
+    }
+  ]
+}

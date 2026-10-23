@@ -44,6 +44,7 @@ export function collectManifestFileEvidenceEntries(data) {
   });
   const layoutDecomposition = data?.scene_reconstruction_contract?.layout_decomposition;
   const layoutAnnotation = layoutDecomposition?.layout_annotation;
+  if (nonEmptyString(layoutDecomposition?.layout_source?.nodes_file)) entries.push(["scene_reconstruction_contract.layout_decomposition.layout_source.nodes_file", layoutDecomposition.layout_source.nodes_file]);
   const layoutConfirmation = layoutDecomposition?.layout_annotation_confirmation;
   if (isObject(layoutAnnotation) && nonEmptyString(layoutAnnotation.layout_annotation_file)) entries.push(["scene_reconstruction_contract.layout_decomposition.layout_annotation.layout_annotation_file", layoutAnnotation.layout_annotation_file]);
   if (isObject(layoutAnnotation) && nonEmptyString(layoutAnnotation.layout_review_file)) entries.push(["scene_reconstruction_contract.layout_decomposition.layout_annotation.layout_review_file", layoutAnnotation.layout_review_file]);

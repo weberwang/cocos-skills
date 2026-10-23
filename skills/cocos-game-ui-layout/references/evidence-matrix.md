@@ -2,7 +2,7 @@
 
 所有快照、运行轨迹和关系测试必须绑定同一候选 ID、合同版本、视口配置、语言、状态、随机种子和稳定帧。缺证据时报告“未验证”，不以用户确认或旧候选替代。
 
-布局审阅页属于 V2 可读展示产物：必须与冻结参考图、拆解 proposal、布局决策、节点 JSON 和标准布局 PNG 关联同批实际文件；它帮助人工检查关系，但不替代 PNG、F2 机器验收或 V4 运行证据。产物目录、坐标映射、审阅页身份和确认字段详见[离线布局审阅产物](layout-review-artifacts.md)。
+effect-image 的同批 `layout-nodes.json` 是唯一 V2 布局事实源，scene contract 的 `layout_source.nodes_file`、annotation 与 confirmation 的 `layout_nodes_file` 必须共同指向它。布局审阅页属于可读展示投影：必须与冻结参考图、历史 Stage A proposal、Stage B decision、唯一节点文件和标准布局 PNG 关联同批实际文件；它帮助人工检查关系，但不替代 PNG、F2 机器验收或 V4 真实运行证据，不能另建手工布局事实或回写 proposal。普通 UI schema 1.2.0 的合同字段另见[布局合同](layout-contract.md)。产物目录、坐标映射、审阅页身份和确认字段详见[离线布局审阅产物](layout-review-artifacts.md)。
 
 默认 `visual_validation.mode=usability` 使用代表性视口和关键状态的实际证据，核对关键内容可见、可读、可交互。只有 `exact` 才强制完整 parity case、目标/候选精确测量、预定义容差和全视口/全状态矩阵。已提供的案例保留目标 SHA、当前候选 SHA、scene/state、实际 DPR、视觉基线与证据身份，不能用旧结果冒充当前结果；仅重验受影响部分。
 
@@ -16,7 +16,7 @@
 
 effect-image 的 parity case 不能退化为 `structured-layout-and-independent-review`：默认 `usability` 必须提供代表性 viewport reference/candidate、关键 coverage region 的关系事实、可读性和交互证据；`exact` 或明确精确需求时才提供完整 viewport、side-by-side、overlay/diff 及全部 coverage region 的 target/candidate fact、delta、tolerance、result、evidence。关键证据缺失、明显越界/裁切/遮挡或交互失效使 V4/F2 失败；小幅位置和尺寸差异在 `usability` 下不单独阻断。
 
-`specified` 只冻结目标测量与测试合同，不要求尚未产生的运行证据；`verified` 才要求运行测量、实际证据以及非空且全部通过的 parity cases。普通布局为 `not-applicable`，不创建伪造冻结目标。
+普通 UI schema 1.2.0 仅使用 `not-applicable` 布局合同。effect-image 的 V2 目标与 V4 运行证据保存在 scene contract 和视觉清单，不再通过 UI 合同的 `specified`/`verified`、`critical_alignments` 或 `parity_cases` 保存副本；schema 2.0.0 UI 合同仅引用公共策略与场景合同。
 
 ## 最小轴
 

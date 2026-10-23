@@ -132,17 +132,10 @@ function textFact(node, typography, names) {
   return field(typography, ...names) ?? field(node, ...names);
 }
 
-/** 读取布局节点映射；独立调用时也能从 scene contract 自动建立引用索引。 */
-function layoutIndex(contract, layoutInfo) {
+/** 读取主场景校验已从唯一布局源构造的节点映射，不再回读场景合同副本。 */
+function layoutIndex(layoutInfo) {
   if (layoutInfo?.nodeById instanceof Map) return layoutInfo.nodeById;
-  const decomposition = field(contract, "layout_decomposition", "layoutDecomposition", "layout_decomposition_contract", "layoutDecompositionContract");
-  const nodes = field(decomposition, "layout_nodes", "layoutNodes");
-  const result = new Map();
-  if (Array.isArray(nodes)) for (const node of nodes) {
-    const id = field(node, "layout_node_id", "layoutNodeId");
-    if (nonEmptyString(id) && !result.has(id)) result.set(id, node);
-  }
-  return result;
+  return new Map();
 }
 
 /** 读取 coverage region 映射，检查 text_node 与现有 coverage 的双向归属。 */
@@ -486,7 +479,7 @@ export function validateTextNode(node, context = {}) {
   const { contract, stage = "V1", regions, layoutInfo, toleranceDefinitions, isV4Runtime = false } = context;
   const errors = [];
   const regionMap = regionIndex(contract, regions);
-  const layoutMap = layoutIndex(contract, layoutInfo);
+  const layoutMap = layoutIndex(layoutInfo);
   const toleranceMap = toleranceIndex(contract, toleranceDefinitions);
   const stageName = String(stage).toUpperCase();
   const routeRequired = ["V3", "V4", "VALIDATING"].includes(stageName);

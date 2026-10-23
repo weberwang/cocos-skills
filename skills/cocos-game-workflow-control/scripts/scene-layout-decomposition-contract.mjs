@@ -8,6 +8,7 @@
 import { validateEffectImageParentChildLayoutNodes } from "./layout-node-parent-geometry.mjs";
 import { resolveVisualValidationMode, visualGeometryDifferenceExceeds, visualBoundsOutsideViewport } from "./visual-validation-policy.mjs";
 import { validateLayoutRuntimeSnapshots } from "../../cocos-game-ui-layout/scripts/widget-runtime.mjs";
+import { resolveV2LayoutSource } from "../../cocos-game-ui-layout/scripts/v2-layout-source.mjs";
 
 /** 判断是否为普通对象。 */
 function isObject(value) {
@@ -85,6 +86,31 @@ function contractError(stage, contract, region, message, details = {}) {
   const returnStage = details.returnStage ?? (stage === "V1" || stage === "V2" ? "V1/PROPOSAL" : stage);
   const rootCause = details.rootCause ?? (returnStage === "V1/PROPOSAL" ? "方案缺失" : stage === "V3" ? "执行问题" : stage === "V4" || stage === "VALIDATING" ? "验收问题" : "方案缺失");
   return `[${stage}] scene/state=${scene}/${state} annotation_number=${annotation} region_id=${regionId} 根因=${rootCause} ${message}${missing} 预期证据=${expected} 实际证据=${actual} 应退回阶段=${returnStage}`;
+}
+
+/** 从场景合同解析唯一 V2 布局源，并绑定冻结目标与独立确认身份。 */
+export function resolveSceneV2LayoutSource(contract, options = {}, targetInfo = null) {
+  const decomposition = field(contract, "layout_decomposition", "layoutDecomposition", "layout_decomposition_contract", "layoutDecompositionContract");
+  if (!isObject(decomposition)) throw new Error("effect-image 缺少 layout_decomposition");
+  if (["layout_nodes", "layoutNodes"].some((name) => Object.hasOwn(decomposition, name))) throw new Error("layout_decomposition 禁止内联 layout_nodes；分组与布局事实只能来自 layout_source.nodes_file");
+  const source = decomposition.layout_source;
+  if (source === undefined) throw new Error("layout_decomposition 缺少唯一布局事实来源 layout_source.nodes_file");
+  const annotation = field(decomposition, "layout_annotation", "layoutAnnotation");
+  const layoutConfirmation = field(decomposition, "layout_annotation_confirmation", "layoutAnnotationConfirmation");
+  if (!nonEmptyString(source?.nodes_file)
+    || source.nodes_file !== field(annotation, "layout_nodes_file", "layoutNodesFile")
+    || source.nodes_file !== field(layoutConfirmation, "layout_nodes_file", "layoutNodesFile")) {
+    throw new Error("layout_source.nodes_file 必须与 layout_annotation 和 layout_annotation_confirmation 的 layout_nodes_file 完全一致");
+  }
+  const upstreamConfirmation = field(contract, "visual_decomposition_confirmation", "visualDecompositionConfirmation", "decomposition_confirmation", "decompositionConfirmation");
+  const target = targetInfo ?? field(contract, "target_conditions", "targetConditions", "target", "frozen_target", "frozenTarget");
+  return resolveV2LayoutSource(source, options, {
+    sceneId: target?.sceneId ?? field(target, "scene_id", "sceneId"),
+    stateId: target?.stateId ?? field(target, "state_id", "stateId"),
+    viewport: target?.viewport ?? field(target, "viewport", "target_viewport", "targetViewport"),
+    decompositionConfirmationId: field(annotation, "decomposition_confirmation_id", "decompositionConfirmationId") ?? field(upstreamConfirmation, "confirmation_id", "confirmationId"),
+    layoutDecisionId: field(annotation, "layout_decision_id", "layoutDecisionId"),
+  });
 }
 
 /** 判断一个合同是否明确进入 effect-image 忠实还原模式。 */
@@ -195,16 +221,12 @@ export function validateLayoutNode(node, contract, targetInfo, stage, errors, in
   const required = [
     [["layout_node_id", "layoutNodeId"], "layout_node_id"],
     [["region_id", "regionId"], "region_id"],
-    [["coordinate_space", "coordinateSpace"], "coordinate_space"],
+    [["ui_layout"], "ui_layout"],
     [["reference_id", "referenceId"], "reference_id"],
     [["self_anchor", "selfAnchor"], "self_anchor"],
     [["reference_anchor", "referenceAnchor"], "reference_anchor"],
     [["offset"], "offset"],
     [["target_bounds", "targetBounds", "bounds"], "target_bounds"],
-    [["size_policy", "sizePolicy"], "size_policy"],
-    [["z_order", "zOrder"], "z_order"],
-    [["clip_policy", "clipPolicy"], "clip_policy"],
-    [["responsive_rule", "responsiveRule"], "responsive_rule"],
   ];
   if (requireIdentity) required.push(
     [["scene_id", "sceneId"], "scene_id"],
@@ -217,13 +239,13 @@ export function validateLayoutNode(node, contract, targetInfo, stage, errors, in
       ? isObject(value) && Number.isFinite(value.x) && Number.isFinite(value.y)
       : text === "target_bounds"
         ? validLayoutBounds(value)
-        : text === "z_order"
-          ? Number.isFinite(value)
-          : ["layout_node_id", "region_id", "coordinate_space", "reference_id"].includes(text)
+        : ["layout_node_id", "region_id", "reference_id"].includes(text)
             ? nonEmptyString(value)
           : hasStructuredValue(value);
     if (!valid) errors.push(contractError(stage, contract, node, `${label} 缺少或无效 ${text}`, { missing: `layout_nodes[${index}].${text}`, returnStage: "V1/PROPOSAL" }));
   }
+  const zOrder = field(node, "z_order", "zOrder");
+  if (zOrder !== undefined && !Number.isFinite(zOrder)) errors.push(contractError(stage, contract, node, `${label}.z_order 必须是有限数值`, { actual: String(zOrder), returnStage: "V1/PROPOSAL" }));
   const nodeSceneId = field(node, "scene_id", "sceneId");
   if (nodeSceneId !== undefined && targetInfo?.sceneId && nodeSceneId !== targetInfo.sceneId) errors.push(contractError(stage, contract, node, `${label} scene_id 与冻结目标不一致`, { expected: targetInfo.sceneId, actual: nodeSceneId, returnStage: "V1/PROPOSAL" }));
   const nodeStateId = field(node, "state_id", "stateId");
@@ -231,11 +253,8 @@ export function validateLayoutNode(node, contract, targetInfo, stage, errors, in
   const nodeLayoutVersion = field(node, "layout_contract_version", "layoutContractVersion");
   if (nodeLayoutVersion !== undefined && targetInfo?.layoutVersion && nodeLayoutVersion !== targetInfo.layoutVersion) errors.push(contractError(stage, contract, node, `${label} layout contract version 与冻结目标不一致`, { expected: targetInfo.layoutVersion, actual: nodeLayoutVersion, returnStage: "V1/PROPOSAL" }));
   const bounds = field(node, "target_bounds", "targetBounds", "bounds");
-  const coordinateSpace = String(field(node, "coordinate_space", "coordinateSpace") ?? "").toLowerCase();
-  // viewport/screen 节点使用逻辑目标视口校验，世界节点才回退到效果图原始画布。
-  const canvas = /viewport|screen|logical/.test(coordinateSpace)
-    ? targetInfo?.viewport ?? targetInfo?.size
-    : targetInfo?.size ?? targetInfo?.viewport;
+  // layout-nodes 文档的 viewport 定义唯一逻辑坐标空间，不再要求每个节点重复声明 coordinate_space。
+  const canvas = targetInfo?.viewport ?? targetInfo?.size;
   if (validLayoutBounds(bounds) && validSize(canvas)) {
     const inside = bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= canvas.width && bounds.y + bounds.height <= canvas.height;
     if (!inside) errors.push(contractError(stage, contract, node, `${label} target_bounds 必须位于冻结目标画布内`, { expected: `0<=x,y 且 right<=${canvas.width}, bottom<=${canvas.height}`, actual: JSON.stringify(bounds), returnStage: "V1/PROPOSAL" }));
@@ -246,30 +265,36 @@ export function validateLayoutNode(node, contract, targetInfo, stage, errors, in
 export function validateLayoutDecomposition(contract, targetInfo, stage, errors, effectImage = false, options = {}) {
   if (!effectImage) return { decomposition: null, nodes: [], nodeById: new Map(), binding: null };
   const decomposition = field(contract, "layout_decomposition", "layoutDecomposition", "layout_decomposition_contract", "layoutDecompositionContract");
-  if (options.requireLayout === false) {
-    // V2/V3 不执行最终几何验收，但文本等合同仍需按 ID 引用冻结的 V2 节点源。
-    const sourceNodes = isObject(decomposition) ? field(decomposition, "layout_nodes", "layoutNodes") : undefined;
-    const nodes = Array.isArray(sourceNodes) ? sourceNodes : [];
-    const nodeById = new Map();
-    for (const [index, node] of nodes.entries()) {
-      const nodeId = field(node, "layout_node_id", "layoutNodeId");
-      if (!isObject(node) || !nonEmptyString(nodeId)) {
-        errors.push(contractError(stage, contract, node, `V2 layout_nodes[${index}] 必须包含 layout_node_id`, { missing: `layout_nodes[${index}].layout_node_id`, returnStage: "V1/PROPOSAL" }));
-      } else if (nodeById.has(nodeId)) {
-        errors.push(contractError(stage, contract, node, "V2 layout_node_id 重复", { actual: nodeId, returnStage: "V1/PROPOSAL" }));
-      } else nodeById.set(nodeId, node);
-    }
-    return { decomposition, nodes, nodeById, binding: null };
-  }
   if (!isObject(decomposition)) {
     errors.push(contractError(stage, contract, null, "effect-image 缺少 layout_decomposition", { missing: "layout_decomposition", returnStage: "V1/PROPOSAL" }));
     return { decomposition: null, nodes: [], nodeById: new Map(), binding: null };
   }
-  const nodes = field(decomposition, "layout_nodes", "layoutNodes");
-  if (!Array.isArray(nodes) || nodes.length === 0) {
-    errors.push(contractError(stage, contract, decomposition, "layout_decomposition.layout_nodes 必须是非空数组", { missing: "layout_nodes", returnStage: "V1/PROPOSAL" }));
+
+  const inlineLayoutFields = ["layout_nodes", "layoutNodes"].filter((name) => Object.hasOwn(decomposition, name));
+  if (Object.hasOwn(decomposition, "layoutSource")) {
+    errors.push(contractError(stage, contract, decomposition, "布局事实来源必须使用 canonical layout_source 字段", { actual: "layoutSource", returnStage: "V1/PROPOSAL" }));
     return { decomposition, nodes: [], nodeById: new Map(), binding: null };
   }
+  const hasSourceField = Object.hasOwn(decomposition, "layout_source");
+  if (inlineLayoutFields.length > 0) {
+    errors.push(contractError(stage, contract, decomposition, "layout_decomposition 禁止内联 layout_nodes；分组与布局事实只能来自 layout_source.nodes_file", { actual: inlineLayoutFields.join(","), returnStage: "V1/PROPOSAL" }));
+    return { decomposition, nodes: [], nodeById: new Map(), binding: null };
+  }
+  const source = field(decomposition, "layout_source", "layoutSource");
+  if (!hasSourceField && options.requireLayout === false) return { decomposition, nodes: [], nodeById: new Map(), binding: null };
+  if (!hasSourceField) {
+    errors.push(contractError(stage, contract, decomposition, "layout_decomposition 缺少唯一布局事实来源 layout_source.nodes_file", { missing: "layout_source", returnStage: "V1/PROPOSAL" }));
+    return { decomposition, nodes: [], nodeById: new Map(), binding: null };
+  }
+
+  let resolved;
+  try {
+    resolved = resolveSceneV2LayoutSource(contract, options, targetInfo);
+  } catch (error) {
+    errors.push(contractError(stage, contract, decomposition, `V2 layout_source 无法解析：${error.message}`, { missing: "layout_source.nodes_file", returnStage: "V1/PROPOSAL" }));
+    return { decomposition, nodes: [], nodeById: new Map(), binding: null };
+  }
+  const nodes = resolved.nodes;
   const explicitBinding = field(decomposition, "layout_binding", "layoutBinding", "layout_contract_binding", "layoutContractBinding", "scene_reconstruction_binding", "sceneReconstructionBinding", "binding");
   // effect-image 的两种身份形态都必须包含完整绑定；直接结构只是字段位置不同，不能降低身份门槛。
   const binding = explicitBinding ?? decomposition;
@@ -287,7 +312,7 @@ export function validateLayoutDecomposition(contract, targetInfo, stage, errors,
     const node = issue.index >= 0 ? nodes[issue.index] : decomposition;
     errors.push(contractError(stage, contract, node, issue.message, { returnStage: "V1/PROPOSAL" }));
   }
-  return { decomposition, nodes, nodeById, binding };
+  return { decomposition, nodes, rootNodes: resolved.rootNodes, sourceFile: resolved.file, sourcePath: source.nodes_file, nodeById, binding };
 }
 
 /** 校验 coverage region 与 layout node 的双向完整绑定。 */
@@ -458,11 +483,15 @@ export function validateEffectImageLayoutNodeFidelity(item, sceneContract, stage
   const mode = resolveVisualValidationMode(options, sceneContract);
   const exact = mode === "exact";
   const label = "layout_node_results";
-  const decomposition = field(sceneContract, "layout_decomposition", "layoutDecomposition", "layout_decomposition_contract", "layoutDecompositionContract");
-  const nodes = isObject(decomposition) && Array.isArray(field(decomposition, "layout_nodes", "layoutNodes")) ? field(decomposition, "layout_nodes", "layoutNodes") : [];
+  let nodes = [];
+  try {
+    nodes = resolveSceneV2LayoutSource(sceneContract, options).nodes;
+  } catch (error) {
+    errors.push(contractError(stage, item, item, `effect-image fidelity case 无法解析唯一 V2 布局源：${error.message}`, { missing: "layout_source.nodes_file", returnStage: "V2/V3", rootCause: "方案缺失" }));
+  }
   const nodeById = new Map(nodes.map((node) => [field(node, "layout_node_id", "layoutNodeId"), node]).filter(([id]) => nonEmptyString(id)));
   if (nodeById.size === 0) {
-    errors.push(contractError(stage, item, item, "effect-image fidelity case 缺少 layout_decomposition.layout_nodes，不能生成逐节点布局证据", { missing: "layout_nodes", returnStage: "VALIDATING", rootCause: "方案缺失" }));
+    errors.push(contractError(stage, item, item, "effect-image fidelity case 缺少可用 layout_source.nodes_file，不能生成逐节点布局证据", { missing: "layout_source.nodes_file", returnStage: "VALIDATING", rootCause: "方案缺失" }));
     return;
   }
   const results = field(item, "layout_node_results", "layoutNodeResults", "per_layout_node_results", "perLayoutNodeResults", "layout_geometry_results", "layoutGeometryResults", "layout_node_diff_results", "layoutNodeDiffResults");

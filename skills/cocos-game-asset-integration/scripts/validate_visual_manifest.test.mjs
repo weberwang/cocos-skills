@@ -1,3 +1,4 @@
+import { fixtureLayoutNodes, fixtureLayoutSourceOptions, registerFixtureV2Layout } from '../../cocos-game-workflow-control/scripts/v2-layout-source-test-fixtures.mjs';
 import assert from "node:assert/strict";
 import { nativeRenderContract, nativeRuntimeEvidence } from "../../cocos-game-workflow-control/scripts/native-render-test-fixtures.mjs";
 import { createHash } from "node:crypto";
@@ -9,7 +10,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { registerVisualManifestUsabilityCases } from "./visual-manifest-usability-cases.mjs";
 import { technicalRegionSnapshot } from "./generate_effect_image_annotation.mjs";
-import { checkManifestFiles as runManifestFileCheck, computeRegionDefinitionSha256, main, readPngDimensions, validateManifest } from "./validate_visual_manifest.mjs";
+import { checkManifestFiles as runManifestFileCheck, computeRegionDefinitionSha256, main, readPngDimensions, validateManifest as validateManifestSource } from "./validate_visual_manifest.mjs";
 import { annotationProductionContract, decodePngRgba } from "./effect_image_raster.mjs";
 import { renderEffectImageAnnotation } from "./effect_image_annotation_core.mjs"; import { buildDecompositionElements } from "./decomposition-elements.mjs";
 import { deriveAtomicImageRequirements } from "../../cocos-game-workflow-control/scripts/visual-atomic-contract.mjs";
@@ -21,12 +22,31 @@ import { CORE_TEMPLATES, OPTIONAL_TEMPLATES } from "../../cocos-game-orchestrato
 
 import { EMPTY_DOCUMENT_FINGERPRINT, STRUCTURAL_FILE_GATE_OPTIONS, visualComponentContract, addManualConfirmationRecords, nonEmptyString, imageNormalizationRecord, validManifest, attachSceneReconstructionContract, validOrdinaryManifest, validAiManifest, bitmapManifest, multiConfirmationGroupManifest, sha256Bytes, canonicalJson, canonicalSha, prerequisiteListSha, pngCrc32, minimalPng, createFixtureFiles, reuseSnapshot, writeConfirmationFixtureFiles, loadFixtureAuthority, checkManifestFiles, refreshRegionDerivedContracts } from "./visual-manifest-test-fixtures.mjs";
 
+/** 结构测试显式提供已解析的规范节点文档，正式文件门仍强制读真实工件。 */
+function validateManifest(data, options = {}) { return validateManifestSource(data, fixtureLayoutSourceOptions(options)); }
+
+test("清单只读取确认的 V2 布局源，拒绝内联副本和错绑文件", () => {
+  const valid = validManifest();
+  assert.deepEqual(validateManifest(valid, STRUCTURAL_FILE_GATE_OPTIONS), []);
+  const decomposition = valid.scene_reconstruction_contract.layout_decomposition;
+  assert.equal(Object.hasOwn(decomposition, "layout_nodes"), false);
+
+  // 相同内容的副本也不获得覆盖源文件的权限，避免后续实现重新选择一套父子和布局规则。
+  decomposition.layout_nodes = structuredClone(fixtureLayoutNodes(valid.scene_reconstruction_contract));
+  assert.ok(validateManifest(valid, STRUCTURAL_FILE_GATE_OPTIONS).some((message) => message.includes("禁止内联 layout_nodes")));
+  delete decomposition.layout_nodes;
+  decomposition.layout_annotation.layout_nodes_file = "evidence/v2/another-layout-nodes.json";
+  assert.ok(validateManifest(valid, STRUCTURAL_FILE_GATE_OPTIONS).some((message) => message.includes("layout_source.nodes_file 必须与")));
+  delete decomposition.layout_source;
+  assert.ok(validateManifest(valid, STRUCTURAL_FILE_GATE_OPTIONS).some((message) => message.includes("layout_source.nodes_file")));
+});
+
 registerVisualManifestUsabilityCases({ validManifest, validateManifest, options: STRUCTURAL_FILE_GATE_OPTIONS, checkManifestFiles, createFixtureFiles, writeConfirmationFixtureFiles });
 test("普通 visual manifest fidelity DPR 允许动态有效值并拒绝非法声明", () => {
   for (const dpr of [0.5, 1, 1.25, 1.5, 2]) { const manifest = validManifest(); manifest.fidelity_cases[0].dpr = dpr; assert.deepEqual(validateManifest(manifest, STRUCTURAL_FILE_GATE_OPTIONS), [], `fidelity dpr=${dpr}`); }
   for (const dpr of [0, -1, 2.0001, 3, "2", NaN, Infinity]) { const manifest = validManifest(); manifest.fidelity_cases[0].dpr = dpr; assert(validateManifest(manifest, STRUCTURAL_FILE_GATE_OPTIONS).some((item) => item.includes("正有限数字且不超过 2")), `fidelity dpr=${dpr}`); }
 });
-test("visual manifest 独立入口拒绝伪造父子相对几何", () => { for (const mutate of [node => delete node.parent_layout_node_id, node => { node.relative_position.left += 1; }, node => { node.axis_alignment.horizontal = "right"; }, node => { node.offset.x = 999; }, node => { node.self_anchor = "center-center"; }]) { const manifest = validManifest(); mutate(manifest.scene_reconstruction_contract.layout_decomposition.layout_nodes[0]); assert(validateManifest(manifest).some((item) => item.includes("parent_layout_node_id") || item.includes("relative_position") || item.includes("axis_alignment") || item.includes("offset.x") || item.includes("self_anchor")), JSON.stringify(mutate)); } });
+test("visual manifest 独立入口拒绝伪造父子相对几何", () => { for (const mutate of [node => delete node.parent_layout_node_id, node => { node.relative_position.left += 1; }, node => { node.axis_alignment.horizontal = "right"; }, node => { node.offset.x = 999; }, node => { node.self_anchor = "center-center"; }]) { const manifest = validManifest(); mutate(fixtureLayoutNodes(manifest.scene_reconstruction_contract)[0]); assert(validateManifest(manifest).some((item) => item.includes("父节点身份") || item.includes("parent_layout_node_id") || item.includes("relative_position") || item.includes("axis_alignment") || item.includes("offset") || item.includes("docking") || item.includes("self_anchor")), JSON.stringify(mutate)); } });
 test("不保留 visual-assets 1.4 兼容", () => { const manifest = validManifest(); manifest.schema_version = "1.4"; assert(validateManifest(manifest).some((item) => item.includes("schema_version 必须为 1.5"))); });
 test("非效果图 1.5 清单通过", () => assert.deepEqual(validateManifest(validOrdinaryManifest()), []));
 test("effect-image V2-ready 允许 fidelity case 尚未产生", () => { const manifest = validManifest(); manifest.effect_image_reconstruction.lifecycle = "v2-ready"; manifest.fidelity_cases = []; assert.deepEqual(validateManifest(manifest), []); }); test("V3 资源验收不要求正式 Scene、组合预验收或 runtime consumption", () => { const manifest = validManifest(); manifest.visualStage = "V3"; manifest.visualStageState = "v3-formal-acceptance-complete"; manifest.effect_image_reconstruction.lifecycle = "v2-ready"; manifest.fidelity_cases = []; delete manifest.scene_reconstruction_contract; delete manifest.visual_production_gate; delete manifest.assets[0].runtime_consumption; delete manifest.production_contract_audit.units[0].runtime_consumption; assert.deepEqual(validateManifest(manifest, { stage: "V3", ...STRUCTURAL_FILE_GATE_OPTIONS }), []); });
@@ -246,7 +266,7 @@ test("每个 scene/state 组拥有独立 PNG、提案和决定文件并完整覆
   const bytesByGroup = Object.fromEntries([...groups].map(([key, regions]) => [key, renderEffectImageAnnotation(original, manifest.reference_target.original_file, manifest.coverage_audit.canvases.find((canvas) => `${canvas.scene_id}\0${canvas.state_id}` === key), regions)]));
   await writeConfirmationFixtureFiles(root, manifest, bytesByGroup);
   assert.notEqual(manifest.coverage_audit.regions[0].confirmation.annotation_file, manifest.coverage_audit.regions[2].confirmation.annotation_file);
-  assert.equal(manifest.scene_reconstruction_contract.layout_decomposition.layout_nodes.length, 2); assert.deepEqual(await checkManifestFiles(manifest, root), []);
+  assert.equal(fixtureLayoutNodes(manifest.scene_reconstruction_contract).length, 2); assert.deepEqual(await checkManifestFiles(manifest, root), []);
 });
 
 test("多 scene/state 确认拒绝串组文件和漏组文件", async () => {
@@ -399,7 +419,7 @@ test("effect-image 布局节点必须与 coverage 双向绑定且禁止孤立、
   assert(validateManifest(missingPlacement).some((item) => item.includes("placement 缺少 layout_node_id") || item.includes("layout_node_id 必须是非空字符串")), "placement 布局节点不能为空");
   const duplicateRegionNode = validManifest(); duplicateRegionNode.coverage_audit.regions[1].layout_node_ids.push("hero-component-layout-node");
   assert(validateManifest(duplicateRegionNode).some((item) => item.includes("layout_node_ids 不得重复")), "区域布局节点不能重复");
-  const orphan = validManifest(); orphan.scene_reconstruction_contract.layout_decomposition.layout_nodes.push({ ...structuredClone(orphan.scene_reconstruction_contract.layout_decomposition.layout_nodes[1]), layout_node_id: "orphan-layout-node" });
+  const orphan = validManifest(); registerFixtureV2Layout(orphan.scene_reconstruction_contract, [...fixtureLayoutNodes(orphan.scene_reconstruction_contract), { ...structuredClone(fixtureLayoutNodes(orphan.scene_reconstruction_contract)[1]), element_id: "orphan-layout-node", layout_node_id: "orphan-layout-node" }]);
   assert(validateManifest(orphan).some((item) => item.includes("双向一一对应") || item.includes("未被 coverage region.layout_node_ids 反向声明")), "孤立布局节点必须失败");
   const crossRegion = validManifest(); crossRegion.coverage_audit.regions[1].component_inventory.components[0].placements[0].layout_node_id = "layout-score";
   assert(validateManifest(crossRegion).some((item) => item.includes("只能引用本 region")), "placement 不得跨区域引用布局节点");

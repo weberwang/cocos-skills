@@ -14,11 +14,12 @@ import { createReturnRecord } from './return-disposition.mjs';
 import { registerRelaxedWorkflowTests } from './workflow-control-relaxed-cases.mjs';
 import { RESPONSIVE_CONTRACT_FIELDS } from './responsive-viewport-contract.mjs';
 import { calculateFixedDesignViewport } from '../../cocos-game-ui-layout/scripts/fixed-design-viewport.mjs';
+import { writeFixtureV2Layout } from './v2-layout-source-test-fixtures.mjs';
 
 const CLI = resolve(import.meta.dirname, 'workflow-control.mjs');
 const INITIALIZER = resolve(import.meta.dirname, '..', '..', 'cocos-game-orchestrator', 'scripts', 'initialize_project_docs.mjs');
 const HASH = `sha256:${'a'.repeat(64)}`; const CANDIDATE_HASH = `sha256:${'b'.repeat(64)}`; const VISUAL_DIFF = `sha256:${'c'.repeat(64)}`;
-const RESPONSIVE_TEMPLATE = JSON.parse(readFileSync(resolve(import.meta.dirname, '..', '..', 'cocos-game-ui-layout', 'assets', 'ui-layout-contract-template.yaml'), 'utf8'));
+const RESPONSIVE_TEMPLATE = JSON.parse(readFileSync(resolve(import.meta.dirname, '..', '..', 'cocos-game-ui-layout', 'assets', 'ordinary-ui-layout-contract-template.yaml'), 'utf8'));
 const RESPONSIVE_FIXTURE = Object.fromEntries(RESPONSIVE_CONTRACT_FIELDS.map((field) => [field, structuredClone(RESPONSIVE_TEMPLATE[field])]));
 
 /** 写入格式稳定的 JSON 测试工件。 */
@@ -55,8 +56,9 @@ function makeRepo() {
   // 先提供真实 V2 布局来源，V3/V4 辅助函数只绑定其资源和运行证据。
   const viewport = { width: 390, height: 844 };
   const layoutNodes = [{ layout_node_id: 'source-node', parent_layout_node_id: 'viewport', region_id: 'source-region', target_bounds: { x: 1, y: 2, width: 3, height: 4 } }];
-  writeJson(join(repo, 'docs/layout-nodes.json'), { schema: 'cocos-layout-nodes/1.0', scene_id: 'play', state_id: 'default', viewport, layout_nodes: layoutNodes });
-  writeJson(reconstructionContractPath, { target_conditions: { scene_id: 'play', state_id: 'default', viewport }, layout_decomposition: { layout_nodes: layoutNodes, layout_annotation: { layout_nodes_file: 'docs/layout-nodes.json' } } });
+  const reconstructionContract = { target_conditions: { scene_id: 'play', state_id: 'default', viewport }, layout_decomposition: { layout_annotation: {}, layout_annotation_confirmation: {} } };
+  writeFixtureV2Layout(repo, reconstructionContract, layoutNodes);
+  writeJson(reconstructionContractPath, reconstructionContract);
   writeJson(join(repo, 'docs', 'high-fidelity-scene.json'), { schemaVersion: 'cocos-scene-v2-reconstruction-plan/1.0', workItemId: 'WI-1', status: 'COMPLETE', stage: 'V2', frozen: true, sceneId: 'play', targetSha256: HASH, candidateSha256: CANDIDATE_HASH, diffFingerprint: VISUAL_DIFF, sceneMaster: { file: 'docs/high-fidelity-scene.png', sha256: hashFile(sceneMasterPath), sceneId: 'play' }, sceneReconstructionContract: { file: 'docs/scene-reconstruction-contract.json', sha256: hashFile(reconstructionContractPath), sceneId: 'play' }, decompositionAnnotation: { file: 'docs/decomposition-annotation.png', sha256: hashFile(decompositionAnnotationPath), sceneId: 'play' }, technicalDecomposition: { file: 'docs/technical-decomposition.json', sha256: hashFile(technicalDecompositionPath), sceneId: 'play' }, visualDecompositionConfirmation: { confirmationId: 'V2-CONFIRM-1', confirmationMode: 'manual', status: 'PASS', targetSha256: HASH, candidateSha256: CANDIDATE_HASH, diffFingerprint: VISUAL_DIFF, evidenceFile: 'docs/v2-decomposition-confirmation.json', evidenceSha256: hashFile(confirmationPath) }, visualProductionContract: { contractId: 'VPC-1' }, visualProductionUnits: [{ unitId: 'scene-root', owner: 'fixed-production-visual' }], displayLayerContexts: [{ displayLayerId: 'pause', hostSceneId: 'play', hostContextImage: { file: 'docs/pause-context.png', sha256: hashFile(pauseContextPath), sceneId: 'play', displayLayerId: 'pause', hostSceneId: 'play' } }, { displayLayerId: 'settings', hostSceneId: 'play', hostContextImage: { file: 'docs/settings-context.png', sha256: hashFile(settingsContextPath), sceneId: 'play', displayLayerId: 'settings', hostSceneId: 'play' } }] });
   bindVisualEvidenceFixture({ repo, work: { workItemId: 'WI-1', baselineHash: HASH, visualStageEvidenceRefs: { V2: { path: 'docs/high-fidelity-scene.json' } } }, pkg: { executionUnits: [] } });
   execFileSync('git', ['add', '.'], { cwd: repo });

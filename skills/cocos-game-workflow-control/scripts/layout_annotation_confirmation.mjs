@@ -244,6 +244,8 @@ export function validateLayoutAnnotationConfirmation(record, context = {}, error
   for (const field of ["layout_annotation_width", "layout_annotation_height"]) if (!Number.isInteger(record[field]) || record[field] <= 0) errors.push(`${label}.${field} 必须是正整数`);
   if (record.status !== "accepted" || record.confirmation_mode !== "manual") errors.push(`${label} 必须是 manual accepted`);
   for (const [field, expected] of [["scene_id", context.sceneId ?? context.scene_id], ["state_id", context.stateId ?? context.state_id], ["decomposition_confirmation_id", context.decompositionConfirmationId ?? context.decomposition_confirmation_id]]) if (expected !== undefined && record[field] !== expected) errors.push(`${label}.${field} 未绑定当前串行上游身份`);
+  const layoutSourceFile = context.layoutSourceFile ?? context.layout_source_file;
+  if (layoutSourceFile !== undefined && record.layout_nodes_file !== layoutSourceFile) errors.push(`${label}.layout_nodes_file 必须与唯一 layout_source.nodes_file 完全一致`);
   if (nonEmptyString(context.decompositionConfirmationId) && record.confirmation_id === context.decompositionConfirmationId) errors.push(`${label}.confirmation_id 必须独立于拆解确认 ID`);
   if (context.checkFiles === true && nonEmptyString(context.projectRoot)) {
     const image = readBoundFile(context.projectRoot, record.layout_annotation_file, `${label}.layout_annotation`, errors);

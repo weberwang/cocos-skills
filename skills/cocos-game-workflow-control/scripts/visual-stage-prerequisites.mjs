@@ -13,6 +13,7 @@ import { validateArtExperienceAcceptance } from './art-experience-acceptance-con
 import { validateGlobalVisualBaselineSelectionReferenceShape } from './global-visual-baseline-contract.mjs';
 import { V2_PLAN_FIELDS } from './v2-reconstruction-plan-contract.mjs';
 import { canonicalJson, deriveVisualDisposition, earliestVisualReturnStage as earliestReturnStage, isPlainObject as isObject, nonEmptyString as nonEmpty, VISUAL_REMEDIATION, VISUAL_REMEDIATION_LABEL, VISUAL_REMEDIATION_NEXT_ACTION } from './visual-contract-core.mjs';
+import { resolveV2LayoutSource } from '../../cocos-game-ui-layout/scripts/v2-layout-source.mjs';
 export { VISUAL_REMEDIATION } from './visual-contract-core.mjs';
 
 export const VISUAL_STAGE_IDS = Object.freeze(['V0', 'V1', 'V2', 'V3', 'V4']);
@@ -426,22 +427,36 @@ function validateV2ProductionPlan(v2, subject, options, missingEvidence) {
         const conditions = contract.target_conditions;
         const layout = contract.layout_decomposition;
         const annotation = layout?.layout_annotation;
-        const nodes = layout?.layout_nodes;
+        const source = layout?.layout_source;
+        const layoutConfirmation = layout?.layout_annotation_confirmation;
+        const sourcePath = source?.nodes_file;
         if (!isObject(conditions) || conditions.scene_id !== v2.sceneId || !nonEmpty(conditions.state_id)
-          || !Array.isArray(nodes) || nodes.length === 0 || !isObject(annotation)
-          || !nonEmpty(annotation.layout_nodes_file)) {
+          || !isObject(annotation) || !nonEmpty(sourcePath)
+          || !Array.isArray(annotation.layout_node_ids) || annotation.layout_node_ids.length === 0
+          || !isObject(layoutConfirmation)) {
           missingEvidence.push('V2 scene reconstruction target/layout coverage');
           continue;
         }
-        const nodesBytes = readSourceFile(annotation.layout_nodes_file, 'V2 layout nodes');
-        if (nodesBytes) {
-          const document = JSON.parse(nodesBytes.toString('utf8'));
-          const sourceNodes = document?.layout_nodes;
-          const contractIds = nodes.map((node) => node?.layout_node_id);
-          const sourceIds = Array.isArray(sourceNodes) ? sourceNodes.map((node) => node?.layout_node_id) : [];
-          if (!Array.isArray(sourceNodes) || sourceNodes.length === 0 || sourceIds.some((id) => !nonEmpty(id))
-            || new Set(sourceIds).size !== sourceIds.length || JSON.stringify(contractIds) !== JSON.stringify(sourceIds)
-            || document.scene_id !== v2.sceneId) missingEvidence.push('V2 contract/layout node identity and coverage');
+        if (Object.hasOwn(layout, 'layout_nodes') || Object.hasOwn(layout, 'layoutNodes')
+          || sourcePath !== annotation.layout_nodes_file || sourcePath !== layoutConfirmation.layout_nodes_file) {
+          missingEvidence.push('V2 layout_source.nodes_file must be the only layout fact source and match annotation/confirmation');
+          continue;
+        }
+        const sourceInfo = resolveV2LayoutSource(source, {
+          ...options,
+          projectRoot: options.projectRoot ?? process.cwd(),
+          forceLayoutSourceFiles: true,
+        }, {
+          sceneId: conditions.scene_id,
+          stateId: conditions.state_id,
+          viewport: conditions.viewport,
+          decompositionConfirmationId: annotation.decomposition_confirmation_id,
+          layoutDecisionId: annotation.layout_decision_id,
+        });
+        const sourceIds = sourceInfo.nodes.map((node) => node?.layout_node_id);
+        if (sourceIds.some((id) => !nonEmpty(id)) || new Set(sourceIds).size !== sourceIds.length
+          || JSON.stringify(annotation.layout_node_ids) !== JSON.stringify(sourceIds)) {
+          missingEvidence.push('V2 annotation/layout node identity and coverage');
         }
       } catch {
         missingEvidence.push('V2 scene reconstruction contract/layout JSON');
@@ -543,25 +558,32 @@ function validateV2ManifestTarget(v2, manifest, options, missingEvidence) {
     const conditions = contract.target_conditions;
     const viewport = conditions?.viewport;
     const layout = contract.layout_decomposition;
-    const nodes = layout?.layout_nodes;
-    const nodesFile = layout?.layout_annotation?.layout_nodes_file;
+    const source = layout?.layout_source;
+    const annotation = layout?.layout_annotation;
+    const layoutConfirmation = layout?.layout_annotation_confirmation;
+    const sourcePath = source?.nodes_file;
     if (!isObject(conditions) || conditions.scene_id !== v2.sceneId || !nonEmpty(conditions.state_id)
       || !isObject(viewport) || !Number.isFinite(viewport.width) || viewport.width <= 0
-      || !Number.isFinite(viewport.height) || viewport.height <= 0 || !Array.isArray(nodes) || nodes.length === 0) {
+      || !Number.isFinite(viewport.height) || viewport.height <= 0 || !nonEmpty(sourcePath)) {
       missingEvidence.push('V2 scene/state/viewport/layout target identity');
       return;
     }
-    const nodesBytes = readProjectSourceFile(nodesFile, 'V2 layout_nodes source', options, missingEvidence);
-    if (!nodesBytes) return;
-    const nodesDocument = JSON.parse(nodesBytes.toString('utf8'));
-    const sourceNodes = nodesDocument?.layout_nodes;
-    if (nodesDocument.schema !== 'cocos-layout-nodes/1.0' || !Array.isArray(sourceNodes) || sourceNodes.length === 0
-      || nodesDocument.scene_id !== conditions.scene_id || nodesDocument.state_id !== conditions.state_id
-      || canonicalJson(nodesDocument.viewport) !== canonicalJson(viewport)
-      || canonicalJson(sourceNodes) !== canonicalJson(nodes)) {
-      missingEvidence.push('V2 contract/layout_nodes scene/state/viewport/content binding');
+    if (Object.hasOwn(layout, 'layout_nodes') || Object.hasOwn(layout, 'layoutNodes')
+      || sourcePath !== annotation?.layout_nodes_file || sourcePath !== layoutConfirmation?.layout_nodes_file) {
+      missingEvidence.push('V2 layout_source.nodes_file must be the only layout fact source and match annotation/confirmation');
       return;
     }
+    resolveV2LayoutSource(source, {
+      ...options,
+      projectRoot: options.projectRoot ?? process.cwd(),
+      forceLayoutSourceFiles: true,
+    }, {
+      sceneId: conditions.scene_id,
+      stateId: conditions.state_id,
+      viewport,
+      decompositionConfirmationId: annotation.decomposition_confirmation_id,
+      layoutDecisionId: annotation.layout_decision_id,
+    });
 
     const target = manifest?.reference_target;
     const normalizePath = (value) => typeof value === 'string' ? value.replaceAll('\\', '/').replace(/^\.\//, '') : '';

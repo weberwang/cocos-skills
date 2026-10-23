@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { classifyVisibleVisualProductionIntegration, structuredVisualStageFailure, validateVisualStageDeclaration, validateVisualStagePrerequisites } from './visual-stage-prerequisites.mjs';
 import { bindVisualEvidenceFixture } from './workflow-visual-evidence-fixture.mjs';
+import { writeFixtureV2Layout } from './v2-layout-source-test-fixtures.mjs';
 
 const SHA = `sha256:${'a'.repeat(64)}`;
 const HASH2 = `sha256:${'b'.repeat(64)}`;
@@ -42,11 +43,11 @@ function evidenceSet(root, overrides = {}) {
   const artifact = (file) => ({ file, sha256: sha(join(root, file)), sceneId });
   const sourceNode = { layout_node_id: 'source-node', parent_layout_node_id: 'viewport', region_id: 'source-region', target_bounds: { x: 1, y: 2, width: 3, height: 4 } };
   const viewport = { width: 390, height: 844 };
-  const nodesRef = writeJson(root, 'docs/layout-nodes.json', { schema: 'cocos-layout-nodes/1.0', target_sha256: targetSha, scene_id: sceneId, state_id: 'default', viewport, layout_nodes: [sourceNode] });
   const contract = {
     target_conditions: { target_sha256: targetSha, scene_id: sceneId, state_id: 'default', viewport },
-    layout_decomposition: { layout_nodes: [sourceNode], layout_annotation: { layout_nodes_file: nodesRef.path, layout_nodes_sha256: nodesRef.sha256 } },
+    layout_decomposition: { layout_annotation: {}, layout_annotation_confirmation: {} },
   };
+  writeFixtureV2Layout(root, contract, [sourceNode]);
   writeFileSync(join(root, artifactFiles.reconstructionContract), `${JSON.stringify(contract, null, 2)}\n`, 'utf8');
   const v2 = {
     schemaVersion: 'cocos-scene-v2-reconstruction-plan/1.0',

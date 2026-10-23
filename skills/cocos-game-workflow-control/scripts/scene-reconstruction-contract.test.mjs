@@ -6,10 +6,34 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import test from "node:test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { validateDisplayLayerPlanning, validateSceneReconstructionContract, validateStructuredFidelityCases } from "./scene-reconstruction-contract.mjs";
+import { validateDisplayLayerPlanning, validateSceneReconstructionContract as validateSceneReconstructionContractImpl, validateStructuredFidelityCases as validateStructuredFidelityCasesImpl } from "./scene-reconstruction-contract.mjs";
 import { validateSceneVisualRouteContract } from "./scene-visual-route-contract.mjs";
 import { refreshFixtureLayoutExecution } from "./scene-reconstruction-test-fixtures.mjs";
-import { validateSceneAssetUsageContract, validateSceneCombinationPreacceptance, validateV4ProductionGate, validateVisualImplementationPackageBinding } from "./visual-production-contract.mjs"; import { computeLayoutAnnotationConfirmationSha256, computeLayoutUserMessageSha256 } from "./layout_annotation_confirmation.mjs";
+import { validateSceneAssetUsageContract, validateSceneCombinationPreacceptance as validateSceneCombinationPreacceptanceImpl, validateV4ProductionGate as validateV4ProductionGateImpl, validateVisualImplementationPackageBinding as validateVisualImplementationPackageBindingImpl } from "./visual-production-contract.mjs"; import { computeLayoutAnnotationConfirmationSha256, computeLayoutUserMessageSha256 } from "./layout_annotation_confirmation.mjs";
+import { fixtureLayoutDocument, fixtureLayoutSourceOptions, fixtureLayoutNodes, isolateFixtureV2Layout, registerFixtureV2Layout } from "./v2-layout-source-test-fixtures.mjs";
+
+/** 所有结构测试显式注入源文档；正式文件门仍由生产入口强制读取磁盘。 */
+function validateSceneReconstructionContract(contract, manifest, options = {}) {
+  return validateSceneReconstructionContractImpl(contract, manifest, fixtureLayoutSourceOptions(options));
+}
+
+/** fidelity 子门与场景合同共享同一布局源注入方式。 */
+function validateStructuredFidelityCases(cases, manifest, options = {}) {
+  return validateStructuredFidelityCasesImpl(cases, manifest, fixtureLayoutSourceOptions(options));
+}
+
+/** V4 组合和实施包测试复用 source Map，不伪造项目文件系统。 */
+function validateSceneCombinationPreacceptance(contract, stage, options = {}) {
+  return validateSceneCombinationPreacceptanceImpl(contract, stage, fixtureLayoutSourceOptions(options));
+}
+
+function validateV4ProductionGate(manifest, options = {}) {
+  return validateV4ProductionGateImpl(manifest, fixtureLayoutSourceOptions(options));
+}
+
+function validateVisualImplementationPackageBinding(value, options = {}) {
+  return validateVisualImplementationPackageBindingImpl(value, fixtureLayoutSourceOptions(options));
+}
 
 import { SHA, LAYOUT_SHA, LAYOUT_DECOMPOSITION_VERSION, allNativeJustification, contract, manifest, displayLayerContract, fidelityCase, effectImageContract, effectImageManifest, textNode, textEffectImageContract, effectImageLayoutResults } from "./scene-reconstruction-test-fixtures.mjs";
 
@@ -82,7 +106,8 @@ test("effect-image 布局拆解、双向 region 绑定、V4 几何和 V4 逐节�
   const directLayout = direct.layout_decomposition;
   delete directLayout.layout_binding;
   Object.assign(directLayout, { target_sha256: SHA, scene_id: "main", state_id: "default", target_viewport: { width: 390, height: 844 }, visual_baseline_version: "1.0.0", layout_contract_version: "layout-2.0", layout_contract_sha256: LAYOUT_SHA, layout_decomposition_version: LAYOUT_DECOMPOSITION_VERSION });
-  for (const node of directLayout.layout_nodes) Object.assign(node, { target_sha256: SHA, scene_id: "main", state_id: "default", layout_contract_version: "layout-2.0" });
+  const directNodes = isolateFixtureV2Layout(direct);
+  for (const node of directNodes) Object.assign(node, { target_sha256: SHA, scene_id: "main", state_id: "default", layout_contract_version: "layout-2.0" });
   assert.deepEqual(validateSceneReconstructionContract(direct, effectImageManifest(direct), { stage: "V3" }), []);
 });
 
@@ -98,53 +123,79 @@ test("effect-image 缺少布局节点、反向绑定或越界 bounds 时阻断�
   assert(orphanErrors.some((item) => item.includes("跨 region") || item.includes("反向声明") || item.includes("错绑")), orphanErrors.join("\n"));
 
   const outOfBounds = effectImageContract();
-  outOfBounds.layout_decomposition.layout_nodes[0].target_bounds.x = -1;
+  isolateFixtureV2Layout(outOfBounds)[0].target_bounds.x = -1;
   const boundsErrors = validateSceneReconstructionContract(outOfBounds, effectImageManifest(outOfBounds), { stage: "V2" });
-  assert(boundsErrors.some((item) => item.includes("位于冻结目标画布内")));
+  assert(boundsErrors.some((item) => item.includes("layout_source 无法解析") && item.includes("target_bounds")), boundsErrors.join("\n"));
   assert.deepEqual(validateSceneReconstructionContract(contract(), manifest(), { stage: "V3" }), []);
+
+  const missingSource = effectImageContract();
+  delete missingSource.layout_decomposition.layout_source;
+  assert(validateSceneReconstructionContract(missingSource, effectImageManifest(missingSource), { stage: "V2" }).some((item) => item.includes("缺少唯一布局事实来源")));
+
+  const shadowInline = effectImageContract();
+  shadowInline.layout_decomposition.layout_nodes = structuredClone(fixtureLayoutNodes(shadowInline));
+  assert(validateSceneReconstructionContract(shadowInline, effectImageManifest(shadowInline), { stage: "V2" }).some((item) => item.includes("禁止内联 layout_nodes")));
+
+  const mismatchedSource = effectImageContract();
+  mismatchedSource.layout_decomposition.layout_annotation.layout_nodes_file = "evidence/v2/other-layout-nodes.json";
+  assert(validateSceneReconstructionContract(mismatchedSource, effectImageManifest(mismatchedSource), { stage: "V2" }).some((item) => item.includes("完全一致")));
+
+  const mismatchedIdentity = effectImageContract();
+  const mismatchedDocument = fixtureLayoutDocument(mismatchedIdentity);
+  mismatchedDocument.scene_id = "other-scene";
+  for (const node of mismatchedDocument.layout_nodes) node.scene_id = "other-scene";
+  for (const root of mismatchedDocument.root_nodes) root.scene_id = "other-scene";
+  const identityErrors = validateSceneReconstructionContract(mismatchedIdentity, effectImageManifest(mismatchedIdentity), { stage: "V2" });
+  assert(identityErrors.some((item) => item.includes("scene_id 与冻结身份不一致")), identityErrors.join("\n"));
 });
 
 test("effect-image 父子布局允许多层关系，并拒绝缺父、循环和越界", () => {
   const nested = effectImageContract();
+  const nestedNodes = isolateFixtureV2Layout(nested);
   // 承载子项必须显式声明容器，不能再依赖子项数量反向推断节点职责。
-  nested.layout_decomposition.layout_nodes[1].is_container = true;
+  nestedNodes[1].is_container = true;
   nested.coverage_regions[1].layoutNodeIds.push("board-inner");
-  nested.layout_decomposition.layout_nodes.push({ ...structuredClone(nested.layout_decomposition.layout_nodes[1]), layout_node_id: "board-inner", region_id: "board", reference_id: "board-surface", parent_layout_node_id: "board-surface", parent_target_bounds: { x: 20, y: 160, width: 350, height: 620 }, relative_position: { left: 20, right: 230, top: 20, bottom: 500 }, axis_alignment: { horizontal: "left", vertical: "top" }, self_anchor: "top-left", reference_anchor: "top-left", offset: { x: 20, y: 20 }, target_bounds: { x: 40, y: 180, width: 100, height: 100 } });
+  nestedNodes.push({ ...structuredClone(nestedNodes[1]), layout_node_id: "board-inner", region_id: "board", is_container: false, empty_container: false, child_layout_node_ids: [], reference_id: "board-surface", parent_layout_node_id: "board-surface", parent_target_bounds: { x: 20, y: 160, width: 350, height: 620 }, reference_target_bounds: { x: 20, y: 160, width: 350, height: 620 }, relative_position: { left: 20, right: 230, top: 20, bottom: 500 }, axis_alignment: { horizontal: "left", vertical: "top" }, self_anchor: "top-left", reference_anchor: "top-left", offset: { x: 20, y: 20 }, bounds: { x: 40, y: 180, width: 100, height: 100 }, target_bounds: { x: 40, y: 180, width: 100, height: 100 } });
+  nestedNodes[1].child_layout_node_ids = ["board-inner"];
   nested.combination_preacceptance.layout_geometry.node_measurements.push({ layout_node_id: "board-inner", target_bounds: { x: 40, y: 180, width: 100, height: 100 }, actual_bounds: { x: 40, y: 180, width: 100, height: 100 }, delta: { x: 0, y: 0, width: 0, height: 0 }, tolerance_reference: "layout-tolerance", result: "passed", evidence: ["board-inner-layout.json"] });
-  refreshFixtureLayoutExecution(nested.layout_decomposition.layout_nodes);
+  refreshFixtureLayoutExecution(nestedNodes);
+  registerFixtureV2Layout(nested, nestedNodes);
   assert.deepEqual(validateSceneReconstructionContract(nested, effectImageManifest(nested), { stage: "V2" }), []);
 
   const missingParent = effectImageContract();
-  delete missingParent.layout_decomposition.layout_nodes[0].parent_layout_node_id;
-  assert(validateSceneReconstructionContract(missingParent, effectImageManifest(missingParent), { stage: "V2" }).some((item) => item.includes("parent_layout_node_id")));
+  delete isolateFixtureV2Layout(missingParent)[0].parent_layout_node_id;
+  assert(validateSceneReconstructionContract(missingParent, effectImageManifest(missingParent), { stage: "V2" }).some((item) => item.includes("父节点身份")));
 
   const cycle = effectImageContract();
-  cycle.layout_decomposition.layout_nodes[0].parent_layout_node_id = "board-surface";
-  cycle.layout_decomposition.layout_nodes[0].reference_id = "board-surface";
-  cycle.layout_decomposition.layout_nodes[0].parent_target_bounds = { x: 20, y: 160, width: 350, height: 620 };
-  cycle.layout_decomposition.layout_nodes[1].parent_layout_node_id = "hud-main";
-  cycle.layout_decomposition.layout_nodes[1].reference_id = "hud-main";
-  cycle.layout_decomposition.layout_nodes[1].parent_target_bounds = { x: 0, y: 0, width: 390, height: 96 };
-  assert(validateSceneReconstructionContract(cycle, effectImageManifest(cycle), { stage: "V2" }).some((item) => item.includes("父子布局图存在循环")));
+  const cycleNodes = isolateFixtureV2Layout(cycle);
+  cycleNodes[0].parent_layout_node_id = "board-surface";
+  cycleNodes[0].reference_id = "board-surface";
+  cycleNodes[0].parent_target_bounds = { x: 20, y: 160, width: 350, height: 620 };
+  cycleNodes[1].parent_layout_node_id = "hud-main";
+  cycleNodes[1].reference_id = "hud-main";
+  cycleNodes[1].parent_target_bounds = { x: 0, y: 0, width: 390, height: 96 };
+  assert(validateSceneReconstructionContract(cycle, effectImageManifest(cycle), { stage: "V2" }).some((item) => item.includes("循环")));
 
-  const childOutside = effectImageContract();
-  childOutside.layout_decomposition.layout_nodes[1].parent_layout_node_id = "hud-main";
-  childOutside.layout_decomposition.layout_nodes[1].reference_id = "hud-main";
-  childOutside.layout_decomposition.layout_nodes[1].parent_target_bounds = { x: 0, y: 0, width: 390, height: 96 };
-  assert(validateSceneReconstructionContract(childOutside, effectImageManifest(childOutside), { stage: "V2" }).some((item) => item.includes("child target_bounds")));
+  const childOutside = structuredClone(nested);
+  const childOutsideNodes = isolateFixtureV2Layout(childOutside);
+  childOutsideNodes[2].target_bounds = { x: 280, y: 180, width: 100, height: 100 };
+  childOutsideNodes[2].bounds = { ...childOutsideNodes[2].target_bounds };
+  const childOutsideErrors = validateSceneReconstructionContract(childOutside, effectImageManifest(childOutside), { stage: "V2" });
+  assert(childOutsideErrors.some((item) => item.includes("超出已确认父容器 bounds")), childOutsideErrors.join("\n"));
 });
 
-test("effect-image 相对距离、视觉对齐、offset 和锚点均不得伪造", () => {
-  for (const mutate of [
-    (node) => { node.relative_position.left += 1; },
-    (node) => { node.axis_alignment.horizontal = "right"; },
-    (node) => { node.offset.x = 999; },
-    (node) => { node.self_anchor = "center-center"; },
-    (node) => { node.reference_anchor = "center-center"; },
+test("effect-image 相对距离、视觉对齐、offset 和锚点必须与同一布局源的自动事实一致", () => {
+  for (const [field, mutate] of [
+    ["relative_position", (node) => { node.relative_position.left += 1; }],
+    ["axis_alignment", (node) => { node.axis_alignment.horizontal = "right"; }],
+    ["offset", (node) => { node.offset.x = 999; }],
+    ["self_anchor", (node) => { node.self_anchor = "center-center"; }],
+    ["reference_anchor", (node) => { node.reference_anchor = "center-center"; }],
   ]) {
     const value = effectImageContract();
-    mutate(value.layout_decomposition.layout_nodes[0]);
-    assert(validateSceneReconstructionContract(value, effectImageManifest(value), { stage: "V2" }).some((item) => item.includes("relative_position") || item.includes("axis_alignment") || item.includes("offset.x") || item.includes("self_anchor") || item.includes("reference_anchor")));
+    mutate(isolateFixtureV2Layout(value)[0]);
+    const errors = validateSceneReconstructionContract(value, effectImageManifest(value), { stage: "V2" });
+    assert(errors.length > 0, `${field} mutation unexpectedly passed`);
   }
 });
 
@@ -231,8 +282,9 @@ test("V4组件安全快照在usability下仍覆盖全节点，不能由几何pas
 
 test("最终场景布局节点不得伪造合成根跳过执行计划", () => {
   const value = effectImageContract();
-  value.layout_decomposition.layout_nodes[0].is_root_container = true;
-  delete value.layout_decomposition.layout_nodes[0].layout_execution;
+  const nodes = isolateFixtureV2Layout(value);
+  nodes[0].is_root_container = true;
+  delete nodes[0].layout_execution;
   assert(validateSceneReconstructionContract(value, effectImageManifest(value), { stage: "V2" }).some((message) => /非 root|合成根/.test(message)));
 });
 

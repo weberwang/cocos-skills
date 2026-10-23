@@ -368,9 +368,11 @@ export function validateManifest(data, options = {}) {
   }
   validateBudgetBlock(data.budgets, errors);
   if (!Array.isArray(data.assets)) { errors.push("assets 必须是数组"); return errors; }
+  // 已解析的结构输入不代表运行证据已落盘；正式文件入口另行强制读取。
+  const layoutSourceOptions = { layoutSourceDocuments: options.layoutSourceDocuments, forceLayoutSourceFiles: options.forceLayoutSourceFiles, projectRoot: options.layoutSourceDocuments instanceof Map && options.forceLayoutSourceFiles !== true ? undefined : options.projectRoot };
   const assetIds = new Set(data.assets.filter(isObject).map((item) => item.id).filter(nonEmptyString));
   const assetById = new Map(data.assets.filter(isObject).filter((item) => nonEmptyString(item.id)).map((item) => [item.id, item]));
-  const fixedMappings = reconstruction?.applicability === "effect-image" ? validateCoverageAudit(data.coverage_audit, target, assetIds, errors, assetById, baseline) : new Map(); const layoutBindings = reconstruction?.applicability === "effect-image" && requestedStage !== "V3" ? validateEffectImageLayoutBindings(data, errors, { stage: requestedStage, visual_validation: { mode: visualValidationMode } }) : null;
+  const fixedMappings = reconstruction?.applicability === "effect-image" ? validateCoverageAudit(data.coverage_audit, target, assetIds, errors, assetById, baseline) : new Map(); const layoutBindings = reconstruction?.applicability === "effect-image" && requestedStage !== "V3" ? validateEffectImageLayoutBindings(data, errors, { ...options, stage: requestedStage, visual_validation: { mode: visualValidationMode } }) : null;
   const coverageRegions = Array.isArray(data.coverage_audit?.regions) ? data.coverage_audit.regions : [];
   const fixedRegionAssetIds = (region) => (Array.isArray(region?.asset_ids) ? region.asset_ids : [region?.asset_id]).filter(nonEmptyString);
   const bitmapAssetIds = new Set(coverageRegions.filter((region) => isObject(region) && region.owner_type === "fixed-production-visual" && region.production_origin === "bitmap-decomposition").flatMap(fixedRegionAssetIds));
@@ -386,7 +388,7 @@ export function validateManifest(data, options = {}) {
     // V2 拆解图确认之后，清单上的所有后续证据都只能是确定性机器验证；旧复核字段 fail closed。
     errors.push(...validateVisualPostApprovalReviewFields(data, { stage }));
     // V3 只验收资源生产结果；正式 Scene、同屏组合和运行时消费统一留到 V4。
-    if (stage !== "V3") errors.push(...validateSceneReconstructionGate(data, { stage, displayLayerScope, requireFinalLayout: stage === "V4" || reconstruction.lifecycle === "v4-complete" || (stage === "V2" && [data.visualStageState, data.visual_stage_state].includes("v2-production-planning-complete")), visual_validation: { mode: visualValidationMode } }));
+    if (stage !== "V3") errors.push(...validateSceneReconstructionGate(data, { ...layoutSourceOptions, stage, displayLayerScope, requireFinalLayout: stage === "V4" || reconstruction.lifecycle === "v4-complete" || (stage === "V2" && [data.visualStageState, data.visual_stage_state].includes("v2-production-planning-complete")), visual_validation: { mode: visualValidationMode } }));
     const fileGateError = productionFileGateError(data, options, stage);
     if (fileGateError) errors.push(fileGateError);
     errors.push(...validateVisualProductionCoverage(fixedVisualAuditManifest(data), { stage: "V2", requireManualConfirmation: false }));
@@ -397,7 +399,7 @@ export function validateManifest(data, options = {}) {
       // 显式传入 V4，让生产审计同时校验每个区域的运行时消费身份。
       errors.push(...validateProductionAuditShape(fixedVisualAuditManifest(data), { ...options, stage: "V4", projectRoot: options.projectRoot, checkFiles: options.checkFiles }));
       const structuralGate = { ...data, coverage_audit: isObject(data.coverage_audit) ? { ...data.coverage_audit, regions: [] } : data.coverage_audit };
-      errors.push(...validateV4ProductionGate(structuralGate, { requireEvidenceIdentity: true, requireSceneReconstruction: true, displayLayerScope }));
+      errors.push(...validateV4ProductionGate(structuralGate, { ...layoutSourceOptions, requireEvidenceIdentity: true, requireSceneReconstruction: true, displayLayerScope }));
     } else if (requireAudit) {
       errors.push(...validateProductionAuditShape(fixedVisualAuditManifest(data), { ...options, projectRoot: options.projectRoot, checkFiles: options.checkFiles }));
     } else if (isObject(data.production_contract_audit)) errors.push(...validateProductionAuditShape(data));
@@ -810,6 +812,11 @@ export async function checkManifestFiles(data, projectRoot, options = {}) {
       }
     } catch (error) { errors.push(`reference_target.original_file：${error.message}`); }
   }
+  const sourceErrors = [];
+  if (data.effect_image_reconstruction?.applicability === "effect-image" && data.scene_reconstruction_contract?.layout_decomposition?.layout_source) {
+    validateEffectImageLayoutBindings(data, sourceErrors, { ...options, projectRoot, forceLayoutSourceFiles: true, stage });
+  }
+  errors.push(...sourceErrors);
   const supplementalPaths = collectManifestFileEvidenceEntries(data);
   // 文件门把清单根身份传给共享确认器；逐组校验时再注入该组 authorityByRegion。
   const confirmationAuthority = confirmationAuthorityBase(data, projectRoot, options);
@@ -938,7 +945,7 @@ export async function main(argv = process.argv.slice(2)) {
   try {
     const args = parseArgs(argv); const data = await loadManifest(args.manifest);
     if (!args.checkFiles && requiresBitmapFileGate(data)) { console.error("检测到 bitmap-decomposition：未运行文件证据校验，不予放行。必须使用 --stage V2 --check-files --project-root ."); return 2; }
-    const errors = validateManifest(data, { stage: args.stage, checkFiles: args.checkFiles, projectRoot: args.projectRoot, workItemType: args.workItemType });
+    const errors = validateManifest(data, { stage: args.stage, checkFiles: args.checkFiles, forceLayoutSourceFiles: true, projectRoot: args.projectRoot ?? resolve(args.manifest, "..", ".."), workItemType: args.workItemType });
     if (args.checkFiles) errors.push(...await checkManifestFiles(data, args.projectRoot ?? resolve(args.manifest, "..", ".."), { stage: args.stage }));
     const uniqueErrors = [...new Set(errors)];
     if (uniqueErrors.length) { console.error("视觉资源清单无效："); for (const error of uniqueErrors) console.error(`- ${error}`); return 1; }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { nativeRenderContract, nativeRuntimeEvidence } from "./native-render-test-fixtures.mjs";
 import { deriveLayoutExecutionPlans } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
 import { attachLayoutRuntimeSnapshots } from "../../cocos-game-ui-layout/scripts/widget-runtime-test-fixtures.mjs";
+import { fixtureLayoutNodes, registerFixtureV2Layout } from "./v2-layout-source-test-fixtures.mjs";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
@@ -253,7 +254,6 @@ function effectImageContract() {
       {
         layout_node_id: "hud-main",
         region_id: "hud",
-        coordinate_space: "viewport",
         ui_layout: { grouping_basis: ["POSITION"], layout_owner: "SELF", size_policy: "FLEX", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "NONE" },
         reference_id: "viewport",
         parent_layout_node_id: "viewport",
@@ -264,17 +264,13 @@ function effectImageContract() {
         reference_anchor: "top-left",
         offset: { x: 0, y: 0 },
         target_bounds: { x: 0, y: 0, width: 390, height: 96 },
-        size_policy: { mode: "target-bound", aspect: "preserve" },
         z_order: 10,
-        clip_policy: "none",
-        responsive_rule: { target: "exact", other: "preserve-relative-anchors" },
       },
       {
-        layoutNodeId: "board-surface",
-        regionId: "board",
-        coordinateSpace: "viewport",
+        layout_node_id: "board-surface",
+        region_id: "board",
         ui_layout: { grouping_basis: ["POSITION"], layout_owner: "SELF", size_policy: "FLEX", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "NONE" },
-        referenceId: "viewport",
+        reference_id: "viewport",
         parent_layout_node_id: "viewport",
         parent_target_bounds: { x: 0, y: 0, width: 390, height: 844 },
         relative_position: { left: 20, right: 20, top: 160, bottom: 64 },
@@ -282,21 +278,21 @@ function effectImageContract() {
         self_anchor: "bottom-left",
         reference_anchor: "bottom-left",
         offset: { x: 20, y: -64 },
-        targetBounds: { x: 20, y: 160, width: 350, height: 620 },
-        sizePolicy: { mode: "target-bound", aspect: "preserve" },
-        zOrder: 1,
-        clipPolicy: "none",
-        responsiveRule: { target: "exact", other: "preserve-relative-anchors" },
+        target_bounds: { x: 20, y: 160, width: 350, height: 620 },
+        z_order: 1,
       },
     ],
     layout_annotation: { layout_annotation_file: "evidence/v2/layout-annotation.png", layout_annotation_sha256: SHA, layout_annotation_width: 390, layout_annotation_height: 844, layout_annotation_schema: "layout-annotation/png/1", layout_annotation_layout: "image-plus-right-panel", layout_annotation_metadata_sha256: SHA, layout_annotation_identity_sha256: SHA, layout_review_file: "evidence/v2/layout-review.html", layout_review_sha256: SHA, layout_review_identity_sha256: SHA, layout_nodes_file: "evidence/v2/layout-nodes.json", layout_nodes_sha256: SHA, decomposition_confirmation_id: "v2-confirmation", decomposition_confirmation_sha256: SHA, proposal_sha256: SHA, layout_decision_file: "evidence/v2/automatic-layout-decision.json", layout_decision_sha256: SHA, layout_decision_id: "layout-decision-1", target_sha256: SHA, scene_id: "main", state_id: "default", layout_node_ids: ["hud-main", "board-surface"] }, layout_annotation_confirmation: (() => { const record = { confirmation_schema: "layout-annotation-confirmation/1.0", confirmation_id: "v2-layout-confirmation", status: "accepted", confirmation_mode: "manual", layout_annotation_file: "evidence/v2/layout-annotation.png", layout_annotation_sha256: SHA, layout_annotation_width: 390, layout_annotation_height: 844, layout_annotation_schema: "layout-annotation/png/1", layout_annotation_layout: "image-plus-right-panel", layout_annotation_metadata_sha256: SHA, layout_annotation_identity_sha256: SHA, layout_review_file: "evidence/v2/layout-review.html", layout_review_sha256: SHA, layout_review_identity_sha256: SHA, layout_nodes_file: "evidence/v2/layout-nodes.json", layout_nodes_sha256: SHA, decomposition_confirmation_id: "v2-confirmation", decomposition_confirmation_sha256: SHA, proposal_sha256: SHA, layout_decision_file: "evidence/v2/automatic-layout-decision.json", layout_decision_sha256: SHA, layout_decision_id: "layout-decision-1", target_sha256: SHA, scene_id: "main", state_id: "default", user_original_text: "确认布局标注", user_message_sha256: computeLayoutUserMessageSha256("确认布局标注"), decision_record_file: "evidence/v2/layout-decision.json", decision_record_sha256: SHA, user_decision_receipt_file: "evidence/v2/layout-receipt.json", user_decision_receipt_sha256: SHA, accepted_at: "2026-01-01T00:00:00Z" }; return { ...record, confirmation_sha256: computeLayoutAnnotationConfirmationSha256(record) }; })(),
   };
-  refreshFixtureLayoutExecution(value.layout_decomposition.layout_nodes);
+  const fixtureNodes = value.layout_decomposition.layout_nodes;
+  refreshFixtureLayoutExecution(fixtureNodes);
+  registerFixtureV2Layout(value, fixtureNodes);
+  const sourceNodes = fixtureLayoutNodes(value);
   value.combination_preacceptance.formal_assets = ["hud-main", "board-surface"];
   value.combination_preacceptance.visual_fidelity = { contour: "passed", proportion: "passed", pose: "passed", icon_semantics: "passed", full_scene_composition: "passed" };
   value.combination_preacceptance.redesign_check = "none";
   value.combination_preacceptance.layout_geometry = {
-    component_snapshots: attachLayoutRuntimeSnapshots(value.layout_decomposition.layout_nodes, value.layout_decomposition.layout_nodes.map((node) => ({ layout_node_id: node.layout_node_id ?? node.layoutNodeId }))),
+    component_snapshots: attachLayoutRuntimeSnapshots(sourceNodes, sourceNodes.map((node) => ({ layout_node_id: node.layout_node_id ?? node.layoutNodeId }))),
     formal_layout_structure: "MainScene/LayoutContract",
     missing_node_ids: [],
     extra_node_ids: [],

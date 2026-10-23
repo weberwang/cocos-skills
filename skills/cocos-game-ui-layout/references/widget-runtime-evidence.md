@@ -101,7 +101,7 @@
 
 活动业务节点的 `position_writers` 和 `size_writers` 各恰有一个对应计划的唯一驱动器；非活动节点两者都为空。Widget/Layout 的 `enabled` 记录实际组件开关，并与 `activeInHierarchy` 一起判断有效写入者；非活动节点仍需如实记录实际组件快照，但不能将禁用组件报告成有效写入者。`component_snapshots` 的业务节点覆盖不受 `visual_validation.mode` 的几何容差矩阵影响：`usability` 与 `exact` 都必须覆盖全部业务布局节点。该覆盖要求不等于要求每个 `layout_bounds` 都与目标框相等；它用于实际中心关系与组件几何规则，不把 `usability` 升级成完整 exact 测量。`node_measurements` 仍独立负责既有几何验收：`usability` 可按关键节点和可用性规则验收，`exact` 要求完整节点测量与预声明容差。二者不是同一份矩阵，也不能以某种模式缺少完整几何测量为由减少组件快照覆盖。
 
-结构化 UI 合同仅在 `effect-image` 且 `fidelity.status: verified` 时消费同一正式场景运行证据：其根级 `component_snapshots` 是 `combination_preacceptance.layout_geometry.component_snapshots` 这次采集的投影，不是第二份证据；`specified` 只检查计划，不要求运行时快照。不得另造全局根协议、重复一份手写快照，或让结构检查与几何检查读取互不一致的采集结果。当前修改仅更新工作流与校验规则，不代表已执行 Creator 运行或完成截图视觉验收；截图效果仍由用户人工检查。
+V4 effect-image 的运行组件证据只保存在 scene contract 的 `combination_preacceptance.layout_geometry.component_snapshots`，由结构与几何校验共同消费。schema 2.0.0 UI 合同仍只有两个文件引用和三项身份字段，不内联 `fidelity` 或 `component_snapshots`；V2 检查布局意图时读取其引用的唯一 `layout-nodes.json`，V4 才要求从真实 Creator 场景采集运行快照。不得另造第二份手写快照，或让结构检查与几何检查读取互不一致的采集结果。文档中的运行证据规则不代表已执行 Creator 运行或完成截图视觉验收；截图效果仍由用户人工检查。
 
 ## Creator 3.8.9 参考
 

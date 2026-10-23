@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { validateContract as validateUiLayoutContract } from "../../cocos-game-ui-layout/scripts/validate_ui_layout_contract.mjs";
+import { getUiLayoutSourceDocument, loadUiLayoutSourceDocuments, resolveSceneV2LayoutSource } from "../../cocos-game-ui-layout/scripts/ui-layout-contract-sources.mjs";
 import { calculateFullBleedCoverTransform } from "../../cocos-game-asset-integration/scripts/full-bleed-background-adapter.mjs";
 import { DEFAULT_DPR, isDeviceDprInput, isWorkflowDpr, parseDeviceDpr, workflowDprError } from "../../cocos-game-workflow-control/scripts/workflow-dpr-contract.mjs";
 import { DEFAULT_VISUAL_VALIDATION_MODE, isExactVisualValidation, resolveVisualValidationMode, validateVisualValidationPolicy } from "../../cocos-game-workflow-control/scripts/visual-validation-policy.mjs";
@@ -143,28 +144,117 @@ function collectDprErrors(value, path = "contract", errors = [], seen = new Set(
   return errors;
 }
 
+/** 把 V2 公共策略映射为响应式 QA 使用的检查面，不复制任何场景或节点布局事实。 */
+function referencedPolicySettings(policy) {
+  const evidence = policy?.requiredRuntimeEvidence ?? {};
+  const requiredFields = Array.isArray(evidence.requiredFields) ? evidence.requiredFields : null;
+  const fillViewport = policy?.designResolutionPolicy?.canvasFit === "fill-viewport";
+  const background = policy?.designResolutionPolicy?.backgroundFit;
+  const resizeAssertions = evidence.resizeAssertions;
+  return {
+    visual_validation: { mode: evidence.mode },
+    applicability: "effect-image",
+    viewport: {
+      // fill-viewport 明确禁止画布留黑边；没有显式项目语义时保留 undefined 触发决策缺口。
+      mode: fillViewport ? "full-viewport" : undefined,
+      strategy: typeof policy?.scaleMode === "string" ? policy.scaleMode.toUpperCase() : undefined,
+      allowWhitespace: fillViewport ? false : undefined,
+      backgroundCoverageTarget: background?.mode === "cover-v1" ? 1 : undefined,
+      backgroundFit: {
+        mode: background?.mode,
+        sourceFocus: background?.sourceFocalPoint,
+        targetPoint: background?.targetPoint,
+      },
+      requireCanvasCoverage: fillViewport,
+    },
+    safeArea: {
+      required: requiredFields?.includes("safeArea"),
+      requiredDefined: requiredFields?.includes("safeArea") ?? false,
+    },
+    resize: {
+      required: resizeAssertions?.samePage === true,
+      requiredDefined: resizeAssertions?.samePage !== undefined,
+      trajectory: Array.isArray(policy?.resizePolicy?.events) ? policy.resizePolicy.events.map(String) : [],
+    },
+    hook: {
+      required: requiredFields?.includes("keyUiRects") ?? true,
+      name: DEFAULT_HOOK_NAME,
+    },
+    orientationPolicy: policy?.orientationPolicy,
+    responsiveViewportContract: {
+      applicability: evidence.displayLayerTrajectory?.required === true ? "DISPLAY_LAYER" : "SCENE",
+      orientationPolicy: policy?.orientationPolicy,
+      representativeViewports: policy?.representativeViewports,
+      requiredRuntimeEvidence: evidence,
+    },
+    viewports: Array.isArray(policy?.representativeViewports)
+      ? policy.representativeViewports.map((item) => ({
+          name: item.id,
+          width: item.width,
+          height: item.height,
+          deviceScaleFactor: item.rawDpr,
+        }))
+      : undefined,
+  };
+}
+
+/** 从冻结场景身份和唯一节点文件组装 QA 身份来源；Map 仅供结构验证显式注入。 */
+function resolveReferencedUiContext(source, options) {
+  const validation = validateUiLayoutContract(source, { ...options, stage: options.stage ?? "V2" });
+  const policy = getUiLayoutSourceDocument(options.layoutSourceDocuments, source.project_policy_file, "project_policy_file");
+  const scene = getUiLayoutSourceDocument(options.layoutSourceDocuments, source.scene_contract_file, "scene_contract_file");
+  let layoutSource = null;
+  const errors = [...validation.errors];
+  if (scene && typeof scene === "object") {
+    try {
+      const resolved = resolveSceneV2LayoutSource(scene, options);
+      layoutSource = {
+        nodesFile: scene.layout_decomposition?.layout_source?.nodes_file ?? scene.layoutDecomposition?.layoutSource?.nodes_file ?? null,
+        layoutNodeIds: resolved.nodes.map((node) => node.layout_node_id),
+      };
+    } catch (error) {
+      errors.push(`scene_contract V2 唯一布局源无效：${error.message}`);
+    }
+  }
+  const target = scene?.target_conditions ?? scene?.targetConditions ?? {};
+  const identity = {
+    schemaVersion: source.schema_version,
+    contractVersion: target.layout_contract_version ?? target.layoutContractVersion,
+    scenes: [target.scene_id ?? target.sceneId].filter((value) => typeof value === "string"),
+    states: [target.state_id ?? target.stateId].filter((value) => typeof value === "string"),
+    visualBaselineVersion: target.visual_baseline_version ?? target.visualBaselineVersion,
+    sourceKind: "scene-contract",
+  };
+  const trustworthy = validation.status === "passed" && errors.length === 0 && layoutSource !== null
+    && typeof identity.contractVersion === "string" && identity.scenes.length === 1
+    && identity.states.length === 1 && typeof identity.visualBaselineVersion === "string";
+  return { policy, scene, identity, layoutSource, trusted: trustworthy, errors: [...new Set(errors)] };
+}
+
 /** 只提取门禁所需契约，保留 undefined 以便输出 decision_gap 而不是猜测。 */
-export function normalizeContract(raw = {}) {
+export function normalizeContract(raw = {}, options = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
   if (source[NORMALIZED_CONTRACT] === true) return source;
-  const uiValidation = validateUiLayoutContract(source);
+  const referenced = source.schema_version === "2.0.0" ? resolveReferencedUiContext(source, options) : null;
+  const settings = referenced ? referencedPolicySettings(referenced.policy) : source;
+  const uiValidation = referenced ? { status: referenced.trusted ? "passed" : "failed", errors: referenced.errors } : validateUiLayoutContract(source);
   const trustedUiContract = uiValidation.status === "passed";
-  const viewport = source.viewport && typeof source.viewport === "object" ? source.viewport : {};
-  const safeArea = source.safeArea && typeof source.safeArea === "object" ? source.safeArea : {};
-  const resize = source.resize && typeof source.resize === "object" ? source.resize : {};
+  const viewport = settings.viewport && typeof settings.viewport === "object" ? settings.viewport : {};
+  const safeArea = settings.safeArea && typeof settings.safeArea === "object" ? settings.safeArea : {};
+  const resize = settings.resize && typeof settings.resize === "object" ? settings.resize : {};
   const backgroundFit = viewport.backgroundFit && typeof viewport.backgroundFit === "object" ? viewport.backgroundFit : {};
   const allowWhitespace = own(viewport, "allowWhitespace") && viewport.allowWhitespace !== null
     ? Boolean(viewport.allowWhitespace)
-    : own(source, "allowWhitespace") && source.allowWhitespace !== null
-      ? Boolean(source.allowWhitespace)
+    : own(settings, "allowWhitespace") && settings.allowWhitespace !== null
+      ? Boolean(settings.allowWhitespace)
       : undefined;
-  const tolerance = finiteNumber(viewport.whitespaceTolerancePx ?? source.whitespaceTolerancePx);
-  const target = finiteNumber(viewport.backgroundCoverageTarget ?? source.backgroundCoverageTarget);
-  const strategyValue = viewport.strategy ?? source.strategy;
-  const modeValue = viewport.mode ?? source.mode;
+  const tolerance = finiteNumber(viewport.whitespaceTolerancePx ?? settings.whitespaceTolerancePx);
+  const target = finiteNumber(viewport.backgroundCoverageTarget ?? settings.backgroundCoverageTarget);
+  const strategyValue = viewport.strategy ?? settings.strategy;
+  const modeValue = viewport.mode ?? settings.mode;
   const normalized = {
-    visual_validation: { mode: resolveVisualValidationMode(source) },
-    applicability: source.applicability ?? null,
+    visual_validation: { mode: resolveVisualValidationMode(settings) },
+    applicability: settings.applicability ?? null,
     viewport: {
       mode: modeValue === undefined || modeValue === null ? undefined : String(modeValue).toLowerCase(),
       strategy: strategyValue === undefined || strategyValue === null ? undefined : String(strategyValue).toUpperCase(),
@@ -176,51 +266,53 @@ export function normalizeContract(raw = {}) {
         sourceFocus: backgroundFit.sourceFocalPoint ?? backgroundFit.sourceFocus,
         targetPoint: backgroundFit.targetPoint
       },
-      requireCanvasCoverage: Boolean(viewport.requireCanvasCoverage ?? source.requireCanvasCoverage)
+      requireCanvasCoverage: Boolean(viewport.requireCanvasCoverage ?? settings.requireCanvasCoverage)
     },
     safeArea: {
       required: Boolean(safeArea.required),
-      requiredDefined: own(safeArea, "required")
+      requiredDefined: safeArea.requiredDefined ?? own(safeArea, "required")
     },
     resize: {
       required: Boolean(resize.required),
-      requiredDefined: own(resize, "required"),
+      requiredDefined: resize.requiredDefined ?? own(resize, "required"),
       trajectory: Array.isArray(resize.trajectory) ? resize.trajectory.map(String) : []
     },
     hook: {
-      required: source.hook?.required === undefined ? true : Boolean(source.hook.required),
-      name: source.hook?.name ? String(source.hook.name) : DEFAULT_HOOK_NAME
+      required: settings.hook?.required === undefined ? true : Boolean(settings.hook.required),
+      name: settings.hook?.name ? String(settings.hook.name) : DEFAULT_HOOK_NAME
     },
-    effectImageApplicability: source.effect_image_reconstruction?.applicability ?? source.effectImageApplicability ?? null,
+    effectImageApplicability: referenced ? "effect-image" : settings.effect_image_reconstruction?.applicability ?? settings.effectImageApplicability ?? null,
     identityContract: {
       trusted: trustedUiContract,
       validationErrors: trustedUiContract ? [] : uiValidation.errors,
-      schemaVersion: trustedUiContract ? source.schema_version : null,
-      contractVersion: trustedUiContract ? source.contract_version : null,
-      scenes: trustedUiContract ? source.scope.scenes : null,
-      states: trustedUiContract ? source.scope.states : null,
-      codeCandidate: trustedUiContract ? source.scope.bindings.code_candidate : null,
-      visualBaselineVersion: trustedUiContract ? source.frozen_visual_target?.visual_baseline_version ?? source.scope.bindings.visual_baseline : null,
-      targetSha256: trustedUiContract ? source.frozen_visual_target?.target_sha256 ?? null : null
+      schemaVersion: trustedUiContract ? referenced?.identity.schemaVersion ?? source.schema_version : null,
+      contractVersion: trustedUiContract ? referenced?.identity.contractVersion ?? source.contract_version : null,
+      scenes: trustedUiContract ? referenced ? referenced.identity.scenes : source.scope?.scenes ?? null : null,
+      states: trustedUiContract ? referenced ? referenced.identity.states : source.scope?.states ?? null : null,
+      codeCandidate: trustedUiContract ? (referenced ? null : source.scope?.bindings?.code_candidate ?? null) : null,
+      visualBaselineVersion: trustedUiContract ? referenced ? referenced.identity.visualBaselineVersion : source.frozen_visual_target?.visual_baseline_version ?? source.scope?.bindings?.visual_baseline ?? null : null,
+      targetSha256: trustedUiContract ? referenced?.scene?.target_conditions?.target_sha256 ?? referenced?.scene?.targetConditions?.targetSha256 ?? source.frozen_visual_target?.target_sha256 ?? null : null,
+      sourceKind: referenced?.identity.sourceKind ?? "ordinary-ui-contract"
     },
-    viewports: source.viewports ?? source.viewportMatrix ?? null,
-    responsiveViewportContract: source.logicalViewportSpace
+    viewports: settings.viewports ?? settings.viewportMatrix ?? null,
+    responsiveViewportContract: settings.logicalViewportSpace
       ? {
-          applicability: source.requiredRuntimeEvidence?.displayLayerTrajectory?.required === true ? "DISPLAY_LAYER" : "SCENE",
-          orientationPolicy: source.orientationPolicy,
-          representativeViewports: source.representativeViewports,
-          requiredRuntimeEvidence: source.requiredRuntimeEvidence
+          applicability: settings.requiredRuntimeEvidence?.displayLayerTrajectory?.required === true ? "DISPLAY_LAYER" : "SCENE",
+          orientationPolicy: settings.orientationPolicy,
+          representativeViewports: settings.representativeViewports,
+          requiredRuntimeEvidence: settings.requiredRuntimeEvidence
         }
-      : source.responsiveViewportContract ?? source.responsive_viewport_contract ?? null,
-    dprErrors: collectDprErrors(source)
+      : settings.responsiveViewportContract ?? settings.responsive_viewport_contract ?? null,
+    layoutSource: trustedUiContract ? referenced?.layoutSource ?? null : null,
+    dprErrors: collectDprErrors(referenced?.policy ?? source)
   };
-  const nestedOrientation = (source.responsiveViewportContract ?? source.responsive_viewport_contract)?.orientationPolicy;
+  const nestedOrientation = (settings.responsiveViewportContract ?? settings.responsive_viewport_contract)?.orientationPolicy;
   // 同一输入不能让 QA 和控制面各自采用不同的方向范围。
-  normalized.orientationErrors = source.orientationPolicy !== undefined && nestedOrientation !== undefined
-    ? validateOrientationPolicyConsistency(source.orientationPolicy, nestedOrientation) : [];
+  normalized.orientationErrors = settings.orientationPolicy !== undefined && nestedOrientation !== undefined
+    ? validateOrientationPolicyConsistency(settings.orientationPolicy, nestedOrientation) : [];
   // UI 合同和响应式脚本共享同一视觉模式；非法模式沿用 usability 计算，但在报告中明确暴露错误。
   normalized.visualValidationErrors = [];
-  validateVisualValidationPolicy(normalized.visualValidationErrors, "visual_validation", source);
+  validateVisualValidationPolicy(normalized.visualValidationErrors, "visual_validation", settings);
   // 仅模块内部生成的不可序列化标记允许重复归一化，JSON 调用方无法伪造权威身份。
   Object.defineProperty(normalized, NORMALIZED_CONTRACT, { value: true });
   return normalized;
@@ -265,8 +357,8 @@ function deriveScaling(canvasRect, backingSize, logicalSize, dpr, hookScale) {
 }
 
 /** 评估一个 viewport；失败优先于 decision_gap，避免几何硬失败被缺字段掩盖。 */
-export function evaluateViewport({ viewportRect, canvasRect, backingSize = null, hookSnapshot, contract, devicePixelRatio, screenshot = null }) {
-  const normalized = normalizeContract(contract);
+export function evaluateViewport({ viewportRect, canvasRect, backingSize = null, hookSnapshot, contract, contractOptions = {}, devicePixelRatio, screenshot = null }) {
+  const normalized = normalizeContract(contract, contractOptions);
   const exact = isExactVisualValidation(normalized);
   const viewport = normalizeRect(viewportRect);
   const canvas = normalizeRect(canvasRect);
@@ -408,8 +500,8 @@ function stableStringify(value) {
 }
 
 /** 比较相邻视口，确保 resize 轨迹可证明发生了同页几何变化。 */
-export function buildResizeRecords(measurements, contract = {}) {
-  const normalized = normalizeContract(contract);
+export function buildResizeRecords(measurements, contract = {}, contractOptions = {}) {
+  const normalized = normalizeContract(contract, contractOptions);
   const records = [];
   for (let index = 1; index < measurements.length; index += 1) {
     const before = measurements[index - 1];
@@ -474,8 +566,8 @@ export function validateRepresentativeMatrix(measurements, { requireDisplayLayer
 }
 
 /** 检查运行矩阵是否覆盖契约声明的命名视口，缺项不能默认为通过。 */
-export function evaluateMatrixCoverage(measurements, contract = {}) {
-  const normalized = normalizeContract(contract);
+export function evaluateMatrixCoverage(measurements, contract = {}, contractOptions = {}) {
+  const normalized = normalizeContract(contract, contractOptions);
   const exact = isExactVisualValidation(normalized);
   const coverage = resolveOrientationCoverage(normalized.responsiveViewportContract?.orientationPolicy);
   const rawDeclared = normalized.viewports;
@@ -520,7 +612,12 @@ export function validateEvidenceIdentity(identity, { contract = null } = {}) {
   for (const field of ["scene_id", "state_id", "layout_contract_version", "visual_baseline_version"]) if (typeof value[field] !== "string" || value[field].trim() === "") errors.push(`identity.${field} 必须是非空字符串`);
   const binding = contract?.identityContract;
   if (!binding?.trusted || !nonEmptyBinding(binding.schemaVersion) || !nonEmptyBinding(binding.contractVersion) || !Array.isArray(binding.scenes) || binding.scenes.length === 0 || !Array.isArray(binding.states) || binding.states.length === 0 || !nonEmptyBinding(binding.visualBaselineVersion)) errors.push("原始 UI 合同未通过完整布局合同校验，不能建立权威身份");
-  else {
+  else if (binding.sourceKind === "scene-contract") {
+    if (!binding.scenes.includes(value.scene_id)) errors.push("identity.scene_id 与 scene_contract.target_conditions.scene_id 不一致");
+    if (!binding.states.includes(value.state_id)) errors.push("identity.state_id 与 scene_contract.target_conditions.state_id 不一致");
+    if (value.layout_contract_version !== binding.contractVersion) errors.push("identity.layout_contract_version 与 scene_contract.target_conditions.layout_contract_version 不一致");
+    if (value.visual_baseline_version !== binding.visualBaselineVersion) errors.push("identity.visual_baseline_version 与 scene_contract.target_conditions.visual_baseline_version 不一致");
+  } else {
     if (!binding.scenes.includes(value.scene_id)) errors.push("identity.scene_id 不在 UI 合同 scope.scenes 中");
     if (!binding.states.includes(value.state_id)) errors.push("identity.state_id 不在 UI 合同 scope.states 中");
     if (value.layout_contract_version !== binding.contractVersion) errors.push("identity.layout_contract_version 与 UI 合同 contract_version 不一致");
@@ -533,8 +630,8 @@ export function validateEvidenceIdentity(identity, { contract = null } = {}) {
 function nonEmptyBinding(value) { return typeof value === "string" && value.trim().length > 0; }
 
 /** 汇总视口、Hook 和 resize 结果，供 CLI 与无浏览器测试共用。 */
-export function summarizeReport(measurements, contract = {}, identity = null) {
-  const normalized = normalizeContract(contract);
+export function summarizeReport(measurements, contract = {}, identity = null, contractOptions = {}) {
+  const normalized = normalizeContract(contract, contractOptions);
   const viewportStatuses = measurements.map((measurement) => measurement.status);
   const resize = buildResizeRecords(measurements, normalized);
   const matrix = evaluateMatrixCoverage(measurements, normalized);
@@ -550,6 +647,7 @@ export function summarizeReport(measurements, contract = {}, identity = null) {
     candidateSha256: identity?.candidate_sha256 ?? null,
     layoutContractVersion: identity?.layout_contract_version ?? null,
     visualBaselineVersion: identity?.visual_baseline_version ?? null,
+    layoutSource: normalized.layoutSource,
     resize: resize.records,
     resizeTrajectory: resize.records,
     pageReloaded: resize.records.some((record) => record.pageReloaded),
@@ -591,6 +689,19 @@ async function readJsonInput(value, { allowPlain = false } = {}) {
   if (allowPlain && /^(?:\d+\s*x\s*\d+)(?:\s*,\s*\d+\s*x\s*\d+)*$/i.test(text)) return text;
   const file = await fs.readFile(text, "utf8");
   return JSON.parse(file);
+}
+
+/** 正式 V2 QA 从引用合同读取项目策略、场景和唯一 layout-nodes 文件。 */
+export async function loadResponsiveContract(raw, options = {}) {
+  if (raw?.schema_version !== "2.0.0") return normalizeContract(raw, options);
+  if (typeof options.projectRoot !== "string" || options.projectRoot.trim() === "") throw new Error("V2 响应式 QA 必须显式提供 projectRoot");
+  const layoutSourceDocuments = await loadUiLayoutSourceDocuments(raw, options.projectRoot);
+  return normalizeContract(raw, {
+    ...options,
+    layoutSourceDocuments,
+    forceLayoutSourceFiles: true,
+    stage: options.stage ?? "V4",
+  });
 }
 
 /** 解析 --key value/--key=value 参数，保持脚本无外部 CLI 依赖。 */
@@ -663,7 +774,10 @@ async function runBrowserValidation(options) {
   const chromium = playwright.chromium ?? playwright.default?.chromium;
   if (!chromium) throw new Error("Playwright 未提供 chromium；请安装 playwright");
   const rawContract = await readJsonInput(options.contract);
-  const contract = normalizeContract(rawContract);
+  const contract = await loadResponsiveContract(rawContract, {
+    projectRoot: String(options["project-root"] ?? process.cwd()),
+    stage: "V4",
+  });
   const identity = await readJsonInput(options.identity);
   const identityErrors = validateEvidenceIdentity(identity, { contract });
   if (identityErrors.length) throw new Error(identityErrors.join("；"));
@@ -740,7 +854,7 @@ async function runBrowserValidation(options) {
 
 /** 输出最小 CLI 帮助文本。 */
 function printHelp() {
-  console.log("用法：node responsive-visual-validation.mjs --url URL --viewports MATRIX --canvas-selector canvas --contract CONTRACT --identity IDENTITY --output DIR [--hook NAME]");
+  console.log("用法：node responsive-visual-validation.mjs --url URL --viewports MATRIX --canvas-selector canvas --contract CONTRACT --identity IDENTITY --project-root PROJECT [--output DIR] [--hook NAME]");
 }
 
 /** CLI 入口；纯计算函数可在无浏览器测试中直接导入。 */

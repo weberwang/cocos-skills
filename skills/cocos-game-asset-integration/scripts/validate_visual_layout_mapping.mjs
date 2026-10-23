@@ -2,6 +2,7 @@ import { resolveProductionContract } from "../../cocos-game-workflow-control/scr
 
 import { validateEffectImageParentChildLayoutNodes } from "../../cocos-game-workflow-control/scripts/layout-node-parent-geometry.mjs";
 import { validateLayoutRuntimeSnapshots } from "../../cocos-game-ui-layout/scripts/widget-runtime.mjs";
+import { resolveSceneV2LayoutSource } from "../../cocos-game-workflow-control/scripts/scene-layout-decomposition-contract.mjs";
 import { buildDecompositionElements, decompositionElementIds, validateDecompositionElements } from "./decomposition-elements.mjs";
 import { resolveVisualValidationMode, visualBoundsOutsideViewport } from "../../cocos-game-workflow-control/scripts/visual-validation-policy.mjs";
 
@@ -118,8 +119,12 @@ export function validatePngLayoutMetadata(region, item, expectedPlacements, labe
  */
 export function validateEffectImageLayoutBindings(data, errors, options = {}) {
   const requireLayout = options.requireLayout ?? (options.stage === "V4" || data?.effect_image_reconstruction?.lifecycle === "v4-complete" || [data?.visualStageState, data?.visual_stage_state].includes("v2-production-planning-complete"));
-  const coverageRegions = Array.isArray(data?.coverage_audit?.regions) ? data.coverage_audit.regions.filter(isObject) : [];
   const contract = data?.scene_reconstruction_contract;
+  const target = contract?.target_conditions;
+  // 一份规范布局源只属于一个 scene/state，其他确认组由其自身的场景布局验收。
+  const coverageRegions = (Array.isArray(data?.coverage_audit?.regions) ? data.coverage_audit.regions : []).filter((region) => isObject(region)
+    && (!target?.scene_id || region.scene_id === target.scene_id)
+    && (!target?.state_id || region.state_id === target.state_id));
   const decomposition = contract?.layout_decomposition;
   const label = "scene_reconstruction_contract.layout_decomposition";
   if (!isObject(decomposition) && !requireLayout) return null;
@@ -127,7 +132,6 @@ export function validateEffectImageLayoutBindings(data, errors, options = {}) {
     errors.push(`${label} 必须是对象；effect-image 必须先冻结布局拆解`);
     return null;
   }
-  const target = contract?.target_conditions;
   const binding = decomposition.layout_binding ?? decomposition.layout_contract_binding ?? decomposition.binding ?? decomposition;
   const identity = {
     scene_id: binding?.scene_id,
@@ -139,9 +143,15 @@ export function validateEffectImageLayoutBindings(data, errors, options = {}) {
   if (nonEmptyString(target?.state_id) && identity.state_id !== target.state_id) errors.push(`${label}.state_id 与冻结状态不一致`);
   if (nonEmptyString(target?.layout_contract_version) && identity.layout_contract_version !== target.layout_contract_version) errors.push(`${label}.layout_contract_version 与冻结布局合同版本不一致`);
 
-  const nodes = decomposition.layout_nodes;
-  if (!Array.isArray(nodes) || nodes.length === 0) {
-    errors.push(`${label}.layout_nodes 必须是非空数组`);
+  if (Object.hasOwn(decomposition, "layout_nodes") || Object.hasOwn(decomposition, "layoutNodes")) {
+    errors.push(`${label} 禁止内联 layout_nodes；分组、父子、参照与布局策略只能读取 layout_source.nodes_file`);
+    return null;
+  }
+  let nodes;
+  try {
+    nodes = resolveSceneV2LayoutSource(contract, options).nodes;
+  } catch (error) {
+    errors.push(`${label} ${error.message}`);
     return null;
   }
   const regionById = new Map();

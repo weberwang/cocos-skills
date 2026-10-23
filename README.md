@@ -75,6 +75,8 @@ node .\.agents\skills\cocos-game-workflow-control\scripts\workflow-control.mjs s
 
 UI 中选择 `center` 时，默认严格居中；只有明确的设计偏移或经检查后的光学补偿才保留中心参照偏移，并说明理由。图标和文字可按组合整体居中，广告角标单独停靠；居中及父/定位参照的依赖位移会平移布局 bounds 并保持相对间距，不改普通图片 RAW 尺寸。详见[居中策略与组合定位](skills/cocos-game-ui-layout/references/center-alignment.md)。
 
+effect-image 的 V2 分组、父子、定位参照、居中、尺寸策略及 `layout_execution` 只有一份事实：同批 `layout-nodes.json`。scene contract 通过 `layout_decomposition.layout_source.nodes_file` 引用它，UI 合同只引用项目公共策略与场景合同；Stage A proposal 和 Stage B decision 分别作为确认历史与生成输入，布局 PNG、`review.html` 和运行快照是只读投影，不维护第二份树。普通 UI 仍使用独立 schema 1.2.0 合同；effect-image 使用 schema 2.0.0 引用合同。详见[UI 布局合同](skills/cocos-game-ui-layout/references/layout-contract.md)和[视觉还原流程](skills/cocos-game-asset-integration/references/visual-reconstruction.md)。
+
 美术质量另按[游戏美术体验与质量契约](skills/cocos-game-asset-integration/references/art-quality-contract.md)验收：结构化 brief 关联主题、受众、核心循环与观看情境；常态、操作反馈和关键事件分别限制视觉刺激。全局三候选逐项记录实际人工质量结果，所选候选任一失败或未验证都不能冻结，三张都不合格时返工。V4 提交正常游玩、重复反馈、叠加与收尾的适用动态片段，由用户检查持续观看效果；机器 PASS 只说明结构、参数和证据有效，不能代替美术验收。该要求复用既有阶段与确认，不增加审批流程或自动真机验收。
 
 所有任务和阶段都逐一以当前用户明确要求和[实际完成情况](skills/cocos-game-workflow-control/references/control-model.md#按实际完成情况验收)判断验收，覆盖设计、工程、玩法、场景、UI、资源、动画、音频、数值、测试、性能、集成与发布。任何任务已按要求完成时，不因中途方案或内部实现调整而回改历史合同；记录实际结果并更新受影响证据即可。只有真实改变后续依赖的范围、公开接口或硬约束时才更新对应契约，不能通过修订合同降低未满足要求的验收标准。

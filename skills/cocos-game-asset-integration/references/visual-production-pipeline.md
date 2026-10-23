@@ -62,7 +62,7 @@ UI 底板、按钮皮肤和框体在当前拆解里完成[九宫格适用决策]
 
 当前场景 Work Item 的 V1 冻结目标和初步还原草案有效后进入 V2。V2 把 V1 的视觉事实细化为可确认、可执行的还原方案，并按两个串行视觉硬门完成：阶段 A 在内部维护拆解图对应的技术 JSON、按序 `decomposition_elements`、功能归属与理由、component×state 和资源生产事实，向用户展示编号 PNG 供视觉确认；阶段 B 仅在拆解图确认后自动继承功能父子归属，补充停靠/对齐关系、布局测量、显示层关系和布局容差，生成布局标注 PNG 与审阅页供视觉确认。无需在任一图片确认前单独提交或等待文字提案、对齐决策或技术记录的确认。
 
-V2 布局必须后置于拆解图确认：阶段 A 先由冻结原图、区域和组件事实生成拆解图及技术 JSON，并明确按确认顺序排列的 `decomposition_elements`；只有图中内容或分组需要更正时，用户才通过指出具体图号提出修改，代理更新并重出图片，再确认最终拆解图。默认不先给文字提案，也不要求用户查看技术 JSON。只有 `visual-decomposition-confirmation/1.0` 通过后，智能布局才结合原图构图、视觉重心和元素语义，为每个确认元素按原顺序生成唯一的 `left/center/right × top/center/bottom` 对齐决策，并为 center 轴解释规范化 `center_alignment`；普通中心轴默认 strict，受 leader 的 `member_ids` 控制时组员继承组策略。decision 文件保留原字节，规范化结果写入生成节点；显式 reference 偏移必须带理由。图文整体居中由 leader 指定 `member_ids`，单图标居中不包含独立广告角标。中心策略可平移节点或整组；父级或定位参照的整体位移也沿关系传播到依赖节点，非 center 轴同样保持原有相对间距。所有位置均在布局节点上派生，proposal 原 bounds、元素尺寸、身份和顺序保持不变；细则见[居中策略与组合定位](../../cocos-game-ui-layout/references/center-alignment.md)。几何测量不得替代该视觉判断。布局入口只消费该决策与 `proposal.decomposition_elements`，按原顺序推导后置布局节点并生成独立布局标注图及 `review.html`，不能读取预存 `layout_nodes`，也不生成新的视觉参考图或多个布局候选。布局决策和布局图由代理内部维护；只有用户在布局图/审阅页中发现需更正的关系时，才按反馈修改并重出图，再以 `layout-annotation-confirmation/1.0` 绑定用户看到的最终图、决策文件及全部上游身份。两次确认仍分别是人工确认，且不得合并或跳过。
+V2 布局必须后置于拆解图确认：阶段 A 先由冻结原图、区域和组件事实生成拆解图及技术 JSON，并明确按确认顺序排列的 `decomposition_elements`；只有图中内容或分组需要更正时，用户才通过指出具体图号提出修改，代理更新 Stage A proposal、重出图片并重新确认。默认不先给文字提案，也不要求用户查看技术 JSON。只有 `visual-decomposition-confirmation/1.0` 通过后，智能布局才结合原图构图、视觉重心和元素语义，为每个确认元素按原顺序生成唯一的 `left/center/right × top/center/bottom` 对齐决策，并为 center 轴解释规范化 `center_alignment`；普通中心轴默认 strict，受 leader 的 `member_ids` 控制时组员继承组策略。Stage A proposal 是历史确认输入，Stage B `automatic-layout-decision/1.0` 是布局生成输入；decision 文件保留原字节，规范化结果写入唯一的同批 `layout-nodes.json`。显式 reference 偏移必须带理由。图文整体居中由 leader 指定 `member_ids`，单图标居中不包含独立广告角标。中心策略可平移节点或整组；父级或定位参照的整体位移也沿关系传播到依赖节点，非 center 轴同样保持原有相对间距。所有位置均在 layout-nodes 中派生，proposal 原 bounds、元素尺寸、身份和顺序保持不变；细则见[居中策略与组合定位](../../cocos-game-ui-layout/references/center-alignment.md)。几何测量不得替代该视觉判断。scene contract 的 `layout_decomposition.layout_source.nodes_file` 直接引用此唯一节点文件，`layout_binding`、annotation 与 confirmation 只保存身份/证据，annotation/confirmation 的 `layout_nodes_file` 必须与 source 路径一致。布局生成器只消费确认 proposal 和 Stage B decision，按原顺序推导节点，不能读取另一份预存 `layout_nodes` 或生成新的视觉参考图、多个布局候选。PNG、`review.html` 和派生快照只读展示，不是第二份手工事实且不得回写 proposal；用户要求布局关系变化时更新 Stage B decision 并重新生成，父子/分组变化则按原 Stage A 规则重新确认。两次确认仍分别是人工确认，且不得合并或跳过。
 
 布局图的每个框必须与右栏共用唯一短编号，并注明父编号，保持确认元素原序；编号避让只能调整标注，不得改变元素布局。右栏逐节点说明自身相对上级的双轴停靠、中心策略、组合成员、锚点与偏移，父容器、空容器同样必填，根明确无上级。底板 Sprite 兼任组件根时显示为一个节点并保留图片身份；额外纯结构容器显示 `independent_container_reason`。九点停靠表示水平/垂直位置关系，不等同于图片九宫格切片。技术 ID 和四边距离仅辅助追溯；长说明必须换行且完整可见，不能用被裁切的文本或元数据完整标记代替可读图。详细规则见 [UI 布局合同](../../cocos-game-ui-layout/references/layout-contract.md#v2-串行拆解与布局标注)。
 
@@ -94,7 +94,7 @@ V2 的生产合同字段必须逐 `annotation_number/region_id` 显式记录 `pr
 
 每条透明路线都为同一候选生成浅底（`#F2E9DF`）和深底（`#16202E`）预览，并记录实际候选和最终归一化 PNG 路径，SHA 可省略。V3 允许视觉检查保持 pending；检查入口直接并排展示浅底、深底和可放大的独立资源，V4 须检查主体缺损、残留背景、色边和半透明区域，并记录通过状态与人工检查证据。
 
-V2 阶段 B 的唯一生成入口还必须在 PNG 输出目录同步写入 `layout-nodes.json`、`layout-decision.json`、自包含 `review.html` 和 `generation-result.json`。审阅页直接消费本批冻结参考图/节点数据，使用同一坐标映射展示当前与父节点关系；候选状态、离线约束、名称回退、实际文件及独立布局确认的完整字段见[离线布局审阅产物](../../cocos-game-ui-layout/references/layout-review-artifacts.md)。这些产物属于可读审阅和可追溯交付，不能替代标准 PNG、F2 机器门或 V4 证据。
+V2 阶段 B 的唯一生成入口还必须在 PNG 输出目录同步写入唯一 `layout-nodes.json`、`layout-decision.json`、自包含 `review.html` 和 `generation-result.json`。scene contract 的 `layout_decomposition.layout_source.nodes_file` 必须指向这份同批 `layout-nodes.json`；annotation 和 confirmation 的 `layout_nodes_file` 必须与之匹配。审阅页直接消费同批参考图/唯一节点数据，使用同一坐标映射展示当前与父节点关系；其余候选状态、离线约束、名称回退及实际文件规则见[离线布局审阅产物](../../cocos-game-ui-layout/references/layout-review-artifacts.md)。这些 PNG/review/派生展示快照只服务于可读审阅，不能成为第二份布局事实或回写 proposal，也不能替代标准 PNG、F2 机器门或 V4 证据。
 
 ## V3 正式资源生产与资源级验收
 
@@ -141,7 +141,7 @@ V3 以文件、性能、加载、响应式、`production_contract_audit` 和一�
 
 ### 拆解图确认（视觉硬门）
 
-V2 完成拆解图、技术 JSON、component×state、生产合同和合同回对后，通过 `visual-decomposition-confirmation/1.0` 冻结还原方案；随后完成独立布局确认。确认记录以 `confirmation_mode=manual`、`status=accepted` 记录实际 annotation/proposal/decision 文件、当前工作项/场景/版本、全部编号和用户原文；这些 V2 方案身份变化才需要重新确认。V3 的 fixed asset、component×state 与资源 F2 检查，以及 V4 正式场景的同屏组合、适用逐区域 fidelity 与运行 F2 检查，由当前身份的机器证据核对可确定性事实；overlay/diff 仅在 exact 或明确需求时强制。机器不推导视觉舒适、质感或主题结论；V4 按观看情境交付正式运行画面和持续游玩片段供用户检查。后续候选的正常演进不重开无关方向决定，但实际变化的画面仍按当前阶段复验，机器或人工证据缺失时不得宣称整体视觉通过。
+V2 完成拆解图、技术 JSON、component×state、生产合同和合同回对后，通过 `visual-decomposition-confirmation/1.0` 冻结 Stage A proposal；该确认以 `confirmation_mode=manual`、`status=accepted` 绑定实际拆解 annotation/proposal、用户决定记录与 receipt、当前工作项/场景/版本、全部编号和用户原文。随后由 Stage B decision 生成唯一 `layout-nodes.json`，再通过独立 `layout-annotation-confirmation/1.0` 以 `confirmation_mode=manual`、`status=accepted` 绑定最终布局图、review、Stage B decision、唯一 `layout_nodes_file` 和上游身份。scene contract 的 `layout_source.nodes_file` 必须与布局 annotation/confirmation 的 `layout_nodes_file` 完全一致；这些 V2 方案身份变化才需要重新确认。V3 的 fixed asset、component×state 与资源 F2 检查，以及 V4 正式场景的同屏组合、适用逐区域 fidelity 与运行 F2 检查，由当前身份的机器证据核对可确定性事实；overlay/diff 仅在 exact 或明确需求时强制。机器不推导视觉舒适、质感或主题结论；V4 按观看情境交付正式运行画面和持续游玩片段供用户检查。后续候选的正常演进不重开无关方向决定，但实际变化的画面仍按当前阶段复验，机器或人工证据缺失时不得宣称整体视觉通过。
 
 ### 原子视觉拆解补充
 

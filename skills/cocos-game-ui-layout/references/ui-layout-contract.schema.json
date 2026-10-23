@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "V2 引用式 UI 布局合同",
+  "description": "公共策略只维护项目约束；场景合同引用唯一确认的 layout-nodes.json，不再内联第二份布局树。",
+  "type": "object",
+  "required": ["schema_version", "contract_id", "contract_version", "project_policy_file", "scene_contract_file"],
+  "properties": {
+    "schema_version": { "const": "2.0.0" },
+    "contract_id": { "type": "string", "minLength": 1 },
+    "contract_version": { "type": "string", "minLength": 1 },
+    "project_policy_file": { "type": "string", "minLength": 1 },
+    "scene_contract_file": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

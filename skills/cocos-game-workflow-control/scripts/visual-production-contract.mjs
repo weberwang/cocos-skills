@@ -635,7 +635,7 @@ export function validateV4ProductionGate(manifest, options = {}) {
     }
   });
   if (options.requireSceneReconstruction === true) {
-    errors.push(...validateSceneReconstructionGate(manifest, { stage: "V4", displayLayerScope: options.displayLayerScope, visual_validation: { mode: visualValidationMode } }));
+    errors.push(...validateSceneReconstructionGate(manifest, { stage: "V4", displayLayerScope: options.displayLayerScope, projectRoot: options.projectRoot, layoutSourceDocuments: options.layoutSourceDocuments, forceLayoutSourceFiles: options.forceLayoutSourceFiles, visual_validation: { mode: visualValidationMode } }));
   }
   const runtimeConsumption = gate.runtime_consumption;
   if (!isObject(runtimeConsumption) || !["passed", "consumed", "PASS"].includes(String(runtimeConsumption.status).toLowerCase())) error("V4 缺少带身份绑定的运行时实际消费 evidence", "runtime_consumption");
@@ -651,7 +651,7 @@ export async function validateV4VisualManifest(manifest, options = {}) {
   const identity = manifestEvidenceIdentity(manifest);
   const evidenceOptions = { requireEvidenceIdentity: options.requireEvidenceIdentity !== false, identity, projectRoot: options.projectRoot, checkFiles: options.checkFiles === true, targetFrozenAt: manifest?.reference_target?.frozen_at, workItemId: manifest?.workItemId, candidateVersion: manifest?.candidateVersion, authority: options.authority };
   const errors = [
-    ...validateSceneReconstructionGate(manifest, { stage: "V4", displayLayerScope: options.displayLayerScope }),
+    ...validateSceneReconstructionGate(manifest, { stage: "V4", displayLayerScope: options.displayLayerScope, projectRoot: options.projectRoot, layoutSourceDocuments: options.layoutSourceDocuments, forceLayoutSourceFiles: options.forceLayoutSourceFiles }),
     ...validateVisualProductionCoverage(manifest, { stage: "V2", requireManualConfirmation: true, projectRoot: options.projectRoot, checkFiles: options.checkFiles === true, targetSha: identity.target, targetFrozenAt: manifest?.reference_target?.frozen_at, candidateSha: identity.candidate, workItemId: manifest?.workItemId, candidateVersion: manifest?.candidateVersion, authority: options.authority }),
     ...validateProductionAuditShape(manifest, { ...options, stage: "V4", authority: options.authority }),
     ...validateV4ProductionGate(manifest, { ...options, ...evidenceOptions, requireSceneReconstruction: true }),
@@ -856,7 +856,7 @@ export function validateVisualImplementationPackageBinding(pkg, options = {}) {
   const authority = options.authority;
   const displayLayerScope = displayLayerScopeFromPackage(pkg);
   // current_stage 由实施包显式决定；远程场景合同门与本地用户拆解确认门必须同时通过。
-  if (stage === "V2" || stage === "V4") errors.push(...validateSceneReconstructionGate(manifest, { stage, displayLayerScope }));
+  if (stage === "V2" || stage === "V4") errors.push(...validateSceneReconstructionGate(manifest, { stage, displayLayerScope, projectRoot, layoutSourceDocuments: options.layoutSourceDocuments, forceLayoutSourceFiles: options.forceLayoutSourceFiles }));
   errors.push(...validateVisualDecompositionConfirmationBinding(pkg, manifest, { stage: "V2", projectRoot, targetSha: manifest?.reference_target?.target_sha256, candidateSha: manifest?.candidate_identity?.sha256, workItemId: manifest?.workItemId, candidateVersion: manifest?.candidateVersion, authority }));
   errors.push(...validateVisualProductionCoverage(manifest, { stage, requireManualConfirmation: true, checkFiles: options.checkFiles === true || stage === "V2", projectRoot, targetSha: manifest?.reference_target?.target_sha256, targetFrozenAt: manifest?.reference_target?.frozen_at, candidateSha: manifest?.candidate_identity?.sha256, workItemId: manifest?.workItemId, candidateVersion: manifest?.candidateVersion, authority }));
   errors.push(...validateVisualProductionUnits(pkg, manifest, options));
@@ -899,7 +899,7 @@ export function validateVisualEvidence(evidence, pkg, options = {}) {
   const authority = options.authority;
   const displayLayerScope = displayLayerScopeFromPackage(pkg);
   // Evidence/COMPLETE 必须消费当前工作项的完整合同；弹窗合同不再进入宿主场景验收。
-  errors.push(...validateSceneReconstructionGate(manifest, { stage: "V4", displayLayerScope }));
+  errors.push(...validateSceneReconstructionGate(manifest, { stage: "V4", displayLayerScope, projectRoot: options.projectRoot, layoutSourceDocuments: options.layoutSourceDocuments, forceLayoutSourceFiles: options.forceLayoutSourceFiles }));
   errors.push(...validateProductionAuditShape(manifest, { stage: "V4", authority, projectRoot: options.projectRoot, checkFiles: Boolean(options.projectRoot) }));
   errors.push(...auditProductionContract(manifest, { projectRoot: options.projectRoot, checkFiles: Boolean(options.projectRoot), targetSha: identity.target, targetFrozenAt: manifest?.reference_target?.frozen_at, candidateSha: identity.candidate, workItemId: manifest?.workItemId, candidateVersion: manifest?.candidateVersion, authority }));
   const evidenceOptions = { requireEvidenceIdentity: true, identity, projectRoot: options.projectRoot, checkFiles: Boolean(options.projectRoot), targetFrozenAt: manifest?.reference_target?.frozen_at, workItemId: manifest?.workItemId, candidateVersion: manifest?.candidateVersion, authority };

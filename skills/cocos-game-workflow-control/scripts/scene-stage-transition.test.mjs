@@ -8,6 +8,7 @@ import { assertSceneWorkItemComplete, createExecutionState, executionStatePath }
 import { prepareSceneStageTransition } from './scene-stage-transition.mjs';
 import { prepareImplementationTransition } from './workflow-implementation-transition.mjs';
 import { bindVisualEvidenceFixture } from './workflow-visual-evidence-fixture.mjs';
+import { writeFixtureV2Layout } from './v2-layout-source-test-fixtures.mjs';
 
 const BASELINE_SHA = `sha256:${'a'.repeat(64)}`;
 const CANDIDATE_SHA = `sha256:${'b'.repeat(64)}`;
@@ -56,11 +57,11 @@ function makeSceneFixture() {
   writeFile(repo, 'docs/v2-confirmation.txt', 'manual V2 confirmation\n');
 
   const sourceNode = { layout_node_id: 'source-node', parent_layout_node_id: 'viewport', region_id: 'source-region', target_bounds: { x: 1, y: 2, width: 3, height: 4 } };
-  const nodesRef = writeJson(repo, 'docs/layout-nodes.json', { schema: 'cocos-layout-nodes/1.0', target_sha256: targetSha256, scene_id: sceneId, state_id: 'default', viewport: { width: 390, height: 844 }, layout_nodes: [sourceNode] });
   const contract = {
     target_conditions: { target_sha256: targetSha256, scene_id: sceneId, state_id: 'default', viewport: { width: 390, height: 844 } },
-    layout_decomposition: { layout_nodes: [sourceNode], layout_annotation: { layout_nodes_file: nodesRef.path, layout_nodes_sha256: nodesRef.sha256 } },
+    layout_decomposition: { layout_annotation: {}, layout_annotation_confirmation: {} },
   };
+  writeFixtureV2Layout(repo, contract, [sourceNode]);
   const contractRef = writeJson(repo, 'docs/reconstruction-contract.json', contract);
   const artifact = (file, sha256 = hashBytes(readFileSync(resolve(repo, file)))) => ({ file, sha256, sceneId });
   const plan = {
