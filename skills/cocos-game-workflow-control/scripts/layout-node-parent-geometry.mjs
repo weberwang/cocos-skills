@@ -10,6 +10,7 @@ import { validateSpriteGeometry } from "../../cocos-game-ui-layout/scripts/sprit
 import { validateContainerRootReuse } from "../../cocos-game-asset-integration/scripts/container-root-policy.mjs";
 import { isLayoutContainer } from "../../cocos-game-ui-layout/scripts/display-node-role.mjs";
 import { validateCenterAlignmentNodes } from "../../cocos-game-ui-layout/scripts/center-alignment.mjs";
+import { validateLayoutExecutionNodes } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
 
 /** 判断是否为普通对象。 */
 function isObject(value) {
@@ -101,6 +102,7 @@ export function layoutNodeIdentityProjection(node) {
     relative_position: readLayoutNodeField(node, "relative_position", "relativePosition"),
     axis_alignment: readLayoutNodeField(node, "axis_alignment", "axisAlignment"),
     center_alignment: readLayoutNodeField(node, "center_alignment"),
+    layout_execution: node.layout_execution,
     self_anchor: readLayoutNodeField(node, "self_anchor", "selfAnchor"),
     reference_anchor: readLayoutNodeField(node, "reference_anchor", "referenceAnchor"),
     offset: readLayoutNodeField(node, "offset"),
@@ -126,7 +128,7 @@ function diagnostic(index, node, message) {
 }
 
 /** 验证 effect-image 所有布局节点的父子几何和显式轴向对齐事实。 */
-export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport, { label = "layout_nodes" } = {}) {
+export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport, { label = "layout_nodes", requireExecutionPlan = false } = {}) {
   const diagnostics = [];
   const report = (index, node, message) => diagnostics.push(diagnostic(index, node, `${label}[${index}] ${message}`));
   const viewportBounds = isValidViewport(targetViewport)
@@ -145,6 +147,7 @@ export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport,
     parent_target_bounds: readLayoutNodeField(node, "parent_target_bounds", "parentTargetBounds"),
   }));
   validateCenterAlignmentNodes(centeringNodes, centerErrors, label, targetViewport);
+  validateLayoutExecutionNodes(centeringNodes, centerErrors, label, { requirePlan: requireExecutionPlan });
   for (const message of centerErrors) diagnostics.push({ index: -1, node_id: "*", message });
 
   const nodeById = new Map();

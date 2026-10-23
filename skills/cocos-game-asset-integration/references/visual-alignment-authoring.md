@@ -14,7 +14,9 @@ V4 在正式 Cocos Scene 中完成视觉还原、布局校准和运行验收，�
 4. 在真实 Cocos viewport 中实现安全区、缩放、方向和 resize 行为。布局重算应由明确的布局入口完成；Scene 创建、唤醒、resize 等生命周期不得累积重复偏移或重复注册监听器。
 5. 实际场景中的偏差按成因处理：资产轮廓、姿态、语义、材质或色彩偏差回 V3；节点身份、父级、层序、目标关系或冻结结构错误回 V2；当前实现的坐标、尺寸、状态绑定或响应式行为问题留在 V4 修复。
 
-布局几何遵守[UI 布局合同](../../cocos-game-ui-layout/references/layout-contract.md)、[Cocos 坐标与布局适配](../../cocos-game-ui-layout/references/cocos-adapter.md)与[显示节点锚点及层级](../../cocos-game-ui-layout/references/display-object-layering.md)。V2 `anchor` 表达布局关系；资源透明留白与 Node 的 `UITransform.anchorPoint` 是不同事实，不能互相替代。左上原点布局坐标必须经坐标适配器转换为锚点局部 Y 向上坐标；子节点位置按其目标位置相对直接父节点计算，祖先偏移只累计一次。
+布局几何遵守[UI 布局合同](../../cocos-game-ui-layout/references/layout-contract.md)、[Cocos 坐标与布局适配](../../cocos-game-ui-layout/references/cocos-adapter.md)、[Widget 定位策略](../../cocos-game-ui-layout/references/widget-layout.md)与[显示节点锚点及层级](../../cocos-game-ui-layout/references/display-object-layering.md)。V2 `anchor` 表达布局关系；资源透明留白与 Node 的 `UITransform.anchorPoint` 是不同事实，不能互相替代。左上原点布局坐标必须经坐标适配器转换为锚点局部 Y 向上坐标；子节点位置按其目标位置相对直接父节点计算，祖先偏移只累计一次。
+
+V4 消费 V2 派生的 `layout_execution`，逐节点落实位置与尺寸驱动器。两者可以不同：Widget 只定位时，共享布局可先计算尺寸，再调用 `updateAlignment()`；禁止的是多个机制并行写同一属性。Widget target 必须对应已确认的真实父/祖先节点；逻辑 `viewport`/`safe-area` 参照和兄弟参照、图文整体居中由共享布局求解，合成 `root_nodes` 不是实体节点。Scene 创建/恢复、资源绑定后、父尺寸、动态文本/状态、方向/DPR、安全区/键盘和 resize 共用幂等布局入口，入口更新 Widget 约束并调用 `updateAlignment()`；不要再用脚本 `setPosition`、Layout 或 `ALWAYS` Widget 同时控制同一位置。普通图片和底板由 Sprite 保持 RAW 尺寸，Widget 只获得定位权限；拉伸必须符合冻结九宫格或 `element_type: container` 的非 Sprite 容器授权。
 
 ## 运行校准与验收
 

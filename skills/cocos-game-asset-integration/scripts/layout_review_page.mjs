@@ -12,6 +12,7 @@ import { readPngDimensions } from "./validate_visual_manifest.mjs";
 import { validateUiLayout } from "./ui-layout-organization.mjs";
 import { validateSpriteGeometry } from "../../cocos-game-ui-layout/scripts/sprite-layout-sizing.mjs";
 import { hasSpriteRendering } from "../../cocos-game-ui-layout/scripts/display-node-role.mjs";
+import { validateLayoutExecutionNodes } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
 
 export const LAYOUT_REVIEW_SCHEMA = "cocos-layout-review/1.0";
 export const LAYOUT_REVIEW_STATUS = "candidate-awaiting-layout-confirmation";
@@ -162,6 +163,9 @@ export function validateReviewNodesDocument(nodesDocument) {
   let derivedFacts;
   try {
     derivedFacts = deriveAutomaticLayoutFacts(nodes, viewport, { sceneId: nodesDocument.scene_id, stateId: nodesDocument.state_id });
+    const executionErrors = [];
+    validateLayoutExecutionNodes(nodes, executionErrors, "nodesDocument.layout_nodes", { requirePlan: true });
+    if (executionErrors.length) throw new Error(executionErrors[0]);
   } catch (error) {
     throw new Error(`布局节点事实校验失败：${error.message}`);
   }
@@ -175,7 +179,7 @@ export function validateReviewNodesDocument(nodesDocument) {
   const comparableFields = [
     "layout_node_id", "element_id", "display_name", "layout_role", "render_kind", "parent_layout_node_id", "parent_target_bounds", "reference_id", "reference_target_bounds", "sprite_geometry",
     "target_bounds", "bounds", "depth", "color", "is_container", "empty_container", "child_layout_node_ids",
-    "relative_position", "axis_alignment", "center_alignment", "offset", "self_anchor", "reference_anchor", "docking",
+    "relative_position", "axis_alignment", "center_alignment", "layout_execution", "offset", "self_anchor", "reference_anchor", "docking",
     "is_root_container", "scene_id", "state_id", "marker_id", "parent_marker_id", "ui_layout"
   ];
   const compareFact = (fact, derived, label) => {

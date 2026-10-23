@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { encodePngRgba } from "./effect_image_raster.mjs";
 import { readLayoutReviewPayload, renderLayoutReviewPage } from "./layout_review_page.mjs";
+import { deriveLayoutExecutionPlans } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
 
 /** 计算测试夹具使用的稳定 SHA-256。 */
 function sha256(bytes) {
@@ -81,6 +82,7 @@ function fixture({ longName = false } = {}) {
   const decisionWithoutSha = { decision_id: "layout-decision-1", scene_id: "ExampleScene", state_id: "dialog-open", target_sha256: targetSha };
   const decisionBytes = Buffer.from(JSON.stringify(decisionWithoutSha));
   nodesDocument.layout_decision_sha256 = sha256(decisionBytes);
+  nodesDocument.layout_nodes = deriveLayoutExecutionPlans(nodesDocument.layout_nodes);
   const nodesBytes = Buffer.from(JSON.stringify(nodesDocument));
   const bindings = {
     schema: "cocos-layout-review/1.0",

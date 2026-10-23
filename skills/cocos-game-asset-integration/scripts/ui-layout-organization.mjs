@@ -6,6 +6,7 @@
  */
 
 import { isBackgroundDisplayNode } from "../../cocos-game-ui-layout/scripts/display-node-role.mjs";
+import { validateLayoutDriverDeclaration } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
 
 export const UI_GROUPING_BASES = Object.freeze(["POSITION", "LAYOUT", "INTERACTION", "STATE", "CLIP", "REUSE"]);
 const BASES = new Set(UI_GROUPING_BASES);
@@ -16,7 +17,7 @@ const ENUMS = Object.freeze({
   safe_area_policy: new Set(["FULL_BLEED", "INSIDE_SAFE_AREA"]),
   interaction_policy: new Set(["HIT_TARGET", "DELEGATE_TO_PARENT", "NONE"]),
 });
-const FIELDS = new Set(["grouping_basis", ...Object.keys(ENUMS), "minimum_size", "position_reference_id", "visual_overflow", "independent_container_reason"]);
+const FIELDS = new Set(["grouping_basis", ...Object.keys(ENUMS), "minimum_size", "position_reference_id", "visual_overflow", "independent_container_reason", "position_driver", "widget_stretch_axes"]);
 
 /** 判断普通对象。 */
 function isObject(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
@@ -67,6 +68,7 @@ export function validateUiLayout(value, options = {}, errors = [], label = "ui_l
     if (options.emptyContainer && !bases.some((basis) => ["LAYOUT", "STATE", "REUSE"].includes(basis))) errors.push(`${label}.grouping_basis 空容器必须有可解释的布局、状态或复用职责`);
   }
   for (const [key, allowed] of Object.entries(ENUMS)) if (!allowed.has(value[key])) errors.push(`${label}.${key} 不属于允许的策略`);
+  validateLayoutDriverDeclaration(value, errors, label);
   if (value.minimum_size !== undefined) {
     const size = value.minimum_size;
     if (!isObject(size) || Object.keys(size).some((key) => !["width", "height"].includes(key)) || !Number.isFinite(size.width) || size.width <= 0 || !Number.isFinite(size.height) || size.height <= 0) errors.push(`${label}.minimum_size 必须包含正数 width/height`);

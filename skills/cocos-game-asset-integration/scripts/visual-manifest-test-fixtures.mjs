@@ -1,3 +1,4 @@
+import { deriveLayoutExecutionPlans } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
 import { deriveSpriteGeometry } from "../../cocos-game-ui-layout/scripts/sprite-layout-sizing.mjs";
 import assert from "node:assert/strict";
 import { nativeRenderContract, nativeRuntimeEvidence } from "../../cocos-game-workflow-control/scripts/native-render-test-fixtures.mjs";
@@ -235,14 +236,14 @@ function attachSceneReconstructionContract(manifest) {
       } : {}),
     };
   });
-  const layoutNodes = manifest.coverage_audit.regions.map((region, index) => {
+  const layoutNodes = deriveLayoutExecutionPlans(manifest.coverage_audit.regions.map((region, index) => {
     const bounds = { ...region.bounds }; const parentBounds = { x: 0, y: 0, width: 390, height: 844 }; const left = bounds.x - parentBounds.x; const right = parentBounds.x + parentBounds.width - bounds.x - bounds.width; const top = bounds.y - parentBounds.y; const bottom = parentBounds.y + parentBounds.height - bounds.y - bounds.height;
     /* 测试夹具用预设枚举模拟智能视觉判断，不能通过四边距离反推对齐方向。 */ const horizontal = ["left", "center", "right"][index % 3]; const vertical = ["top", "center", "bottom"][index % 3]; const centerX = bounds.x + bounds.width / 2 - parentBounds.width / 2; const centerY = bounds.y + bounds.height / 2 - parentBounds.height / 2;
     // 资源覆盖夹具刻意保留非对称区域位置，中心参照偏移必须显式声明理由。
     const centerAlignment = { ...(horizontal === "center" ? { horizontal: { mode: "reference", offset: centerX, reason: "此区域按独立内容构图保留中心参照偏移" } } : {}), ...(vertical === "center" ? { vertical: { mode: "reference", offset: centerY, reason: "此区域按独立内容构图保留中心参照偏移" } } : {}) };
     const element = buildDecompositionElements([region])[0]; const spriteGeometry = deriveSpriteGeometry(element, bounds);
     const component = region.component_inventory?.components?.[0]; const placement = component?.placements?.[0]; return { layout_role: element.role, owner_type: element.owner_type, region_layer: element.region_layer, ...(element.visual_route_element_type ? { visual_route_element_type: element.visual_route_element_type } : {}), ...(spriteGeometry ? { sprite_geometry: spriteGeometry } : {}), layout_node_id: region.layout_node_ids[0], element_id: region.layout_node_ids[0], element_type: "component", region_id: region.id, scene_id: region.scene_id, state_id: region.state_id, component_id: component?.component_id ?? `${region.id}-component`, placement_id: placement?.placement_id ?? `${region.layout_node_ids[0]}-placement`, parent_element_id: "viewport", semantic_grouping: { kind: "standalone", rationale: "测试夹具中的完整视觉元素独立布局" }, ui_layout: { grouping_basis: ["POSITION"], layout_owner: "SELF", size_policy: region.layer === "background" ? "STRETCH" : "FIXED", overflow_policy: "KEEP_VISIBLE", safe_area_policy: region.layer === "background" ? "FULL_BLEED" : "INSIDE_SAFE_AREA", interaction_policy: "NONE" }, empty_container: false, coordinate_space: "viewport", reference_id: "viewport", parent_layout_node_id: "viewport", parent_target_bounds: parentBounds, relative_position: { left, right, top, bottom }, axis_alignment: { horizontal, vertical }, ...(Object.keys(centerAlignment).length ? { center_alignment: centerAlignment } : {}), self_anchor: `${vertical}-${horizontal}`, reference_anchor: `${vertical}-${horizontal}`, offset: { x: horizontal === "left" ? left : horizontal === "right" ? -right : centerX, y: vertical === "top" ? top : vertical === "bottom" ? -bottom : centerY }, target_bounds: bounds, size_policy: { mode: "target-bound" }, z_order: index, clip_policy: "none", responsive_rule: "preserve-relative-anchors", planned_test_id: `layout-${region.id}` };
-  });
+  }));
   const layoutGeometry = {
     formal_layout_structure: "MainGameplayScene/ContainerGraph",
     result: "passed",

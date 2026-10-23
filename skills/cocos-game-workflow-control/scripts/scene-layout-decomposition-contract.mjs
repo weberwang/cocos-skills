@@ -282,7 +282,7 @@ export function validateLayoutDecomposition(contract, targetInfo, stage, errors,
     else nodeById.set(nodeId, node);
   }
   // effect-image 的父容器、相对测量和显式视觉对齐统一由共享几何合同校验。
-  for (const issue of validateEffectImageParentChildLayoutNodes(nodes, targetInfo?.viewport, { label: "layout_nodes" })) {
+  for (const issue of validateEffectImageParentChildLayoutNodes(nodes, targetInfo?.viewport, { label: "layout_nodes", requireExecutionPlan: true })) {
     const node = issue.index >= 0 ? nodes[issue.index] : decomposition;
     errors.push(contractError(stage, contract, node, issue.message, { returnStage: "V1/PROPOSAL" }));
   }

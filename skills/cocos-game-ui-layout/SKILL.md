@@ -9,9 +9,11 @@ description: 为 Cocos Creator 3.x 游戏建立可验证的 UI 布局合同、�
 
 UI 布局参照按[场景与弹窗尺寸参照](references/layout-hierarchy.md#场景与弹窗尺寸参照)统一确定：全屏 UI 的父级是场景，按场景逻辑尺寸相对布局；弹窗有底板时，内容按底板对应功能容器的宽高相对布局；弹窗没有底板时，按宿主场景逻辑尺寸相对布局。弹窗底板容器本身相对场景定位，简单结构中底板 Sprite 节点可直接兼任容器根；全屏装饰背景仍是独立显示层。安全区约束关键内容的可见范围，不替换这三种尺寸参照。
 
-效果图 V2 拆解与布局遵守[功能语义分组约束](references/functional-semantic-grouping.md)和[Cocos UI 节点组织](references/layout-hierarchy.md)：先在编号拆解图上确认功能归属、实际父级和独立位置参照，再由代理自动整理停靠方案并展示布局图/预览确认；不先发文字方案要求确认。位置依赖不强制直接父子：`parent_element_id`/`parent_layout_node_id` 表示真实功能、状态、交互、生命周期或布局管理归属；可选 `ui_layout.position_reference_id` 表示位置参照，省略时默认真实父级。共同表达同一信息的元素可同属功能组件并保持同级。简单“底板+图标+文本”优先由同一个底板节点兼任 `element_type=container` 和 `render_kind=sprite`，保留组件/placement 与图片资产身份，不拆成空根和底板叶子。只有真实独立职责才新增纯结构容器；它包裹可用底板与内容时须在 `ui_layout.independent_container_reason` 写明具体职责。父容器职责、布局所有者、尺寸、显式溢出、安全区和输入归属仍在技术合同中维护；禁止按类型、显示层序或最小几何包含关系自动归父级或加包装层。
+效果图 V2 拆解与布局遵守[功能语义分组约束](references/functional-semantic-grouping.md)和[Cocos UI 节点组织](references/layout-hierarchy.md)：先在编号拆解图上确认功能归属、实际父级和独立位置参照，再由代理自动整理停靠方案并展示布局图/预览确认；不先发文字方案要求确认。位置依赖不强制直接父子：`parent_element_id`/`parent_layout_node_id` 表示真实功能、状态、交互、生命周期或布局管理归属；可选 `ui_layout.position_reference_id` 表示位置参照，省略时默认真实父级。共同表达同一信息的元素可同属功能组件并保持同级。简单“底板+图标+文本”优先由同一个底板节点兼任 `element_type=container` 和 `render_kind=sprite`，保留组件/placement 与图片资产身份，不拆成空根和底板叶子。只有真实独立职责才新增纯结构容器；它包裹可用底板与内容时须在 `ui_layout.independent_container_reason` 写明具体职责。父容器职责、布局所有者、尺寸、显式溢出、安全区和输入归属仍在技术合同中维护；禁止按类型、显示层序或最小几何包含关系自动归父级或加包装层。Widget 只在已确认的父/祖先参照和单一位置所有权下使用，兄弟参照、图文整体居中及 REFLOW/SCROLL 交给共享布局；按[Widget 定位策略](references/widget-layout.md)生成配置与尺寸权限。
 
 ## 全局控制接入
+
+位置参照的逻辑根 `viewport`/`safe-area` 当前没有实体 Node 映射，必须由 `SHARED` 布局处理；已有实际 Canvas 父/祖先节点可作为 Widget target。位置与尺寸驱动器分开判定，Widget 定位和共享尺寸计算可顺序协作，只有同一属性出现多个并行写入者才是冲突；完整规则见 [Widget 定位策略](references/widget-layout.md)。
 
 控制面边界：可提议、可审查、可在当前用户任务的 Work Item 范围内修改，且必须回到 `$cocos-game-workflow-control` 审计和状态迁移；仅涉及外部写入、付费、真机、破坏性或发布副作用的 A4-A6 操作请求批准，普通可恢复的本地文件清理沿任务执行。
 
@@ -70,6 +72,7 @@ V2 的布局决策顺序固定为“代理内部生成拆解事实和技术 JSON
 
 - 需要字段、关系表达或不变量写法时，读取 [references/layout-contract.md](references/layout-contract.md)。
 - 需要严格居中、带理由的中心偏移或图文组合整体居中时，读取 [references/center-alignment.md](references/center-alignment.md)。
+- 需要判断 Widget 是否适用、选择位置驱动器或确认拉伸尺寸权限时，读取 [references/widget-layout.md](references/widget-layout.md)。
 - 需要 Creator `Canvas`、`UITransform`、`Widget`、`Camera`、坐标转换、resize 或重排边界时，读取 [references/cocos-adapter.md](references/cocos-adapter.md)。
 - 需要对象默认锚点、例外或跨层合成顺序时，读取 [references/display-object-layering.md](references/display-object-layering.md)。
 - 需要 UI 根节点、父容器职责、`ui_layout` 字段或 V1/V2/V3/V4 节点组织规则时，读取 [references/layout-hierarchy.md](references/layout-hierarchy.md)。

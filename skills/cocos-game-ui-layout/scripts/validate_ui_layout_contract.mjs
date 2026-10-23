@@ -626,7 +626,7 @@ function validateLayoutNodes(document, fidelity, binding, spaces, regionIds, err
   if (requiresLayoutNodes) validateUiInteractionTree(nodes.map((node) => ({ element_id: node?.layout_node_id, parent_element_id: node?.parent_layout_node_id, ui_layout: node?.ui_layout })), errors, "layout_nodes");
   if (isEffectImageContract(document)) {
     // 父容器、相对测量和显式视觉对齐必须与场景拆解入口使用同一规则。
-    for (const issue of validateEffectImageParentChildLayoutNodes(nodes, viewport, { label: "layout_nodes" })) errors.push(issue.message);
+    for (const issue of validateEffectImageParentChildLayoutNodes(nodes, viewport, { label: "layout_nodes", requireExecutionPlan: true })) errors.push(issue.message);
   }
   const graph = new Map(); const stableRoots = new Set(["viewport", "safe-area"]);
   nodes.forEach((node, index) => {

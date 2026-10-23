@@ -58,11 +58,11 @@ Camera 合同必须说明逻辑 viewport 如何映射到物理 backing，zoom �
 
 `relative_position` 始终按子 bounds 相对实际父框测量：`left=child.x-parent.x`、`right=parent.x+parent.width-child.x-child.width`、`top=child.y-parent.y`、`bottom=parent.y+parent.height-child.y-child.height`。所有值必须由 bounds 计算，不能手填近似；仅当 `visual_overflow` 已声明时允许相应边距为负。允许的浮点误差不超过 `1e-6`。位置锚点、`offset` 与对齐方案基于有效 `reference_id` 的目标 bounds 计算：同父参照可直接使用 `parent_target_bounds`，独立参照使用显式 `reference_target_bounds`。
 
-`axis_alignment.horizontal` 由智能视觉判断显式选择 `left/center/right`，`vertical` 显式选择 `top/center/bottom`。两轴组合表示九点停靠语义；它依据预期尺寸变化后的停靠意图选择，例如保持右边距或维持中心，不按当前 bounds 落入图像几何九等分的哪个格子来强推。该停靠关系与纹理 `nine_slice` 切片合同完全独立，九点停靠不触发 Sprite 切片或 `CUSTOM` 尺寸。判断主要依据原图构图、视觉重心、元素语义与 resize 意图，不按最近边或测量阈值自动推断。`relative_position` 只记录相对实际父框的几何事实；中心轴策略、位置平移、`offset` 与图文组合居中的计算统一按[居中策略与组合定位](center-alignment.md)执行。`self_anchor` 与 `reference_anchor` 必须是 `${vertical}-${horizontal}`（例如 `top-center` 或 `center-center`）。这两个布局锚点也不等同于 Creator Node `UITransform.anchorPoint` 的默认中心点。视觉决策文件、规范化的 `center_alignment`、父子关系、定位参照、父框相对距离、对齐、偏移、锚点和显式溢出都属于布局身份，任一变化都使旧确认失效。
+`axis_alignment.horizontal` 由智能视觉判断显式选择 `left/center/right`，`vertical` 显式选择 `top/center/bottom`。两轴组合表示九点停靠语义；它依据预期尺寸变化后的停靠意图选择，例如保持右边距或维持中心，不按当前 bounds 落入图像几何九等分的哪个格子来强推。该停靠关系与纹理 `nine_slice` 切片合同完全独立，九点停靠不触发 Sprite 切片或 `CUSTOM` 尺寸。判断主要依据原图构图、视觉重心、元素语义与 resize 意图，不按最近边或测量阈值自动推断。`relative_position` 只记录相对实际父框的几何事实；中心轴策略、位置平移、`offset` 与图文组合居中的计算统一按[居中策略与组合定位](center-alignment.md)执行。`self_anchor` 与 `reference_anchor` 必须是 `${vertical}-${horizontal}`（例如 `top-center` 或 `center-center`）。这两个布局锚点也不等同于 Creator Node `UITransform.anchorPoint` 的默认中心点。`ui_layout.position_driver` 与 `widget_stretch_axes` 属于新增布局身份；驱动器选择、执行计划和 RAW/九宫格尺寸权限按 [Widget 定位策略](widget-layout.md)校验。视觉决策文件、规范化的 `center_alignment`、父子关系、定位参照、父框相对距离、对齐、偏移、锚点和显式溢出都属于布局身份，任一变化都使旧确认失效。
 
 模板的 `layout_node_example` 是可直接复制到 `layout_nodes` 的完整 effect-image 节点示例；它不是普通 `not-applicable` 合同的活动节点。切换到冻结目标时，应复制该示例、改成项目稳定 ID 和目标几何，并补齐场景绑定与关键对齐证据。
 
-布局节点的 `reference_id` 保存有效定位参照，不等同于实际父 ID。效果图还原中它取自 `ui_layout.position_reference_id`，省略时使用 `parent_layout_node_id`；独立参照只能是同 scene/state、同坐标空间的兄弟节点（可为叶子）、祖先节点或稳定根 `viewport`/`safe-area`，不允许引用任意跨分支叶子，且全屏装饰背景除外。生成快照总包含 `reference_target_bounds`；底层合同在同父参照时可省略该冗余字段并直接复用 `parent_target_bounds`，独立参照时必须显式填写并与目标矩形一致。`parent_target_bounds` 始终只表示实际父框。普通合同中区域自身的 `regions[].reference_id` 仍按声明式区域规则引用已声明区域或 `viewport`。布局节点的父边与定位参照边须共同无环，不能通过孤立或循环节点绕过合同。
+布局节点的 `reference_id` 保存有效定位参照，不等同于实际父 ID。效果图还原中它取自 `ui_layout.position_reference_id`，省略时使用 `parent_layout_node_id`；独立参照只能是同 scene/state、同坐标空间的兄弟节点（可为叶子）、祖先节点或稳定根 `viewport`/`safe-area`，不允许引用任意跨分支叶子，且全屏装饰背景除外。生成快照总包含 `reference_target_bounds`；底层合同在同父参照时可省略该冗余字段并直接复用 `parent_target_bounds`，独立参照时必须显式填写并与目标矩形一致。`parent_target_bounds` 始终只表示实际父框。普通合同中区域自身的 `regions[].reference_id` 仍按声明式区域规则引用已声明区域或 `viewport`。布局节点的父边与定位参照边须共同无环，不能通过孤立或循环节点绕过合同。`viewport`/`safe-area` 是逻辑几何根，当前合同没有到实体 Node 的映射，因此只允许 `SHARED`；直接引用它们却显式声明 `WIDGET` 时，布局确认/校验必须阻断。不得把合成 `root_nodes` 当成 Widget target，也不得为此增加包装层。Widget target 必须是当前实际父/祖先 Node。
 
 `regions` 自身仍是声明式布局区域，每个区域至少包含：
 
@@ -84,7 +84,7 @@ Camera 合同必须说明逻辑 viewport 如何映射到物理 backing，zoom �
 
 尺寸策略可以是 `fixed`、`content`、`proportional`、`stretch`、`contain`、`cover` 或 `nine_slice`，但必须同时给出最小、首选和最大值；三档宽高须为正数或非空表达式，数值最小值不能大于最大值。固定尺寸、绝对定位和悬浮元素是可审查模式，不是格式错误；缺少参照、策略或证据才退回。
 
-普通固定视觉图片派生 `sprite_geometry={type:'SIMPLE',size_mode:'RAW',content_size:null}`，其 RAW 尺寸以 V3 已验收正式 SpriteFrame 的完整未裁切原尺寸为准，不取父框、定位参照或生成器原始文件尺寸。即使底板节点兼任功能容器且拥有图标/文字子项，仍按其图片身份保留 RAW 计划。普通图片不能使用 `STRETCH`/`FLEX`，父布局、Widget 和 Layout 不得写入其 `UITransform.contentSize`；只有冻结九宫格的图片使用 `SLICED + CUSTOM` 和目标显示宽高。纯结构容器、文字与命中区域没有 Sprite 尺寸计划，见[Cocos 适配器](cocos-adapter.md#图片原尺寸与九宫格尺寸)。
+普通固定视觉图片派生 `sprite_geometry={type:'SIMPLE',size_mode:'RAW',content_size:null}`，其 RAW 尺寸以 V3 已验收正式 SpriteFrame 的完整未裁切原尺寸为准，不取父框、定位参照或生成器原始文件尺寸。即使底板节点兼任功能容器且拥有图标/文字子项，仍按其图片身份保留 RAW 计划。普通图片不能使用 `STRETCH`/`FLEX`，父布局、Widget 和 Layout 不得写入其 `UITransform.contentSize`；只有冻结九宫格的图片使用 `SLICED + CUSTOM` 和目标显示宽高。纯结构容器、文字与命中区域没有 Sprite 尺寸计划，见[Cocos 适配器](cocos-adapter.md#图片原尺寸与九宫格尺寸)及[Widget 尺寸权限](widget-layout.md#尺寸权限)。
 
 装饰性满幅背景的 `cover` 必须在 `designResolutionPolicy.backgroundFit` 中冻结 `mode=cover-v1`、
 `sourceFocalPoint` 和 `targetPoint`，并将同一组事实传给 QA 的 `viewport.backgroundFit`。算法与运行时证据遵循

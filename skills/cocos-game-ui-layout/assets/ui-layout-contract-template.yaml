@@ -697,10 +697,17 @@
         "POSITION"
       ],
       "layout_owner": "SELF",
+      "position_driver": "SHARED",
       "size_policy": "CONTENT",
       "overflow_policy": "KEEP_VISIBLE",
       "safe_area_policy": "INSIDE_SAFE_AREA",
       "interaction_policy": "NONE"
+    },
+    "layout_execution": {
+      "position_driver": "SHARED",
+      "size_driver": "CONTENT",
+      "reason": "定位参照 safe-area 是逻辑稳定根，由共享布局映射到实际 Canvas/视口尺寸，不假定存在可供 Widget target 使用的 Node。",
+      "widget": null
     },
     "z_order": 10,
     "clip_policy": "none",

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { nativeRenderContract, nativeRuntimeEvidence } from "./native-render-test-fixtures.mjs";
+import { deriveLayoutExecutionPlans } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
@@ -13,6 +14,16 @@ import { validateSceneAssetUsageContract, validateSceneCombinationPreacceptance,
 const SHA = "sha256:" + "a".repeat(64);
 const LAYOUT_SHA = "sha256:" + "b".repeat(64);
 const LAYOUT_DECOMPOSITION_VERSION = "layout-decomposition-1";
+
+/** 仅派生时统一字段，保留混合命名夹具，确保别名读取的既有测试仍然有效。 */
+export function refreshFixtureLayoutExecution(nodes) {
+  const executionNodes = deriveLayoutExecutionPlans(nodes.map((node) => ({
+    ...node, layout_node_id: node.layout_node_id ?? node.layoutNodeId,
+    reference_id: node.reference_id ?? node.referenceId,
+    target_bounds: node.target_bounds ?? node.targetBounds,
+  })));
+  nodes.forEach((node, index) => { node.layout_execution = executionNodes[index].layout_execution; });
+}
 
 /** 构造绑定冻结目标的全原生独立视觉分析。 */
 function allNativeJustification(overrides = {}) {
@@ -279,6 +290,7 @@ function effectImageContract() {
     ],
     layout_annotation: { layout_annotation_file: "evidence/v2/layout-annotation.png", layout_annotation_sha256: SHA, layout_annotation_width: 390, layout_annotation_height: 844, layout_annotation_schema: "layout-annotation/png/1", layout_annotation_layout: "image-plus-right-panel", layout_annotation_metadata_sha256: SHA, layout_annotation_identity_sha256: SHA, layout_review_file: "evidence/v2/layout-review.html", layout_review_sha256: SHA, layout_review_identity_sha256: SHA, layout_nodes_file: "evidence/v2/layout-nodes.json", layout_nodes_sha256: SHA, decomposition_confirmation_id: "v2-confirmation", decomposition_confirmation_sha256: SHA, proposal_sha256: SHA, layout_decision_file: "evidence/v2/automatic-layout-decision.json", layout_decision_sha256: SHA, layout_decision_id: "layout-decision-1", target_sha256: SHA, scene_id: "main", state_id: "default", layout_node_ids: ["hud-main", "board-surface"] }, layout_annotation_confirmation: (() => { const record = { confirmation_schema: "layout-annotation-confirmation/1.0", confirmation_id: "v2-layout-confirmation", status: "accepted", confirmation_mode: "manual", layout_annotation_file: "evidence/v2/layout-annotation.png", layout_annotation_sha256: SHA, layout_annotation_width: 390, layout_annotation_height: 844, layout_annotation_schema: "layout-annotation/png/1", layout_annotation_layout: "image-plus-right-panel", layout_annotation_metadata_sha256: SHA, layout_annotation_identity_sha256: SHA, layout_review_file: "evidence/v2/layout-review.html", layout_review_sha256: SHA, layout_review_identity_sha256: SHA, layout_nodes_file: "evidence/v2/layout-nodes.json", layout_nodes_sha256: SHA, decomposition_confirmation_id: "v2-confirmation", decomposition_confirmation_sha256: SHA, proposal_sha256: SHA, layout_decision_file: "evidence/v2/automatic-layout-decision.json", layout_decision_sha256: SHA, layout_decision_id: "layout-decision-1", target_sha256: SHA, scene_id: "main", state_id: "default", user_original_text: "确认布局标注", user_message_sha256: computeLayoutUserMessageSha256("确认布局标注"), decision_record_file: "evidence/v2/layout-decision.json", decision_record_sha256: SHA, user_decision_receipt_file: "evidence/v2/layout-receipt.json", user_decision_receipt_sha256: SHA, accepted_at: "2026-01-01T00:00:00Z" }; return { ...record, confirmation_sha256: computeLayoutAnnotationConfirmationSha256(record) }; })(),
   };
+  refreshFixtureLayoutExecution(value.layout_decomposition.layout_nodes);
   value.combination_preacceptance.formal_assets = ["hud-main", "board-surface"];
   value.combination_preacceptance.visual_fidelity = { contour: "passed", proportion: "passed", pose: "passed", icon_semantics: "passed", full_scene_composition: "passed" };
   value.combination_preacceptance.redesign_check = "none";

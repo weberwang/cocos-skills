@@ -81,7 +81,7 @@ UI 中选择 `center` 时，默认严格居中；只有明确的设计偏移或�
 
 工作流已取消所有 SHA 摘要验收校验，不要求提供或比对摘要，也不因摘要缺失、错误或变化阻断验收。摘要核对留到最终人工验收后处理；文件可读取、实际功能与内容约束、任务归属和人工确认仍会检查，内部缓存及事务并发保护保留。
 
-UI 响应式验证按合同的 `orientationPolicy.allowed` 选择视口方向：单方向项目只验证支持方向内的窄宽尺寸、DPR 和连续 resize；只有同时支持竖屏与横屏时才验证方向切换。UI 父子分组按真实功能与布局职责，简单底板优先兼任组件根，额外纯结构容器须写明独立职责；独立位置参照不强制新增父子容器，明确视觉溢出不扩大父框。普通图片（包括作为容器的底板）保留 SpriteFrame RAW 原尺寸；仅冻结九宫格纹理才设置目标图片尺寸。九点停靠表达节点位置意图，与九宫格纹理拉伸分开处理。详见[功能语义分组](skills/cocos-game-ui-layout/references/functional-semantic-grouping.md)与[Cocos 图片尺寸边界](skills/cocos-game-ui-layout/references/cocos-adapter.md#图片原尺寸与九宫格尺寸)。
+UI 响应式验证按合同的 `orientationPolicy.allowed` 选择视口方向：单方向项目只验证支持方向内的窄宽尺寸、DPR 和连续 resize；只有同时支持竖屏与横屏时才验证方向切换。UI 父子分组按真实功能与布局职责，简单底板优先兼任组件根，额外纯结构容器须写明独立职责；独立位置参照不强制新增父子容器，明确视觉溢出不扩大父框。普通图片（包括作为容器的底板）保留 SpriteFrame RAW 原尺寸；仅冻结九宫格纹理才设置目标图片尺寸。九点停靠表达节点位置意图，与九宫格纹理拉伸分开处理。Widget 只使用已存在的真实父/祖先节点；逻辑 `viewport`/`safe-area` 与兄弟参照、图文整体居中交给共享布局。位置与尺寸可由不同驱动器负责，但同一属性不能并行写入。详见[功能语义分组](skills/cocos-game-ui-layout/references/functional-semantic-grouping.md)、[Widget 定位策略](skills/cocos-game-ui-layout/references/widget-layout.md)与[Cocos 图片尺寸边界](skills/cocos-game-ui-layout/references/cocos-adapter.md#图片原尺寸与九宫格尺寸)。
 
 玩家可见内容遵循[游戏内文案](skills/cocos-game-ui-layout/references/game-copy.md)：优先图片、图标、数字与符号，例如金币图标 `+100`，不重复写「获得 100 金币」；文字只保留必要的短名称、短动作、短状态或说明。该原则贯穿策划、美术 brief、效果图、布局和验收。程序化文本仍须支持英语、简体中文、日语、俄语和西班牙语，并逐语言验证字形宽度、字体回退、基线、断行和容器适配；每种语言独立选择单行或换行，禁止截断，也不把符号表达扩写成解释句。
 

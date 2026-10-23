@@ -33,6 +33,8 @@
 
 相对位置锚点与偏移以有效定位参照的宽高计算。`parent_element_id`/`parent_layout_node_id` 记录实际功能或布局父级；可选的 `ui_layout.position_reference_id` 记录位置参照，省略时默认为父级。它可指向同 scene/state、同坐标空间的兄弟节点（可为叶子）、祖先节点或稳定根 `viewport`/`safe-area`，不允许引用任意跨分支叶子节点，也不能指向全屏装饰背景。布局快照的 `reference_id` 保存有效定位参照，`parent_target_bounds` 记录真实父框，生成快照总包含 `reference_target_bounds`。底层合同在同父参照时可省略冗余的 `reference_target_bounds` 并从父框推导；独立参照时必须显式声明且与参照目标 bounds 一致。禁止缺失、自指和把父边、参照边合并后成环。已声明独立参照时，`grouping_basis` 包含 `POSITION`。内部已有功能组件仍按职责保留父级，不将所有后代平铺到场景或底板下。底板节点自身声明其实际承担的 `POSITION`、`LAYOUT`、`INTERACTION` 或 `STATE` 职责；它可以同时是 Sprite 和组件根，不必另设纯容器。
 
+虽然 `viewport`/`safe-area` 可作为布局几何的稳定根参照，当前合同没有定义它们到实际场景 Node 的映射，故始终由 `SHARED` 处理；直接引用它们却显式选择 `WIDGET` 时应在校验阶段阻断。合成 `root_nodes` 仍是布局数据，不能作为 Widget target。只有已经存在于实际节点树中的父级/祖先 Node（例如真实 Canvas 节点）才可由 Widget 定位。不要为映射逻辑根或满足 Widget 限制创建 Canvas 包装/空容器。
+
 `axis_alignment.horizontal=left|center|right` 与 `vertical=top|center|bottom` 组成九点停靠语义，并通过 `self_anchor`、`reference_anchor` 和 `offset` 确定对齐关系。它表示相对参照的停靠意图，不是图片纹理的九宫格拉伸，也不按当前画面几何九等分格自动决定。调整视口或父级尺寸时，按预期关系（例如按钮保持右边距、标题保持居中）选择停靠；严格居中、明确偏移和图文整体居中按[居中策略与组合定位](center-alignment.md)表达，`UITransform.anchorPoint` 的中心默认值另行映射，不与九点停靠混为一谈。
 
 关闭按钮等部件突出底板时，可在真实父子归属不变的前提下用独立定位参照定位，并为子项声明 `ui_layout.visual_overflow: {reason: "..."}`。它允许子项超出非根父框，但不扩大父框；只有确有布局、状态、交互、生命周期或裁切职责时才增加容器。viewport、safe-area 和目标画布边界、安全区、裁切与交互检查仍须满足。
@@ -65,8 +67,10 @@ V2 继续严格按现有串行确认顺序执行：先生成人工可修改的�
 | 字段 | 记录内容 |
 | --- | --- |
 | `grouping_basis` | 父级/布局归属职责数组，只使用 `POSITION`、`LAYOUT`、`INTERACTION`、`STATE`、`CLIP`、`REUSE`。只有直接挂在 `viewport`/`safe-area` 且无额外职责时才用 `[]`；其他关系说明真实职责。显式 `position_reference_id` 与实际父级不同时必须包含 `POSITION`。 |
-| `layout_owner` | 谁计算该节点的位置与尺寸：`PARENT`、`SELF` 或 `EXTERNAL`。 |
+| `layout_owner` | V2 布局责任归属：`PARENT`、`SELF` 或 `EXTERNAL`；它不是运行时组件或属性写入者，位置与尺寸驱动器分别由 `layout_execution` 记录。 |
 | `position_reference_id` | 可选的位置参照 ID；省略时为 `parent_element_id`。显式值可为同 scene/state、同坐标空间的兄弟节点（可为叶子）、祖先节点或稳定根 `viewport`/`safe-area`；不允许任意跨分支叶子；父边与参照边合并后必须无环。 |
+| `position_driver` | 可选的唯一运行时位置驱动器：`WIDGET`、`SHARED`、`LAYOUT`、`STATIC`、`ANIMATION`。省略时按参照可达性、职责、组合中心和布局策略自动选择；target、所有权约束与转换计划见 [Widget 定位策略](widget-layout.md)。 |
+| `widget_stretch_axes` | 可选的 Widget 双边拉伸轴，非空且无重复，只能含 `horizontal`/`vertical`，且仅允许在 `position_driver: WIDGET`。RAW Sprite/底板禁止；九宫格 Sprite 和 `element_type: container` 的非 Sprite 容器尺寸授权见 [Widget 定位策略](widget-layout.md#尺寸权限)。 |
 | `size_policy` | 尺寸意图：`FIXED`、`STRETCH`、`CONTENT` 或 `FLEX`；布局节点原有尺寸字段仍须填写并与它一致。普通固定视觉图片必须使用 RAW 原尺寸，不能使用 `STRETCH`/`FLEX`。 |
 | `overflow_policy` | 空间不足时处理：`KEEP_VISIBLE`、`CLIP_DECORATION`、`REFLOW` 或 `SCROLL`。 |
 | `visual_overflow` | 可选对象 `{reason: 非空中文说明}`，声明子项可超出非根实际父框；不改变父框尺寸。viewport/safe-area/目标画布边界、安全区、裁切和交互要求仍须满足。 |
@@ -79,7 +83,7 @@ V2 继续严格按现有串行确认顺序执行：先生成人工可修改的�
 
 `DELEGATE_TO_PARENT` 必须沿父链找到唯一的 `HIT_TARGET`，命中目标不得嵌套另一命中目标。`SCROLL` 只能由承担 `LAYOUT` 职责的容器管理。`minimum_size` 在 V2 校验声明值，在 V4 以真实视口测量确认可读和可点击尺寸。
 
-示例字段与当前 `ui_layout` 合同使用 snake_case，枚举值使用大写：
+示例字段与当前 `ui_layout` 合同使用 snake_case，枚举值使用大写。字段兼容与驱动选择的完整策略见 [Widget 定位策略](widget-layout.md)：
 
 ```yaml
 semantic_grouping:
@@ -95,7 +99,7 @@ ui_layout:
   minimum_size: {width: 48, height: 48}
 ```
 
-这些字段作为 V2 人工确认事实，必须在拆解、生成布局节点及离线审阅资料中保持一致。布局节点原有几何、裁切和响应式字段仍按机器合同独立填写，`ui_layout` 不能替代它们。
+这些字段作为 V2 人工确认事实，必须在拆解、生成布局节点及离线审阅资料中保持一致。布局节点原有几何、裁切和响应式字段仍按机器合同独立填写，`ui_layout` 不能替代它们。`position_driver` 和 `widget_stretch_axes` 同样属于布局身份；生成的 `layout_execution` 从这些事实派生，不能人工另写一组相互竞争的 Widget 属性。该计划将 `position_driver` 与 `size_driver` 分开记录；不同驱动器可以分别写位置和尺寸，但每个实际属性在同一时段只能有一个写入者。Widget 负责定位、共享布局负责尺寸时，须先计算尺寸，再调用 `updateAlignment()`。
 
 ## Cocos 组件例子
 

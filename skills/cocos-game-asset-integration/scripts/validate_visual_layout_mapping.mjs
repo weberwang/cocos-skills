@@ -192,7 +192,7 @@ export function validateEffectImageLayoutBindings(data, errors, options = {}) {
   for (const region of coverageRegions) if (region.id && !declaredByRegion.has(region.id)) errors.push(`coverage region ${region.id} 缺少 scene_reconstruction_contract.layout_nodes`);
 
   // 独立资源映射入口同样必须拦截 parent_layout_node_id 等父子几何字段缺失或伪造。
-  for (const issue of validateEffectImageParentChildLayoutNodes(nodes, target?.viewport, { label })) errors.push(issue.message);
+  for (const issue of validateEffectImageParentChildLayoutNodes(nodes, target?.viewport, { label, requireExecutionPlan: true })) errors.push(issue.message);
 
   const placementIds = new Set();
   const consumersByNode = new Map();

@@ -34,9 +34,11 @@
 
 `axis_alignment` 的水平 `left/center/right` 与垂直 `top/center/bottom` 组合是九点停靠合同；`self_anchor`、`reference_anchor` 和 `offset` 进一步确定对齐。中心轴如何区分严格居中、显式偏移与组合整体居中，按[居中策略与组合定位](center-alignment.md)计算。它与 `nine_slice` 纹理切片合同无关，不修改 Sprite 类型或 RAW 尺寸。Node `UITransform.anchorPoint` 是 Creator 的节点矩形锚点，默认中心点不代表九点停靠结果。
 
-Widget 的 `target` 只支持当前节点的父级或祖先节点，不能直接引用兄弟节点；遵循 [Cocos Creator 3.8 Widget 说明](https://docs.cocos.com/creator/3.8/manual/en/ui-system/components/editor/widget.html)。需要相对兄弟定位时，项目共享布局入口读取兄弟 bounds，以该兄弟作为 `reference_id` 计算九点停靠和偏移，再换算到节点真实父级的局部坐标；不为 Widget 限制而增加包装层，也不改变已确认的兄弟参照语义。
+Widget 的 `target` 只支持当前节点的父级或祖先节点，不能直接引用兄弟节点；遵循 [Cocos Creator 3.8 Widget 说明](https://docs.cocos.com/creator/3.8/manual/en/ui-system/components/editor/widget.html)。需要相对兄弟定位时，项目共享布局入口读取兄弟 bounds，以该兄弟作为 `reference_id` 计算九点停靠和偏移，再换算到节点真实父级的局部坐标；不为 Widget 限制而增加包装层，也不改变已确认的兄弟参照语义。Widget 仅在布局合同选定 `position_driver: WIDGET` 时接入；其目标、唯一写入权、拉伸授权、中心 Y 符号及生成配置按 [Widget 定位策略](widget-layout.md)派生。普通 RAW Sprite/底板只允许 Widget 定位且 `size_driver` 必须保留 `SPRITE_RAW`。
 
-创建、资源绑定、状态换图、Scene 恢复和 resize 共用这项区分：普通图片保持 RAW，九宫格重放冻结目标尺寸。普通图片与目标尺寸不符时先核对绑定资源与 V3 生产规格，修复错误来源，不在 V4 改用 CUSTOM 或临时缩放凑框。已声明的背景 cover/contain 与设计空间到设备的整体缩放继续通过共享变换实现，不改写普通 Sprite 的原始内容尺寸。
+`viewport` 与 `safe-area` 在布局合同中是逻辑根，尚无到场景实际 Node 的映射，直接参照这两个根时必须使用 `SHARED`；合成的 `root_nodes` 也不证明实体节点存在。已有实际 Canvas 父/祖先节点可直接作 Widget target。位置与尺寸可分别由 Widget 和共享布局负责，后者先写入最终尺寸，再调用 `updateAlignment()`；只禁止多个驱动器同时写同一属性。
+
+创建、资源绑定、状态换图、Scene 恢复和 resize 共用这项区分：普通图片保持 RAW，九宫格重放冻结目标尺寸。普通图片与目标尺寸不符时先核对绑定资源与 V3 生产规格，修复错误来源，不在 V4 改用 CUSTOM 或临时缩放凑框。已声明的背景 cover/contain 与设计空间到设备的整体缩放继续通过共享变换实现，不改写普通 Sprite 的原始内容尺寸。统一幂等布局入口还须覆盖父尺寸、动态文本、状态、成员、安全区、键盘及资源绑定完成事件；Widget 固定使用 `ON_WINDOW_RESIZE` 并在入口更新参数后显式调用 `updateAlignment()`，不用 `ALWAYS` 与其它位置写入者争抢。
 
 依据 [Cocos Creator 3.8 Sprite 组件参考](https://docs.cocos.com/creator/3.8/manual/en/ui-system/components/editor/sprite.html)：Raw 使用未裁切原图尺寸，Custom 使用自定义尺寸，Sliced 是独立的渲染类型。RAW 是本工作流要求，不能依赖编辑器或已有 Prefab 的当前默认值。
 
