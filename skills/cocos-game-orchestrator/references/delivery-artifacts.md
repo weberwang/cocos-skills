@@ -33,6 +33,7 @@
 | `docs/game-feel.md`（按需） | 当前任务需要独立记录动态反馈意图、事件语义或组合规则时使用；也可复用 GDD/视觉设计文档，不是默认工件或机器必需字段，参考[汁水感设计指南](../../cocos-game-juice/references/design-guide.md) |
 | `docs/asset-license-register.md` | 资源/音频来源、授权与发布资格 |
 | `docs/visual-assets.json` | 含场景或 shared 归属的视觉资源机器清单，不驱动全局状态 |
+| `assets-source/<owner>/<asset-id>/<version>/`（3D 建模按需） | 可编辑 `.blend` 及依赖、模型配方和[模型交接](../../cocos-game-3d-modeling/references/model-handoff.md)；正式模型/材质与资源级 Prefab 位于规划的 Creator `assets/` 目录，Blender 自检、导出回读、Creator 导入与用户显示结果分别作为实际证据引用 |
 | `docs/confirmed/scenes/<scene-id>/<artifact-id>/<version>/`（显示层使用 `display-layers/<displayLayerId>`） | 同批 `layout.png`、`layout-nodes.json`、`layout-decision.json`、离线 `review.html`、`generation-result.json`；在展示前固定引用路径，审阅页规则见[离线布局审阅产物](../../cocos-game-ui-layout/references/layout-review-artifacts.md) |
 | `docs/qa-plan.md` | 测试策略，不得自填通过状态 |
 | `docs/platform-matrix.md` | 分层平台证据；不自动触发真机 |

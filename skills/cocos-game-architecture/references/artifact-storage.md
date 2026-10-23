@@ -12,7 +12,7 @@
 | 尚未送审的候选 | `output/candidates/<workItemId>/<stageId>/<candidateId>/` | 本地探索图、草稿、动画或音频候选；展示给用户、写入合同/清单或作为下游输入前，保存到对应审阅/保留目录并绑定实际路径。 |
 | 已确认的非运行成果 | `docs/confirmed/<owner>/<artifact-id>/<version>/` | 已确认效果图、参考目标、拆解图、布局包和设计预览；不随游戏发布，不存运行资源副本或第二套确认状态。 |
 | 生产源文件 | `assets-source/<owner>/<asset-id>/<version>/` | 用户原始输入、可编辑模型/分层图、原始音频、动画源视频和重做所需的必要输入。 |
-| 正式游戏资源 | `assets/shared/`、`assets/scenes/<sceneId>/`、`assets/display-layers/<displayLayerId>/` | 按需存放当前资源清单采用的图片、Spine运行文件、纹理、音频、字体和图集；实际导入、引用和构建状态必须通过 Creator AssetDB/构建结果核验。 |
+| 正式游戏资源 | `assets/shared/`、`assets/scenes/<sceneId>/`、`assets/display-layers/<displayLayerId>/` | 按需存放当前资源清单采用的图片、Spine运行文件、3D 运行时模型、材质、资源级 Prefab、纹理、音频、字体和图集；实际导入、引用和构建状态必须通过 Creator AssetDB/构建结果核验。 |
 | 项目权威文档与清单 | `docs/` | GDD、TDD、视觉基线、资源清单、来源/许可登记和测试策略；权威正文沿用既定文件名，不在确认目录复制第二份。 |
 | 人工审阅与验证产物 | `evidence/<workItemId>/reviews/<stageId>/<candidateId>/`、`evidence/<workItemId>/validation/<stageId>/<candidateId>/` | 供人检查的候选、审阅页、截图、录屏、对照图、测试日志和报告；记录实际状态，未通过证据也按有效记录保留。 |
 | 工作流机器记录 | `.workflow-control/` 与 `.workflow-control/user-resolutions/` | Work Item、实施包、状态、结果、机器证据、受保护视觉确认账本和回执遵循控制工具真实路径；不得另造 `.cocos-workflow/`。 |

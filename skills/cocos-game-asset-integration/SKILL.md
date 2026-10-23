@@ -1,6 +1,6 @@
 ---
 name: cocos-game-asset-integration
-description: 为 Cocos Creator 3.x 游戏规划、生产、登记、验证并集成 UI、角色、场景、动画、VFX、背景和参考还原资源。用于正式视觉资源、视觉系统、资源接入、视觉重构、运行时视觉验收和来源/许可登记；不用于纯玩法规则修改。
+description: 为 Cocos Creator 3.x 游戏规划、生产、登记、验证并集成 UI、角色、3D 模型、场景、动画、VFX、背景和参考还原资源。用于正式视觉资源、视觉系统、资源接入、视觉重构、运行时视觉验收和来源/许可登记；不用于纯玩法规则修改。
 ---
 
 # Cocos Creator 3.x 游戏美术生产与接入
@@ -70,6 +70,7 @@ V2 拆解 UI 底板、按钮皮肤和框体时，必须按可观察固定角边�
 
 ## 条件参考
 
+- 正式 3D 模型制作或修整：交给 [`cocos-game-3d-modeling`](../cocos-game-3d-modeling/SKILL.md) 在 Blender MCP 中生产；本领域按[工作流接入](../cocos-game-3d-modeling/references/workflow-integration.md)登记模型来源与输出，通过 Creator MCP 核验真实模型、网格/材质子资源和资源级 Prefab。几何技术报告与实际场景消费证据独立于图片尺寸、Alpha 和 SpriteFrame 检查。
 - 参考截图、录屏、运行项目或源码还原：读取 [视觉还原](references/visual-reconstruction.md)。
 - 装饰性屏幕空间满幅背景：读取 [满幅背景](references/full-bleed-background.md)；世界空间关卡、Tilemap 或玩法环境改读资产生产路线。
 - UI：同时读取 [`cocos-game-ui-layout`](../cocos-game-ui-layout/SKILL.md) 的布局合同、Cocos 适配器、Widget 定位策略和证据矩阵；资源 origin、布局锚点与动画偏移按合同分离，资产接入不得重新发明布局规则。

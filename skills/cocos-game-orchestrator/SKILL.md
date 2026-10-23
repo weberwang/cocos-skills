@@ -37,6 +37,10 @@ description: Cocos Creator 3.x 游戏领域编排角色；在全局控制面已�
 
 场景 V2 的布局交付必须同时提供标准布局 PNG、`layout-nodes.json`、`layout-decision.json`、自包含 `review.html` 和 `generation-result.json`，并在独立布局确认及场景根计划中关联同批参考、拆解、决策、节点、PNG 和实际审阅页。屏幕 UI 还按[Cocos UI 节点组织](../cocos-game-ui-layout/references/layout-hierarchy.md)在 V1 定义根层级，在 V2 确认父级职责与 `ui_layout` 字段，在 V4 正式场景中检查职责、输入、裁切边界及视口变化下的运行结果。编排只引用[离线布局审阅产物](../cocos-game-ui-layout/references/layout-review-artifacts.md)的通用规则，不为场景手写审阅页；页面候选状态不等于人工确认。
 
+## 3D 建模路由
+
+需要制作或修整正式 3D 模型时，调用 [`cocos-game-3d-modeling`](../cocos-game-3d-modeling/SKILL.md)，按[工作流接入](../cocos-game-3d-modeling/references/workflow-integration.md)把模型规格、Blender 生产、Creator 导入和正式场景消费安排在现有工作项中。制作交接用途、观看距离、视觉基线和预算；建模负责几何、拓扑、法线、UV、LOD 与碰撞代理，资源接入负责 AssetDB、材质绑定与资源级 Prefab，玩法负责实际碰撞和交互语义，QA 分开记录技术证据与用户显示确认。各角色按[模型交接](../cocos-game-3d-modeling/references/model-handoff.md)串行交接同一源和 Creator 写入权；不把独立纹理、绑定或动画制作隐含并入建模。模型路线不授权替换已冻结的生成式位图，也不跳过适用的 V2/V3/V4 门。
+
 ## 汁水感与动态反馈路由
 
 汁水感是按需调用的独立领域能力：用户明确提出汁水、打击感或动态反馈需求时调用；已有任务包含核心反馈，但事件语义仍不清楚时也可按需引用。它沿用当前场景或玩法 Work Item，不把普通玩法修改扩为全量润色，也不增加阶段、审批门或强制工件。按[工作流接入说明](../cocos-game-juice/references/workflow-integration.md)安排职责：制作在既有 GDD/契约确定意图和关键事件，玩法负责规则、碰撞、状态、触发与交互代码，架构维护跨模块坐标约定；UI 负责布局、焦点表现与布局坐标合同，反馈对象仅使用独立表现偏移，不覆盖基础布局值、不争抢焦点或输入处理。动画与音频沿用各自的生产及生命周期规则，QA 核对事件边界并将动态显示、舒适度和手感交由用户人工验收。完整语义与类型规则见[汁水感设计指南](../cocos-game-juice/references/design-guide.md)。

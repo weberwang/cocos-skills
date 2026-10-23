@@ -1,6 +1,6 @@
 ---
 name: cocos-game-qa-performance
-description: Cocos Creator 3.x 移动端 2D 游戏的测试与性能角色。用于功能、参考还原、动态玩法视觉、UI/场景、设备兼容、资源预算、性能、稳定性和发布候选验证，并产出可复现证据。
+description: Cocos Creator 3.x 移动端游戏的测试与性能角色。用于功能、参考还原、动态玩法视觉、3D 模型、UI/场景、设备兼容、资源预算、性能、稳定性和发布候选验证，并产出可复现证据。
 ---
 
 # Cocos Creator 3.x 测试与性能
@@ -12,6 +12,8 @@ description: Cocos Creator 3.x 移动端 2D 游戏的测试与性能角色。用
 本领域可提议验证计划并审查候选，可在当前用户任务、A 等级和路径范围内写测试或证据；结果回到 [`cocos-game-workflow-control`](../cocos-game-workflow-control/SKILL.md) 审计和状态迁移。测试通过不能覆盖任务范围、路径、基线或 A4-A6 操作批准失败。
 
 证据优先于主观结论。项目未定义量化指标时只报告实测与决策缺口，不自造通用阈值。
+
+涉及 3D 模型时，按[建模工作流接入](../cocos-game-3d-modeling/references/workflow-integration.md)核对 Blender 几何/拓扑/UV 报告、导出回读、Creator 实际模型与子资源、比例/轴向/Pivot、材质槽、LOD/碰撞、资源级 Prefab 和正式场景消费。以当前项目的预算和实际能力为准；通用资源清单 PASS、导出文件存在或 `.meta` 出现不能代替这些技术验证。转台、线框、UV、LOD 切换与碰撞边界截图供用户人工检查，技术结果和显示确认分别记录；不自动启动真机验收。
 
 游戏内文案按[检查与返修](../cocos-game-ui-layout/references/game-copy.md#检查与返修)核对：效果图生成记录的实际提示词须分开内部说明与可见内容；界面文本配置和绑定须沿用同一表达，涵盖本地化及奖励/消耗/错误等适用状态。效果图冻结前及 V4 正式场景运行中提供重复解释、规格说明、数值归属和必要信息的检查点，显示效果交由用户判断；`copy_style`、字数或构建成功不能代替这项人工结果。
 

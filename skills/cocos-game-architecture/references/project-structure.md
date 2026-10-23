@@ -47,6 +47,7 @@ Creator 项目实际还可能包含 `library/`、`temp/`、`local/`、`build/` �
 - 示例：静态图集 `assets/animations/mechanism-open.png` 由 Scene/Prefab 的序列化引用绑定；显式使用 `resources.load('animations/mechanism-open')` 时，文件位于 `assets/resources/animations/mechanism-open.png`，清单声明 `{ "method": "resources.load" }`，路径 key 与文件相对 `assets/resources/` 的路径一致。Frame-animation 图集可用 `spritesheet.creator_resource_path` 直接声明这一动态加载用途，无需重复填写 `resource_loading`。
 - Creator AssetDB 导入后为资产建立 UUID。跨文件的编辑器引用使用 AssetDB 已生成的 UUID/子资源身份；代码侧加载可使用 Creator 支持的资源引用方式。不要自行生成 UUID，也不要将磁盘路径存在误判为导入完成。
 - Sprite 图像常含可单独引用的 SpriteFrame 子资源；绑定前查询实际子资源 UUID 与资源类型。其他导入类型按对应 importer 的子资源结构检查。
+- 3D 模型的 `.blend` 源及烘焙输入保存在 `assets-source/<owner>/<asset-id>/<version>/`；运行时模型、材质和资源级 Prefab 放入 `assets/` 内既有归属目录。导入格式、网格/材质子资源与设置按实际 Creator 版本和 AssetDB 结果核验，遵循[建模工作流接入](../../cocos-game-3d-modeling/references/workflow-integration.md)，不把源 `.blend` 的存在当作可运行模型。
 - 批量导入遵循单写者边界：完成整批落盘后刷新一次批次目录并等待完成，执行有界查询确认导入状态；包含脚本的批次还检查编译/加载结果。就绪后才绑定、保存或进入下一批。
 - 保存 Scene/Prefab 后读回并检查节点树、组件属性与资源引用，证明持久化结果符合预期。
 

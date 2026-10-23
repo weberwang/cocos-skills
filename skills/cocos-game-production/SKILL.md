@@ -1,6 +1,6 @@
 ---
 name: cocos-game-production
-description: Cocos Creator 3.x 移动端 2D 游戏制作与策划角色；将游戏构想、参考证据和运行观察转换为可实现、可验收的中文 GDD 与领域交接物。
+description: Cocos Creator 3.x 移动端游戏制作与策划角色；将游戏构想、参考证据和运行观察转换为可实现、可验收的中文 GDD 与领域交接物。
 ---
 
 # Cocos Creator 3.x 制作策划
@@ -20,6 +20,7 @@ description: Cocos Creator 3.x 移动端 2D 游戏制作与策划角色；将游
 
 ## 领域边界
 
+- 涉及正式 3D 模型时，按[建模工作流接入](../cocos-game-3d-modeling/references/workflow-integration.md)在既有 GDD/场景资源规划中交接模型用途、机位与观看距离、参考尺寸、交互体积、视觉基线、面数/材质/LOD 预算和验收条件；交给建模领域形成可执行规格，不能把灰盒或材质效果当作正式模型完成。贴图、绑定和动画只有明确属于任务范围时才另行安排。
 - 本领域可以提议和审查需求，也可以在当前任务路径内修改规格；A3 实施包由控制面冻结后再交给 implementer。
 - 所有任务逐一按[实际完成情况](../cocos-game-workflow-control/references/control-model.md#按实际完成情况验收)验收；满足当前要求的任务不因中途实现调整而回改 GDD 或合同。未满足的要求应修复实际交付，不能修订合同降低验收标准。
 - 无副作用本地 A4 集成可按当前任务执行；外部写入、付费、真机、发布、破坏性或外部删除等 A4-A6 操作只能由控制面建立精确 pending 并等待显式批准，本 Skill 不执行这些动作。

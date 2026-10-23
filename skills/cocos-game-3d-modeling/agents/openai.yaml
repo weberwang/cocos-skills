@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos 游戏 3D 模型制作"
+  short_description: "通过 Blender MCP 制作并接入可追溯的 Cocos 运行时 3D 模型"
+  default_prompt: "使用 $cocos-game-3d-modeling 在当前工作项授权范围内，通过 Blender MCP 制作正式游戏 3D 模型，并按 Cocos Creator 实际能力完成资源导入核验。"

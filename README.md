@@ -95,6 +95,7 @@ UI 响应式验证按合同的 `orientationPolicy.allowed` 选择视口方向：
 - `$cocos-game-architecture`：工程架构与公开契约。
 - `$cocos-gameplay-development`：玩法规则、状态和交互实现。
 - `$cocos-game-asset-integration`、`$cocos-game-ui-layout`：资源、效果图还原和 UI 布局。
+- [`$cocos-game-3d-modeling`](skills/cocos-game-3d-modeling/SKILL.md)：从 `unity-skills` 融入的 Blender MCP 生产级建模流程，负责结构、拓扑、法线、UV、LOD、碰撞代理与版本化模型导出；通过 Creator MCP 验证导入、子资源与资源级 Prefab，再接入现有 V0–V4。见[工作流接入](skills/cocos-game-3d-modeling/references/workflow-integration.md)。
 - [`$cocos-frame-animation`](skills/cocos-frame-animation/SKILL.md)：普通、角色、特效、UI 分类规则；先说明并确认动作方案，再制作真实视频或关键帧，默认视频抽帧，可明确选用图片递归补帧。分辨率、批次与预算按[区域规划](skills/cocos-frame-animation/references/region-planning.md)执行，输出独立图集与预览。
 - `$cocos-spine-generative-reskin`、`$cocos-game-image-optimization`：Spine 与图片处理。
 - `$cocos-game-audio`、`$cocos-game-balance`：音频和数值平衡。
