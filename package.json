@@ -19,7 +19,7 @@
     "test:full": "node scripts/run-all-tests.mjs",
     "test": "npm run test:full && npm run test:install",
     "test:high-fidelity": "node scripts/run-tests.mjs skills/cocos-game-workflow-control/scripts/high-fidelity-prerequisite.test.mjs",
-    "test:frame-animation": "node scripts/run-tests.mjs skills/cocos-game-asset-integration/scripts/frame-animation-workflow-contract.test.mjs skills/cocos-frame-animation/scripts/video-to-atlas.test.mjs skills/cocos-frame-animation/scripts/image-inbetween-plan.test.mjs skills/cocos-frame-animation/scripts/image-frame-source.test.mjs skills/cocos-frame-animation/scripts/images-to-atlas.test.mjs skills/cocos-game-asset-integration/scripts/image-frame-animation-workflow-contract.test.mjs",
+    "test:frame-animation": "node scripts/run-tests.mjs skills/cocos-game-asset-integration/scripts/creator-resource-location.test.mjs skills/cocos-game-asset-integration/scripts/frame-animation-workflow-contract.test.mjs skills/cocos-frame-animation/scripts/video-to-atlas.test.mjs skills/cocos-frame-animation/scripts/image-inbetween-plan.test.mjs skills/cocos-frame-animation/scripts/image-frame-source.test.mjs skills/cocos-frame-animation/scripts/images-to-atlas.test.mjs skills/cocos-game-asset-integration/scripts/image-frame-animation-workflow-contract.test.mjs",
     "remove:background": "node skills/cocos-game-asset-integration/scripts/remove-background-local.mjs",
     "normalize:image": "node skills/cocos-game-workflow-control/scripts/visual-image-normalization.mjs",
     "lint:workflow": "node skills/cocos-game-workflow-control/scripts/workflow-control.mjs lint --repository .",

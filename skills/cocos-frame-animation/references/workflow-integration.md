@@ -82,7 +82,7 @@
 
 视频发生剪辑或重定时时，`source_video` 绑定实际用于抽帧的派生视频，`quality_report.input.video_sha256` 仅作可选追踪；原始视频身份、剪辑命令/配置与时间映射另存设计证据，不新增未经工具支持的 manifest 字段。结构校验器不会自动执行上述人工节奏检查。
 
-视频路线每个动画的 `asset.frame_animation` 绑定提示词、真实视频、自己的报告、预览和 spritesheet 路径；SHA 仅可选追踪。共享输入时，提示词和视频绑定可以相同，区域与独立图集不能混用。文件门读取实际视频，核对区域位置与宽高、真实显示画布边界、FPS、帧数、输出 cell、去背景配置、图集尺寸与 Creator 帧范围。PNG 实际文件位于 `assets/resources/` 下并登记在 `asset.runtime_outputs`；`spritesheet.creator_resource_path` 与报告 `cc.texture.creator_resource_path` 必须一致，均为相对 `assets/resources/` 的无扩展名资源标识，不是运行时 URL。报告中的 `cc` 只描述预期的 `SpriteFrame`、`UITransform` 和 `AnimationClip` 关系，不证明 Creator 资产已经创建。
+视频路线每个动画的 `asset.frame_animation` 绑定提示词、真实视频、自己的报告、预览和 spritesheet 路径；SHA 仅可选追踪。共享输入时，提示词和视频绑定可以相同，区域与独立图集不能混用。文件门读取实际视频，核对区域位置与宽高、真实显示画布边界、FPS、帧数、输出 cell、去背景配置、图集尺寸与 Creator 帧范围。图集 PNG 默认放在 `assets/animations/` 等普通资源目录，并登记在 `asset.runtime_outputs`；该字段记录产物位置，不声明加载方式。只有图集明确通过 `resources.load/loadDir` 按路径动态加载时，才将文件放入 `assets/resources/` 并填写 `spritesheet.creator_resource_path`。此值与报告 `cc.texture.creator_resource_path` 同时出现且必须一致，都是相对 `assets/resources/` 的无扩展名路径，例如 `animations/mechanism-open`；静态 UUID 引用图集时省略两处字段。报告 `cc` 只描述预期的 `SpriteFrame`、`UITransform` 和 `AnimationClip` 关系，不证明 Creator 资产已经创建；不得根据文件名或目录自动补造动态加载 key。
 
 视频的 accepted 合同使用 `cocos-video-atlas-workflow/1`，其 `quality_report` 指向外层 schema `cocos-video-atlas/2`，报告中的 `cc` 使用 `cocos-creator-frame-atlas/2`。以下为 accepted 字段示例：
 
@@ -101,9 +101,11 @@
   "source_video": { "file": "art/animation-batch.mp4", "sha256": "sha256:<64位十六进制>" },
   "quality_report": { "file": "evidence/mechanism-open.video-atlas.json", "sha256": "sha256:<64位十六进制>" },
   "preview": { "file": "evidence/mechanism-open.preview.html", "sha256": "sha256:<64位十六进制>" },
-  "spritesheet": { "file": "assets/resources/animations/mechanism-open.png", "creator_resource_path": "animations/mechanism-open", "sha256": "sha256:<64位十六进制>" }
+  "spritesheet": { "file": "assets/animations/mechanism-open.png", "sha256": "sha256:<64位十六进制>" }
 }
 ```
+
+上例是普通静态资源：Scene/Prefab 通过 Creator UUID 引用图集，清单与报告都省略 `creator_resource_path`。若明确改为 `resources.load('animations/mechanism-open')`，则文件放在 `assets/resources/animations/mechanism-open.png`，并在 `spritesheet` 和报告 `cc.texture` 中同时填写 `creator_resource_path: "animations/mechanism-open"`；该 key 必须与相对 `assets/resources/` 的实际文件路径一致。`resources/` 文件缺 key、目录外文件带 key、或仅凭名字推导 key 都应拒绝。帧动画的这个显式字段本身就声明动态用途，无需在通用资源清单重复填写 `resource_loading`。资源目录统一规则见[项目目录规范](../../cocos-game-architecture/references/project-structure.md#资源与引用)。
 
 `settings.width/height` 是最终 cell 尺寸，`settings.region.width/height` 是源视频裁剪尺寸，两者可以不同。区域模式下，清单的 `settings.region`、报告的 `input.region` 与 `settings.region` 必须逐字段一致；显示画布宽高必须有效且完整容纳区域。整画布模式不填区域字段。以上 SHA 字段可省略，摘要不参与验收。
 

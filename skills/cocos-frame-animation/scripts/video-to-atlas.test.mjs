@@ -6,7 +6,7 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 import sharp from "sharp";
 import { checkFrameAnimationWorkflowFiles, FRAME_ANIMATION_WORKFLOW_SCHEMA, sha256Bytes as contractSha256Bytes } from "../../cocos-game-asset-integration/scripts/frame-animation-workflow-contract.mjs";
-import { parseVideoAtlasArgs, videoAtlasHelp, videoToAtlas, VideoAtlasError } from "./video-to-atlas.mjs";
+import { normalizeVideoAtlasOptions, parseVideoAtlasArgs, videoAtlasHelp, videoToAtlas, VideoAtlasError } from "./video-to-atlas.mjs";
 
 /** 建立指定颜色的 RGBA PNG，测试不依赖系统安装 ffmpeg。 */
 async function solidPng(width, height, color, patches = []) {
@@ -121,7 +121,6 @@ test("视频抽帧生成单行 Cocos 图集、尺寸与网页预览", async (t) 
     outputPreview,
     fps: 6,
     width: 2,
-    creatorResourcePath: "animations/walk",
     ffmpegPath: "ffmpeg-test",
     ffprobePath: "ffprobe-test",
     commandRunner: fakeRunner(frameBytes, observed),
@@ -144,7 +143,7 @@ test("视频抽帧生成单行 Cocos 图集、尺寸与网页预览", async (t) 
   assert.equal(report.cc.texture.width, 6);
   assert.equal(report.cc.texture.height, 1);
   assert.equal(report.cc.sprite_frames.length, 3);
-  assert.equal(report.cc.texture.creator_resource_path, "animations/walk");
+  assert.equal(Object.hasOwn(report.cc.texture, "creator_resource_path"), false, "静态图集默认不伪造 resources.load 键");
   assert.deepEqual(report.cc.sprite_frames[2].rect, { x: 4, y: 0, width: 2, height: 1 });
 
   const decoded = await sharp(await readFile(outputSheet)).raw().toBuffer({ resolveWithObject: true });
@@ -495,13 +494,12 @@ test("非循环网页预览在末帧停止并支持重播", async (t) => {
     outputPreview,
     fps: 1,
     loop: false,
-    creatorResourcePath: "animations/hero-attack",
     ffmpegPath: "ffmpeg-test",
     ffprobePath: "ffprobe-test",
     commandRunner: fakeRunner([frame, frame, frame]),
   });
   assert.equal(report.animation.loop, false);
-  assert.equal(report.cc.texture.creator_resource_path, "animations/hero-attack");
+  assert.equal(Object.hasOwn(report.cc.texture, "creator_resource_path"), false);
   assert.equal(parseVideoAtlasArgs(["--input-video", "x.mp4", "--output-sheet", "x.png", "--creator-resource-path", "animations/hero-attack"]).creatorResourcePath, "animations/hero-attack");
   const preview = await readFile(outputPreview, "utf8");
   assert.match(preview, /"loop":false/u);
@@ -524,6 +522,23 @@ test("非循环网页预览在末帧停止并支持重播", async (t) => {
   harness.toggle.listeners.get("click")();
   assert.equal(harness.drawCalls.at(-1), 0, "末帧再次播放时应回到首帧");
   assert.equal(harness.toggle.textContent, "暂停");
+});
+
+/** 只允许显式且与导入位置完全一致的 resources.load 键进入图集合同。 */
+test("Creator resources 路径仅接受显式匹配的动态加载声明", () => {
+  const normalize = (outputSheet, extra = {}) => normalizeVideoAtlasOptions({
+    inputVideo: "walk.mp4",
+    outputSheet,
+    ...extra,
+  });
+  assert.equal(normalize("assets/animations/walk.png").creatorResourcePath, undefined);
+  assert.throws(() => normalize("assets/resources/animations/walk.png"), /显式动态加载/u);
+  assert.throws(() => normalize("assets/animations/walk.png", { creatorResourcePath: "animations/walk" }), /实际文件必须位于 assets\/resources/u);
+  assert.throws(() => normalize("assets/resources/animations/walk.png", { creatorResourcePath: "animations/other" }), /必须与实际文件/u);
+  assert.throws(() => normalize("assets/resources/animations/walk.png", { creatorResourcePath: "animations/%2e%2e/escape" }), /安全无扩展/u);
+  assert.equal(normalize("assets/resources/animations/walk.png", { creatorResourcePath: "animations/walk" }).creatorResourcePath, "animations/walk");
+  assert.match(videoAtlasHelp(), /静态引用：[^\n]*assets\/animations/u);
+  assert.match(videoAtlasHelp(), /动态加载：[^\n]*assets\/resources[^\n]*--creator-resource-path/u);
 });
 
 /** 验证工具报告、显式 runtime URL、网页 SHA 与项目文件门可直接对接。 */

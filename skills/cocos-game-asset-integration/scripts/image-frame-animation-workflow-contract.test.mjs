@@ -60,19 +60,21 @@ function creatorContract(animation, cell, frameCount, creatorResourcePath) {
       original_size: { width: cell.width, height: cell.height },
     };
   });
+  const texture = {
+    asset_name: animation.texture_key,
+    width: cell.width * frameCount,
+    height: cell.height,
+    layout: "horizontal",
+    frame_count: frameCount,
+  };
+  // 静态图集由普通项目资源引用，不伪造 resources.load 标识。
+  if (creatorResourcePath !== undefined) texture.creator_resource_path = creatorResourcePath;
   return {
     schema: "cocos-creator-frame-atlas/2",
     creator: { name: "Cocos Creator", major_version: 3 },
     integration_kind: "descriptive_machine_manifest",
     creator_assets_materialized: false,
-    texture: {
-      asset_name: animation.texture_key,
-      creator_resource_path: creatorResourcePath,
-      width: cell.width * frameCount,
-      height: cell.height,
-      layout: "horizontal",
-      frame_count: frameCount,
-    },
+    texture,
     coordinate_conversion: {
       sprite_frame_rect_origin: "image-top-left",
       sprite_frame_rect_y_formula: "image_rect_y",
@@ -120,8 +122,8 @@ async function writeFixtureFile(root, file, bytes) {
   return { file, sha256: sha256Bytes(bytes) };
 }
 
-/** 生成循环图片来源、真实修图链与可按画布比例缩放的图集合同。 */
-async function createFixtureRoot({ sourceWidth = 4, sourceHeight = 4, cellWidth = 4, cellHeight = 4, sourceFormat = "png", useActualPacker = false } = {}) {
+/** 生成默认静态图集合同；dynamicResources=true 才切换到 resources 动态加载目录。 */
+async function createFixtureRoot({ sourceWidth = 4, sourceHeight = 4, cellWidth = 4, cellHeight = 4, sourceFormat = "png", useActualPacker = false, dynamicResources = false } = {}) {
   const root = await mkdtemp(join(tmpdir(), "image-atlas-workflow-contract-"));
   const extension = sourceFormat === "jpeg" ? "jpg" : "png";
   const createSourceImage = sourceFormat === "jpeg" ? createJpeg : createPng;
@@ -180,7 +182,8 @@ async function createFixtureRoot({ sourceWidth = 4, sourceHeight = 4, cellWidth 
   await mkdir(dirname(join(root, sourceManifestFile)), { recursive: true });
   await writeFile(join(root, sourceManifestFile), sourceManifestBytes);
 
-  const sheetFile = "assets/resources/animations/image-atlas.png";
+  const sheetFile = dynamicResources ? "assets/resources/animations/image-atlas.png" : "assets/animations/image-atlas.png";
+  const creatorResourcePath = dynamicResources ? "animations/image-atlas" : undefined;
   const previewFile = "reports/image-preview.html";
   const reportFile = "reports/image-atlas.json";
   let sheetBytes;
@@ -231,7 +234,7 @@ async function createFixtureRoot({ sourceWidth = 4, sourceHeight = 4, cellWidth 
     anchor: settings.anchor,
     animationKey: "hero-loop",
     textureKey: "hero-loop-texture",
-    creatorResourcePath: "animations/image-atlas",
+    ...(creatorResourcePath === undefined ? {} : { creatorResourcePath }),
   }) : null;
   if (actualReport) {
     sheetBytes = await readFile(join(root, sheetFile));
@@ -239,7 +242,7 @@ async function createFixtureRoot({ sourceWidth = 4, sourceHeight = 4, cellWidth 
   }
   const artifact = (file, bytes, extra = {}) => ({ file, sha256: sha256Bytes(bytes), ...extra });
   const animation = { key: "hero-loop", texture_key: "hero-loop-texture", frame_rate: 2, loop: true };
-  const cc = creatorContract(animation, { width: cellWidth, height: cellHeight, target_anchor: targetAnchor }, 2, "animations/image-atlas");
+  const cc = creatorContract(animation, { width: cellWidth, height: cellHeight, target_anchor: targetAnchor }, 2, creatorResourcePath);
   const contract = {
     schema: IMAGE_FRAME_ANIMATION_WORKFLOW_SCHEMA,
     status: "accepted",
@@ -249,7 +252,7 @@ async function createFixtureRoot({ sourceWidth = 4, sourceHeight = 4, cellWidth 
     source_manifest: artifact(sourceManifestFile, sourceManifestBytes),
     quality_report: null,
     preview: artifact(previewFile, previewBytes),
-    spritesheet: artifact(sheetFile, sheetBytes, { creator_resource_path: "animations/image-atlas" }),
+    spritesheet: artifact(sheetFile, sheetBytes, creatorResourcePath === undefined ? {} : { creator_resource_path: creatorResourcePath }),
   };
   const asset = {
     id: "hero-loop",
@@ -395,7 +398,7 @@ function imageContract() {
     source_manifest: artifact("evidence/source.json"),
     quality_report: artifact("reports/image-atlas.json"),
     preview: artifact("reports/image-preview.html"),
-    spritesheet: artifact("assets/resources/animations/image-atlas.png", { creator_resource_path: "animations/image-atlas" }),
+    spritesheet: artifact("assets/animations/image-atlas.png"),
   };
 }
 
@@ -419,6 +422,32 @@ test("图片 accepted 合同拒绝错误候选、缺失工件和伪造视频字�
   const mixed = imageContract();
   mixed.source_video = { file: "input/fake.mp4", sha256: FINGERPRINT };
   assert(validateImageFrameAnimationWorkflowContract(mixed).some((item) => item.includes("不得包含视频字段")));
+});
+
+test("图片图集默认使用普通资产目录，resources 加载必须同时绑定文件与报告键", async () => {
+  const ordinary = imageContract();
+  assert.deepEqual(validateImageFrameAnimationWorkflowContract(ordinary), []);
+
+  const undeclaredResources = imageContract();
+  undeclaredResources.spritesheet.file = "assets/resources/animations/image-atlas.png";
+  assert(validateImageFrameAnimationWorkflowContract(undeclaredResources).some((item) => item.includes("只有显式动态加载的资源才可放入 assets/resources")));
+
+  const misplacedKey = imageContract();
+  misplacedKey.spritesheet.creator_resource_path = "animations/image-atlas";
+  assert(validateImageFrameAnimationWorkflowContract(misplacedKey).some((item) => item.includes("仅用于 resources 动态加载")));
+
+  await withFixture(async (fixture) => {
+    assert.deepEqual(await checkImageFrameAnimationWorkflowFiles(fixture.asset, { projectRoot: fixture.root }), []);
+  }, { dynamicResources: true });
+});
+
+test("图片报告不能单方面声明 resources 加载键", async () => {
+  await withFixture(async (fixture) => {
+    fixture.report.cc.texture.creator_resource_path = "animations/image-atlas";
+    await rewriteReport(fixture);
+    const errors = await checkImageFrameAnimationWorkflowFiles(fixture.asset, { projectRoot: fixture.root });
+    assert(errors.some((item) => item.includes("必须同时声明或同时省略")));
+  });
 });
 
 test("图片 accepted 工作流真实通过合同、validateManifest 与 checkManifestFiles 入口", async () => {

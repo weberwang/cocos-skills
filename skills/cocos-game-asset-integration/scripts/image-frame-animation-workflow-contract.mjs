@@ -4,7 +4,6 @@ import {
   finitePositive,
   isObject,
   isProjectRelativePath,
-  isCreatorResourcePath,
   nonEmptyString,
   readBoundArtifact,
   readPngDimensions,
@@ -16,6 +15,7 @@ import {
   validateReportedRegion,
   validateSettings,
 } from "./frame-atlas-contract-core.mjs";
+import { validateCreatorResourcePlacement } from "./creator-resource-location.mjs";
 import { imageFrameTimeMatches, readImageFrameSource } from "../../cocos-frame-animation/scripts/image-frame-source.mjs";
 
 /** 图片帧动画 accepted 工作流合同版本。 */
@@ -62,9 +62,12 @@ export function validateImageFrameAnimationWorkflowContract(value, options = {})
   for (const artifact of IMAGE_FRAME_ANIMATION_WORKFLOW_ARTIFACTS) {
     validateArtifactBinding(value[artifact], label + "." + artifact, errors);
   }
-  if (isObject(value.spritesheet) && !isCreatorResourcePath(value.spritesheet.creator_resource_path)) {
-    errors.push(label + ".spritesheet.creator_resource_path 必须是相对 assets/resources 的无扩展 Cocos 资源名");
-  }
+  if (isObject(value.spritesheet)) validateCreatorResourcePlacement(
+    value.spritesheet.file,
+    value.spritesheet.creator_resource_path,
+    errors,
+    label + ".spritesheet",
+  );
   return [...new Set(errors)];
 }
 

@@ -234,10 +234,10 @@ export function imagesAtlasHelp() {
 输入与输出：
   --source-manifest <file>      已确认的 cocos-image-frame-source/1 清单（必需）
   --project-root <dir>          来源文件所属项目目录；清单与相对输出均以此为根（必需）
-  --output-sheet <file.png>     图集 PNG 的实际导入位置（建议位于 project-root/assets/resources/animations/）
+  --output-sheet <file.png>     图集 PNG 的实际导入位置（静态引用默认建议 project-root/assets/animations/）
   --output-report <file.json>   JSON 报告（相对路径基于 project-root；默认与图集同名）
   --output-preview <file.html>  可播放网页（相对路径基于 project-root；默认与图集同名）
-  --creator-resource-path <path> Creator resources 标识（相对 assets/resources、无扩展名；与 PNG 导入位置分开）
+  --creator-resource-path <path> 声明 resources.load 动态加载（文件须位于 assets/resources，键须精确对应相对路径）
 
 处理选项：
   --width <pixels>              输出帧宽；单独指定时等比缩放
@@ -258,7 +258,8 @@ export function imagesAtlasHelp() {
 FPS 与 loop 固定读取来源清单，不能由 CLI 覆盖。预览提供播放、暂停、重播、逐帧选择及透明背景对比。
 
 示例：
-  node images-to-atlas.mjs --source-manifest source.json --project-root . --output-sheet assets/resources/animations/hero.png --width 128 --height 128 --anchor 384,767 --creator-resource-path animations/hero --no-remove-background
+  静态引用：node images-to-atlas.mjs --source-manifest source.json --project-root . --output-sheet assets/animations/hero.png --width 128 --height 128 --anchor 384,767 --no-remove-background
+  动态加载：node images-to-atlas.mjs --source-manifest source.json --project-root . --output-sheet assets/resources/animations/hero.png --width 128 --height 128 --anchor 384,767 --creator-resource-path animations/hero --no-remove-background
 `;
 }
 

@@ -63,7 +63,7 @@ node .\.agents\skills\cocos-game-workflow-control\scripts\workflow-control.mjs s
 
 ## 控制面边界
 
-游戏产物按[目录规范](skills/cocos-game-architecture/references/project-structure.md)与[产物存放及证据边界](skills/cocos-game-architecture/references/artifact-storage.md)落盘：`output/intermediate/` 保存可再生成中间文件，`output/candidates/` 保存未送审候选，`docs/confirmed/` 保存确认后的非运行成果，`assets-source/` 保存生产输入，Creator `assets/` 保存正式运行资源及其 `.meta`。根级 `evidence/<workItemId>/reviews/` 和 `validation/` 用于人工审阅及验证，不等于机器 `evidenceRoot`；机器记录及视觉确认账本继续使用 `.workflow-control/` 下工具实际路径，受限字段不得填写外部目录。已冻结引用保持原位，不批量搬迁或改写。
+游戏产物按[目录规范](skills/cocos-game-architecture/references/project-structure.md)与[产物存放及证据边界](skills/cocos-game-architecture/references/artifact-storage.md)落盘：`output/intermediate/` 保存可再生成中间文件，`output/candidates/` 保存未送审候选，`docs/confirmed/` 保存确认后的非运行成果，`assets-source/` 保存生产输入，Creator `assets/` 保存正式运行资源及其 `.meta`。Scene/Prefab UUID 引用资源按类型或功能域放入普通目录；`assets/resources/` 仅用于显式 `resources.load/loadDir` 按路径动态加载的资源，Asset Bundle 按自己的目录与加载机制管理。根级 `evidence/<workItemId>/reviews/` 和 `validation/` 用于人工审阅及验证，不等于机器 `evidenceRoot`；机器记录及视觉确认账本继续使用 `.workflow-control/` 下工具实际路径，受限字段不得填写外部目录。已冻结引用保持原位，不批量搬迁或改写。
 
 - `$cocos-game-workflow-control` 独占全局状态、风险门、任务范围、状态迁移和证据一致性。普通 A0-A3 工作直接依据当前用户任务，不创建独立授权记录，也不设置 F0 授权有效硬门。
 - 任务内可以调整实现方案、文件路径、资源清单和测试范围；同步更新 Work Item/实施包并重验受影响部分即可。无外部副作用的本地 A4 集成可按任务执行；涉及外部写入、付费、真机、破坏性或外部删除、发布的 A4-A6 操作仍必须逐对象建立 pending 并获得显式批准。控制面只校验和记录，不代执行这些动作。

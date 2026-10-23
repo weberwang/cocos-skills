@@ -5,6 +5,7 @@ import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { realpathSync, statSync } from "node:fs";
 import { inflateSync } from "node:zlib";
+import { validateAssetResourceLocations } from "./asset-resource-locations.mjs";
 import { getVisualRegionDefinitionAliasConflicts, normalizeVisualRegionDefinition, PLAN_COLORS, PLAN_LABELS } from "./effect_image_annotation_core.mjs";
 import { annotationProductionContract, decodePngRgba, deriveVisibleAnnotationRows } from "./effect_image_raster.mjs";
 import { normalizeAtomicComponents } from "../../cocos-game-workflow-control/scripts/visual-atomic-contract.mjs";
@@ -408,6 +409,7 @@ export function validateManifest(data, options = {}) {
   data.assets.forEach((asset, index) => {
     const label = `assets[${index}]`;
     if (!isObject(asset)) { errors.push(`${label} 必须是对象`); return; }
+    validateAssetResourceLocations(asset, errors, label);
     for (const field of ["id", "texture_key", "route", "status"]) if (!nonEmptyString(asset[field])) errors.push(`${label}.${field} 必须是非空字符串`);
     if (reconstruction?.applicability === "effect-image") {
       const mapped = new Set(fixedMappings.get(asset.id) ?? []);

@@ -18,7 +18,7 @@ project/
 │   │   └── shared/               # 稳定共享的运行代码（按需）
 │   ├── shared/                   # 稳定共享的正式运行资源
 │   ├── display-layers/<id>/      # 独立弹窗等显示层正式资源
-│   ├── resources/                # 运行时按需加载的资源
+│   ├── animations/               # 动画图集等按功能或类型归类的资源
 │   ├── textures/                 # 图片、SpriteFrame 来源和图集
 │   ├── audio/                    # 音效与音乐
 │   └── data/                     # 游戏数据和配置
@@ -41,6 +41,10 @@ Creator 项目实际还可能包含 `library/`、`temp/`、`local/`、`build/` �
 ## 资源与引用
 
 - 按功能领域和资源类型组织 `assets/`，避免把所有文件平铺到同一目录。每项资源的 `scene_id`、共享范围和所有者在资产清单中登记。
+- `assets/resources/` 是可选目录，不默认创建或作为普通资源总目录。Scene、Prefab、Component 序列化 UUID 引用的纹理、图集、SpriteFrame、AnimationClip、字体、音频等资源，放在 `assets/` 下按资源类型或功能域规划的普通目录，例如 `assets/textures/ui/`、`assets/animations/`、`assets/audio/`、`assets/data/`；编辑器引用由 Creator AssetDB UUID 解析，不要求资源位于 `resources/`。
+- 只有明确通过 `resources.load` 或 `resources.loadDir` 按路径动态加载的资源才放入 `assets/resources/`，并在通用资源清单中声明 `resource_loading.method`。资源被运行时播放、通过 Scene/Prefab 引用，或登记为生产输出，不构成使用 `resources/` 的理由。AnimationClip 等静态引用资源仍放在其规划的普通目录。
+- Asset Bundle 资源保留在已规划并标记为 Bundle 的目录内，通过 Bundle 加载机制动态加载；不因运行时加载而迁入 `assets/resources/`。其他动态加载方式也沿用对应的资源域和加载机制，不强制使用 `resources/`。
+- 示例：静态图集 `assets/animations/mechanism-open.png` 由 Scene/Prefab 的序列化引用绑定；显式使用 `resources.load('animations/mechanism-open')` 时，文件位于 `assets/resources/animations/mechanism-open.png`，清单声明 `{ "method": "resources.load" }`，路径 key 与文件相对 `assets/resources/` 的路径一致。Frame-animation 图集可用 `spritesheet.creator_resource_path` 直接声明这一动态加载用途，无需重复填写 `resource_loading`。
 - Creator AssetDB 导入后为资产建立 UUID。跨文件的编辑器引用使用 AssetDB 已生成的 UUID/子资源身份；代码侧加载可使用 Creator 支持的资源引用方式。不要自行生成 UUID，也不要将磁盘路径存在误判为导入完成。
 - Sprite 图像常含可单独引用的 SpriteFrame 子资源；绑定前查询实际子资源 UUID 与资源类型。其他导入类型按对应 importer 的子资源结构检查。
 - 批量导入遵循单写者边界：完成整批落盘后刷新一次批次目录并等待完成，执行有界查询确认导入状态；包含脚本的批次还检查编译/加载结果。就绪后才绑定、保存或进入下一批。

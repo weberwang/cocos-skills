@@ -104,3 +104,5 @@ node <skill-dir>/scripts/images-to-atlas.mjs --help
 | 动作设计与素材确认、提示词组合与来源/修图证据 | [workflow-integration.md](references/workflow-integration.md) |
 
 Creator 资产、Scene/Node/Component、Prefab、AssetDB 和构建操作遵循[Creator MCP 协议](../cocos-game-workflow-control/references/cocos-mcp-protocol.md)，按实时 `tools/list` schema 调用，不手写 `.meta`、`.scene` 或 `.prefab`。图集报告中的 `cc` 是 `SpriteFrame`、`UITransform` 与 `AnimationClip` 的描述清单，脚本不会物化 Creator 资产；V4 需通过 MCP 核验资源、逐项读回子工具结果，并在 Creator 中实际接入和验证。不能发现所需子资源查询或编辑能力时，受影响接入保持 pending/blocked。全局阶段仍由[唯一控制面](../cocos-game-workflow-control/SKILL.md)管理：V2 内部推导并记录动作时间轴、阐述设计理念并取得用户对当前方案的明确确认，V3 制作并审阅真实视频或关键帧、验收完整序列，V4 消费 Creator `SpriteFrame`/`AnimationClip` 与 `UITransform` 锚点合同并验证运行态。
+
+帧动画图集默认放在 `assets/animations/` 等已规划的普通资源目录，由 Scene/Prefab 的 UUID 引用；只有明确使用 `resources.load/loadDir` 按路径动态加载时才放进 `assets/resources/`。详见[项目目录规范中的资源与引用规则](../cocos-game-architecture/references/project-structure.md#资源与引用)及[工作流接入合同](references/workflow-integration.md#accepted-资源文件门)。

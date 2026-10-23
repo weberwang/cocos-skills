@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFile, realpath, stat } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
+import { isCreatorResourcePath, validateCreatorResourcePlacement } from "./creator-resource-location.mjs";
+export { isCreatorResourcePath };
 
 const SHA_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 
@@ -34,22 +36,6 @@ export function isProjectRelativePath(value) {
   const path = normalizedPath(value);
   if (!path || path.startsWith("/") || /^[A-Za-z]:\//u.test(path) || path.startsWith("//")) return false;
   return !path.split("/").some((segment) => segment === "..");
-}
-
-/** 校验相对 assets/resources 的无扩展资源路径，阻止绝对地址与编码目录逃逸。 */
-export function isCreatorResourcePath(value) {
-  if (typeof value !== "string" || value.trim() !== value || value.length === 0 || /\s/u.test(value)) return false;
-  if (value.includes("\\") || value.startsWith("/") || /^[A-Za-z][A-Za-z\d+.-]*:/u.test(value) || /[?#]/u.test(value)) return false;
-  let decoded = value;
-  for (let round = 0; round < 3; round += 1) {
-    if (decoded.includes("\\") || decoded.startsWith("/") || decoded.split("/").some((segment) => !segment || segment === "." || segment === "..")) return false;
-    let next;
-    try { next = decodeURIComponent(decoded); } catch { return false; }
-    if (next === decoded) break;
-    decoded = next;
-  }
-  if (decoded.includes("\\") || decoded.startsWith("/") || decoded.split("/").some((segment) => !segment || segment === "." || segment === "..")) return false;
-  return !/\.[^/.]+$/u.test(decoded.split("/").at(-1));
 }
 
 /** 校验工件的项目内路径；摘要仅作为可选记录，不参与验收。 */
@@ -302,8 +288,16 @@ export function validateCreatorContract(report, asset, sheetBinding, label, erro
     || texture.frame_count !== frames.length || texture.width !== cell?.width * frames.length || texture.height !== cell?.height) {
     errors.push(label + ".cc.texture 必须绑定水平图集的真实尺寸、资源名和帧数");
   }
-  if (!isCreatorResourcePath(texture?.creator_resource_path) || texture.creator_resource_path !== sheetBinding?.creator_resource_path) {
-    errors.push(label + ".cc.texture.creator_resource_path 必须是相对 assets/resources 的无扩展资源名，且严格等于 spritesheet.creator_resource_path");
+  // 静态图集两侧都省略 resources 键；动态图集必须双向声明同一个键。
+  const textureResourcePath = texture?.creator_resource_path;
+  const sheetResourcePath = sheetBinding?.creator_resource_path;
+  validateCreatorResourcePlacement(sheetBinding?.file, textureResourcePath, errors, label + ".cc.texture");
+  validateCreatorResourcePlacement(sheetBinding?.file, sheetResourcePath, errors, label + ".spritesheet");
+  if ((textureResourcePath === undefined) !== (sheetResourcePath === undefined)) {
+    errors.push(label + ".cc.texture.creator_resource_path 与 spritesheet.creator_resource_path 必须同时声明或同时省略");
+  } else if (textureResourcePath !== undefined
+      && (!isCreatorResourcePath(textureResourcePath) || textureResourcePath !== sheetResourcePath)) {
+    errors.push(label + ".cc.texture.creator_resource_path 必须是有效无扩展加载键且严格等于 spritesheet.creator_resource_path");
   }
   const conversion = creator.coordinate_conversion;
   if (!isObject(conversion) || conversion.sprite_frame_rect_origin !== "image-top-left"

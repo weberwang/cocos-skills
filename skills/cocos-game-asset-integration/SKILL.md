@@ -15,6 +15,8 @@ description: 为 Cocos Creator 3.x 游戏规划、生产、登记、验证并集
 
 Scene、Node、Component、Prefab、AssetDB、构建等 Creator 操作必须通过[Creator MCP 协议](../cocos-game-workflow-control/references/cocos-mcp-protocol.md)；每次以实时 `tools/list` schema 为准。不得手写 `.scene`、`.prefab` 或 `.meta`，也不得直接伪造 UUID/子资源绑定。对同一编辑器项目保持唯一活动写入者，禁止多个代理并行写编辑器状态。
 
+正式资源的目录位置遵循[项目目录规范中的资源与引用规则](../cocos-game-architecture/references/project-structure.md#资源与引用)：普通 UUID 引用资源放入按类型或功能域规划的目录；只有明确通过 `resources.load/loadDir` 按路径加载时才放入 `assets/resources/`。Asset Bundle 按自身目录与加载机制管理，不因运行时加载而迁入 `resources/`。
+
 批量资源按以下边界处理：
 
 1. 一次性完成本批次原始文件导入/写入，再调用 MCP AssetDB refresh 并等待批次完成。`assetAdvanced_refresh_assets_and_wait` 只等待 `.meta` 文件出现；它不证明资源已成功导入、没有 invalid 状态、子资源正确或脚本编译通过。`assetAdvanced_query_asset_db_ready` 是执行 AssetDB 操作前的就绪检查。

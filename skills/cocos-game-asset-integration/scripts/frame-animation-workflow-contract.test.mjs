@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
+import { validateCreatorContract } from "./frame-atlas-contract-core.mjs";
 import {
   FRAME_ANIMATION_REPORT_SCHEMA,
   FRAME_ANIMATION_WORKFLOW_SCHEMA,
@@ -46,7 +47,7 @@ function minimalPng(width, height) {
 }
 
 /** 构造保留 SpriteFrame 左上裁切坐标并转换 UITransform 锚点的测试清单。 */
-function creatorContract(animation, cell, frameCount, creatorResourcePath = "animations/hero") {
+function creatorContract(animation, cell, frameCount, creatorResourcePath) {
   const spriteFrames = Array.from({ length: frameCount }, (_, index) => {
     const imageRect = { x: index * cell.width, y: 0, width: cell.width, height: cell.height };
     return {
@@ -58,19 +59,21 @@ function creatorContract(animation, cell, frameCount, creatorResourcePath = "ani
       original_size: { width: cell.width, height: cell.height },
     };
   });
+  const texture = {
+    asset_name: animation.texture_key,
+    width: cell.width * frameCount,
+    height: cell.height,
+    layout: "horizontal",
+    frame_count: frameCount,
+  };
+  // 静态图集由普通项目资源引用，不伪造 resources.load 标识。
+  if (creatorResourcePath !== undefined) texture.creator_resource_path = creatorResourcePath;
   return {
     schema: "cocos-creator-frame-atlas/2",
     creator: { name: "Cocos Creator", major_version: 3 },
     integration_kind: "descriptive_machine_manifest",
     creator_assets_materialized: false,
-    texture: {
-      asset_name: animation.texture_key,
-      creator_resource_path: creatorResourcePath,
-      width: cell.width * frameCount,
-      height: cell.height,
-      layout: "horizontal",
-      frame_count: frameCount,
-    },
+    texture,
     coordinate_conversion: {
       sprite_frame_rect_origin: "image-top-left",
       sprite_frame_rect_y_formula: "image_rect_y",
@@ -110,10 +113,12 @@ function creatorContract(animation, cell, frameCount, creatorResourcePath = "ani
   };
 }
 
-/** 构造完整视频抽帧合同；四帧用于确认帧数不再受旧三帧网格限制。 */
-function buildFixtureFiles() {
+/** 构造普通目录默认的完整视频合同；需要时显式切换到 resources 动态加载路线。 */
+function buildFixtureFiles({ dynamicResources = false } = {}) {
   const fps = 12;
   const frameCount = 4;
+  const sheetFile = dynamicResources ? "assets/resources/animations/hero.png" : "assets/animations/hero.png";
+  const creatorResourcePath = dynamicResources ? "animations/hero" : undefined;
   const sheet = minimalPng(16, 4);
   const video = Buffer.from("test video bytes");
   const prompt = Buffer.from("A small hero runs in place, side view, transparent background.\n");
@@ -150,9 +155,9 @@ function buildFixtureFiles() {
     cell,
     frames,
     animation,
-    cc: creatorContract(animation, cell, frameCount),
+    cc: creatorContract(animation, cell, frameCount, creatorResourcePath),
     artifacts: {
-      sheet: { file: "assets/resources/animations/hero.png", width: 16, height: 4, sha256: sha256Bytes(sheet) },
+      sheet: { file: sheetFile, width: 16, height: 4, sha256: sha256Bytes(sheet) },
       preview: { file: "reports/hero-preview.html" },
       report: { file: "reports/hero-atlas.json" },
     },
@@ -163,7 +168,7 @@ function buildFixtureFiles() {
     ["input/hero.mp4", video],
     ["reports/hero-atlas.json", reportBytes],
     ["reports/hero-preview.html", preview],
-    ["assets/resources/animations/hero.png", sheet],
+    [sheetFile, sheet],
   ]);
   const artifact = (file, bytes, extra = {}) => ({ file, sha256: sha256Bytes(bytes), ...extra });
   const contract = {
@@ -177,20 +182,20 @@ function buildFixtureFiles() {
     source_video: artifact("input/hero.mp4", video),
     quality_report: artifact("reports/hero-atlas.json", reportBytes),
     preview: artifact("reports/hero-preview.html", preview),
-    spritesheet: artifact("assets/resources/animations/hero.png", sheet, { creator_resource_path: "animations/hero" }),
+    spritesheet: artifact(sheetFile, sheet, creatorResourcePath === undefined ? {} : { creator_resource_path: creatorResourcePath }),
   };
   const asset = {
     texture_key: "hero-texture",
-    runtime_outputs: ["assets/resources/animations/hero.png"],
+    runtime_outputs: [sheetFile],
     frame_animation: contract,
   };
   return { files, asset, report, sheet, video };
 }
 
 /** 将夹具文件写入独立临时项目目录。 */
-async function writeFixture() {
+async function writeFixture(options) {
   const root = await mkdtemp(join(tmpdir(), "video-atlas-workflow-contract-"));
-  const fixture = buildFixtureFiles();
+  const fixture = buildFixtureFiles(options);
   for (const [file, bytes] of fixture.files) {
     const target = join(root, file);
     await mkdir(dirname(target), { recursive: true });
@@ -209,8 +214,8 @@ async function runGate(root, asset) {
 }
 
 /** 在临时目录上执行单个用例，并确保测试工件被清理。 */
-async function withFixture(callback) {
-  const { root, fixture } = await writeFixture();
+async function withFixture(callback, options) {
+  const { root, fixture } = await writeFixture(options);
   try { await callback(root, fixture); }
   finally { await rm(root, { recursive: true, force: true }); }
 }
@@ -374,13 +379,27 @@ test("Creator SpriteFrame 与 AnimationClip 必须覆盖完整图集", async () 
   });
 });
 
-test("spritesheet creator_resource_path 必填且拒绝外部地址和路径逃逸", () => {
-  for (const creatorResourcePath of [undefined, "", "../hero.png", "assets\\hero.png", "https://cdn.example/hero.png", "%252e%252e/hero.png"]) {
+test("普通目录默认静态合法，resources 必须显式动态声明且键与路径一致", async () => {
+  const { asset: staticAsset } = buildFixtureFiles();
+  assert.deepEqual(validateFrameAnimationWorkflowContract(staticAsset.frame_animation), []);
+
+  const misplaced = structuredClone(staticAsset.frame_animation);
+  misplaced.spritesheet.file = "assets/resources/animations/hero.png";
+  assert(validateFrameAnimationWorkflowContract(misplaced).some((message) => message.includes("只有显式动态加载的资源才可放入 assets/resources")));
+
+  await withFixture(async (root, fixture) => {
+    assert.deepEqual(await runGate(root, fixture.asset), []);
+  }, { dynamicResources: true });
+
+  for (const [file, key] of [
+    ["assets/animations/hero.png", "animations/hero"],
+    ["assets/resources/animations/hero.png", "animations/other"],
+    ["assets/resources/animations/hero.png", "../hero"],
+  ]) {
     const { asset } = buildFixtureFiles();
-    if (creatorResourcePath === undefined) delete asset.frame_animation.spritesheet.creator_resource_path;
-    else asset.frame_animation.spritesheet.creator_resource_path = creatorResourcePath;
-    const errors = validateFrameAnimationWorkflowContract(asset.frame_animation);
-    assert(errors.some((message) => message.includes("spritesheet.creator_resource_path 必须是相对 assets/resources 的无扩展 Cocos 资源名")));
+    asset.frame_animation.spritesheet.file = file;
+    asset.frame_animation.spritesheet.creator_resource_path = key;
+    assert(validateFrameAnimationWorkflowContract(asset.frame_animation).some((message) => message.includes("creator_resource_path")));
   }
 });
 
@@ -417,7 +436,33 @@ test("Creator 纹理 URL 必须严格等于 spritesheet creator_resource_path", 
     await writeReport(root, fixture);
     const errors = await runGate(root, fixture.asset);
     assert(errors.some((message) => message.includes("cc.texture.creator_resource_path") && message.includes("严格等于 spritesheet.creator_resource_path")));
+  }, { dynamicResources: true });
+});
+
+test("静态图集报告不能单方面声明 resources 加载键", async () => {
+  await withFixture(async (root, fixture) => {
+    fixture.report.cc.texture.creator_resource_path = "animations/hero";
+    await writeReport(root, fixture);
+    const errors = await runGate(root, fixture.asset);
+    assert(errors.some((message) => message.includes("必须同时声明或同时省略")));
   });
+});
+
+test("共享 Creator 报告校验仍独立拒绝非法键和普通目录冒用动态加载", () => {
+  const { asset, report } = buildFixtureFiles({ dynamicResources: true });
+  const sheet = asset.frame_animation.spritesheet;
+  const errors = [];
+  sheet.creator_resource_path = "../hero";
+  report.cc.texture.creator_resource_path = "../hero";
+  validateCreatorContract(report, asset, sheet, "quality_report", errors);
+  assert(errors.some((message) => message.includes("creator_resource_path 必须是相对 assets/resources 的无扩展资源名")));
+
+  errors.length = 0;
+  sheet.creator_resource_path = "animations/hero";
+  report.cc.texture.creator_resource_path = "animations/hero";
+  sheet.file = "assets/animations/hero.png";
+  validateCreatorContract(report, asset, sheet, "quality_report", errors);
+  assert(errors.some((message) => message.includes("仅用于 resources 动态加载")));
 });
 
 test("报告相对工件路径必须匹配 manifest，绝对路径作为诊断信息放行", async () => {

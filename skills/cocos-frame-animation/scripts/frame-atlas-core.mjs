@@ -3,6 +3,7 @@ import { mkdir, open, readFile, realpath, rm, stat, writeFile } from "node:fs/pr
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import sharp from "../../cocos-game-workflow-control/scripts/runtime/image-runtime.mjs";
 import { removeBackgroundLocal } from "../../cocos-game-asset-integration/scripts/remove-background-local.mjs";
+import { isCreatorResourcePath, validateCreatorResourcePlacement } from "../../cocos-game-asset-integration/scripts/creator-resource-location.mjs";
 
 /** 图集选项、帧处理或输出保护失败时抛出，供视频与图片 CLI 共用。 */
 export class VideoAtlasError extends Error {
@@ -95,41 +96,8 @@ export function normalizeKey(value, field) {
 
 /** 校验相对 assets/resources 的无扩展资源路径，阻止绝对地址和编码路径逃逸。 */
 export function normalizeCreatorResourcePath(value) {
-  if (!nonEmptyString(value) || value.trim() !== value || /\s/u.test(value)) throw new VideoAtlasError("creator-resource-path 必须是无空白的非空 Creator 资源路径");
-  if (value.includes("\\") || value.startsWith("/") || /^[A-Za-z][A-Za-z\d+.-]*:/u.test(value) || /[?#]/u.test(value)) {
-    throw new VideoAtlasError("creator-resource-path 不得包含绝对路径、scheme、反斜杠、查询或片段");
-  }
-  let decoded = value;
-  for (let round = 0; round < 3; round += 1) {
-    if (decoded.includes("\\") || decoded.startsWith("/") || decoded.split("/").some((segment) => !segment || segment === "." || segment === "..")) {
-      throw new VideoAtlasError("creator-resource-path 不得包含目录跳转段");
-    }
-    let next;
-    try { next = decodeURIComponent(decoded); }
-    catch { throw new VideoAtlasError("creator-resource-path 含无效百分号编码"); }
-    if (next === decoded) break;
-    decoded = next;
-  }
-  if (decoded.includes("\\") || decoded.startsWith("/") || decoded.split("/").some((segment) => !segment || segment === "." || segment === "..")) {
-    throw new VideoAtlasError("creator-resource-path 不得包含编码后的目录跳转段");
-  }
-  if (extname(decoded.split("/").at(-1))) throw new VideoAtlasError("creator-resource-path 是相对 assets/resources 的资源名，不应包含文件扩展名");
+  if (!isCreatorResourcePath(value)) throw new VideoAtlasError("creator-resource-path 必须是相对 assets/resources 的安全无扩展资源路径");
   return value;
-}
-
-/** 从 assets/resources 导入路径推导 Creator 资源标识；其它位置退回无扩展文件名。 */
-function inferCreatorResourcePath(outputSheet) {
-  const segments = resolve(outputSheet).replaceAll("\\", "/").split("/");
-  for (let index = 0; index < segments.length - 2; index += 1) {
-    if (segments[index].toLowerCase() === "assets" && segments[index + 1].toLowerCase() === "resources") {
-      const resourcePath = segments.slice(index + 2).join("/");
-      if (resourcePath) {
-        const extension = extname(resourcePath);
-        return extension ? resourcePath.slice(0, -extension.length) : resourcePath;
-      }
-    }
-  }
-  return basename(outputSheet, extname(outputSheet));
 }
 
 /** 解析视频与图片工具共同使用的帧尺寸、去背、锚点及 Creator 选项。 */
@@ -156,7 +124,13 @@ export function normalizeCommonAtlasOptions(input, { outputSheet, defaultFps = 1
 
   const animationKey = normalizeKey(input.animationKey ?? input["animation-key"] ?? basename(outputSheet, extname(outputSheet)), "animation-key");
   const textureKey = normalizeKey(input.textureKey ?? input["texture-key"] ?? animationKey, "texture-key");
-  const creatorResourcePath = normalizeCreatorResourcePath(input.creatorResourcePath ?? input.creator_resource_path ?? input["creator-resource-path"] ?? inferCreatorResourcePath(outputSheet));
+  // resources 键表示动态寻址用途，只采纳调用方显式声明，不从文件目录或名称推断。
+  const creatorPathField = ["creatorResourcePath", "creator_resource_path", "creator-resource-path"]
+    .find((field) => Object.hasOwn(input, field));
+  const creatorPathValue = creatorPathField === undefined ? undefined : input[creatorPathField];
+  const creatorResourcePath = creatorPathValue === undefined ? undefined : normalizeCreatorResourcePath(creatorPathValue);
+  const placementErrors = validateCreatorResourcePlacement(outputSheet, creatorResourcePath, [], "output-sheet");
+  if (placementErrors.length > 0) throw new VideoAtlasError(placementErrors.join("；"));
   const backgroundColor = input.backgroundColor ?? input["background-color"] ?? "#00ff00";
   const backgroundTolerance = nonNegativeNumber(input.backgroundTolerance ?? input["background-tolerance"] ?? 24, "background-tolerance");
   return {
@@ -228,7 +202,6 @@ export async function preflightAtlasOutputs(outputPaths, inputPaths, inputLabel 
 
 /** 生成可映射为 Creator SpriteFrame 与 AnimationClip 的机器清单。 */
 export function createCocosAtlasContract(options, cell, frameCount) {
-  const creatorResourcePath = options.creatorResourcePath ?? inferCreatorResourcePath(options.outputSheet);
   // SpriteFrame.rect 保留贴图左上像素坐标；只有 UITransform 锚点需要换成左下归一化坐标。
   const anchorPoint = {
     x: cell.target_anchor.x / cell.width,
@@ -253,7 +226,8 @@ export function createCocosAtlasContract(options, cell, frameCount) {
     creator_assets_materialized: false,
     texture: {
       asset_name: options.textureKey,
-      creator_resource_path: creatorResourcePath,
+      // 静态资源通过项目文件路径引用，清单只为动态加载资源写入 resources 键。
+      ...(options.creatorResourcePath === undefined ? {} : { creator_resource_path: options.creatorResourcePath }),
       width: cell.width * frameCount,
       height: cell.height,
       layout: "horizontal",

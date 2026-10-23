@@ -372,10 +372,10 @@ export function videoAtlasHelp() {
 
 输入与输出：
   --input-video <file>          输入视频（必需）
-  --output-sheet <file.png>     水平图集 PNG 的实际导入位置（建议位于 assets/resources/animations/）
+  --output-sheet <file.png>     水平图集 PNG 的实际导入位置（静态引用默认建议 assets/animations/）
   --output-report <file.json>   JSON 报告（默认与图集同名）
   --output-preview <file.html>  可播放网页（默认与图集同名）
-  --creator-resource-path <path> Creator resources 标识（相对 assets/resources、无扩展名；与 PNG 导入位置分开）
+  --creator-resource-path <path> 声明 resources.load 动态加载（文件须位于 assets/resources，键须精确对应相对路径）
 
 处理选项：
   --fps <number>                抽帧与动画播放帧率，默认 12
@@ -397,7 +397,8 @@ export function videoAtlasHelp() {
   --ffprobe <path>              ffprobe 可执行文件路径
 
 示例：
-  node video-to-atlas.mjs --input-video walk.mp4 --output-sheet assets/resources/animations/hero-attack.png --creator-resource-path animations/hero-attack
+  静态引用：node video-to-atlas.mjs --input-video walk.mp4 --output-sheet assets/animations/hero-attack.png
+  动态加载：node video-to-atlas.mjs --input-video walk.mp4 --output-sheet assets/resources/animations/hero-attack.png --creator-resource-path animations/hero-attack
 `;
 }
 

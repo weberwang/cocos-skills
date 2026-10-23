@@ -79,10 +79,9 @@ node <skill-dir>/scripts/video-to-atlas.mjs `
   --input-video art/animation-batch.mp4 `
   --region 16,16,320,288 `
   --anchor 160,264 `
-  --output-sheet assets/resources/animations/mechanism-open.png `
+  --output-sheet assets/animations/mechanism-open.png `
   --width 160 --height 144 --fps 12 --no-loop `
   --animation-key mechanism-open --texture-key mechanism-open `
-  --creator-resource-path animations/mechanism-open `
   --remove-background --background-color '#00ff00' `
   --edge-profile hard-edge --color-separation-verified
 
@@ -90,17 +89,18 @@ node <skill-dir>/scripts/video-to-atlas.mjs `
   --input-video art/animation-batch.mp4 `
   --region 352,16,640,400 `
   --anchor 320,200 `
-  --output-sheet assets/resources/animations/impact-burst.png `
+  --output-sheet assets/animations/impact-burst.png `
   --width 320 --height 200 --fps 12 --no-loop `
   --animation-key impact-burst --texture-key impact-burst `
-  --creator-resource-path animations/impact-burst `
   --remove-background --background-color '#00ff00' `
   --edge-profile hard-edge --color-separation-verified
 ```
 
 工具按固定区域裁剪后才去背景和缩放。纯色去背景须显式声明硬边与颜色分离已确认，复杂/未知边缘需使用真实 Alpha、遮罩或帧图片修复；不要自动加上确认标记。省略输出宽高时使用区域原尺寸；单边输出尺寸等比推导另一边；双边输出尺寸等比缩放并透明留白到指定 cell。每次调用交付独立 PNG、JSON 和 HTML，默认报告与预览和图集同名。
 
-当前 `--fps` 同时控制抽样和 `AnimationClip` 采样，示例数值不代表类型默认节奏；游戏时间先按 [action-timing.md](action-timing.md)整理。`--no-loop` 对应描述清单中的单次 `Normal` 播放；结束保持、组合和事件按现有 Creator 动画合同记录，不能只改报告来伪造工具能力。未指定 `--region` 时处理整幅画布。`--output-report`、`--output-preview` 可指定证据路径，`--creator-resource-path` 是相对 `assets/resources/` 的无扩展名 Creator 资源标识，例如 `animations/impact-burst`；实际 PNG 应写入 `assets/resources/animations/impact-burst.png`，并与资源清单中的 `spritesheet.creator_resource_path` 一致。
+当前 `--fps` 同时控制抽样和 `AnimationClip` 采样，示例数值不代表类型默认节奏；游戏时间先按 [action-timing.md](action-timing.md)整理。`--no-loop` 对应描述清单中的单次 `Normal` 播放；结束保持、组合和事件按现有 Creator 动画合同记录，不能只改报告来伪造工具能力。未指定 `--region` 时处理整幅画布。`--output-report`、`--output-preview` 可指定证据路径。上方命令将图集作为普通静态 Creator 资源使用，因此输出在 `assets/animations/`，省略 `--creator-resource-path`，报告的 `cc.texture` 也不生成该字段。
+
+只有明确按路径使用 `resources.load/loadDir` 时，才将图集写入 `assets/resources/` 并显式提供 `--creator-resource-path`；例如 `assets/resources/animations/impact-burst.png` 对应 `--creator-resource-path animations/impact-burst`。两者必须严格匹配，资源清单与报告 `cc.texture.creator_resource_path` 也须一致；路径在 `resources/` 外却提供 key、`resources/` 内缺少 key，或按文件名/目录自动补 key 都属于无效声明。Asset Bundle 动态加载不使用这条 `resources/` 路径规则，普通目录策略见[项目目录规范](../../cocos-game-architecture/references/project-structure.md#资源与引用)。帧图集通过 `spritesheet.creator_resource_path` 已足以声明动态用途，不重复添加 `resource_loading`。
 
 每个动画的 `frame_animation.settings.region`、报告的 `input.region` 与 `settings.region` 必须一致。人工检查目标内容是否完整、是否混入邻区、固定采样区域和资源坐标映射是否准确、主体运动是否符合设计、透明边缘、阶段事件与循环/终态；不得把主体根位置、朝向或投影比例变化单独判作锚点漂移。文件门通过仅代表结构和身份一致。
 

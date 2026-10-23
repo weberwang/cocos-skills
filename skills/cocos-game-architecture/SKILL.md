@@ -11,7 +11,7 @@ description: Cocos Creator 3.x 游戏的技术架构角色。需要划分或评�
 
 ## 工程边界
 
-- 以目标项目实际安装的 Cocos Creator 3.x 版本为准，先读取项目 `package.json`、Creator 编辑器版本、`settings/` 和 `profiles/`。目录约定见[游戏项目目录规范](references/project-structure.md)，按 Creator 项目实际结构确定工程入口和依赖。
+- 以目标项目实际安装的 Cocos Creator 3.x 版本为准，先读取项目 `package.json`、Creator 编辑器版本、`settings/` 和 `profiles/`。目录约定见[游戏项目目录规范](references/project-structure.md)；其中规定普通 UUID 引用资源与 `resources.load/loadDir` 动态资源的存放边界，按 Creator 项目实际结构确定工程入口和依赖。
 - Creator 项目运行时资产通常位于 `assets/`：场景、预制体、脚本、纹理、音频和数据配置由项目约定分层。Creator 导入的资源由 AssetDB 管理，并通过 `.meta` 中的 UUID 建立稳定引用；引用前核验导入结果和所需子资源。不要手工伪造 UUID 或只凭文件路径存在判断资源已就绪。
 - 运行时结构由 `Scene`、`Node`、`Component`、`Prefab` 和资源引用组成。职责放在组件和模块中，场景保留清晰节点树；复用时使用预制体或共享服务。
 - 维护模块职责与依赖方向：玩法规则和状态、表现配置、资源加载、音频、平台适配和第三方服务分别有明确所有者。Scene 之间通过已声明的服务或数据契约协作，不直接依赖其他 Scene 的私有节点和状态。

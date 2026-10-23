@@ -109,15 +109,14 @@ node <skill-dir>/scripts/image-inbetween-plan.mjs `
 node <skill-dir>/scripts/images-to-atlas.mjs `
   --source-manifest evidence/animation.image-source.json `
   --project-root <project-root> `
-  --output-sheet assets/resources/animations/animation.png `
+  --output-sheet assets/animations/animation.png `
   --width 128 --height 128 --anchor 384,767 `
-  --animation-key animation --texture-key animation `
-  --creator-resource-path animations/animation --no-remove-background
+  --animation-key animation --texture-key animation --no-remove-background
 ```
 
 此例假设源画布 768×768、底部语义根为 `(384,767)`；尺寸和根点必须取当前设计值。图片命令的相对来源和输出路径均以 `--project-root` 为基准。打包从来源清单读取 FPS/loop，不能另用 CLI 覆盖，不支持独立逐帧时长。`--output-report/--output-preview` 可指定独立证据路径；输出默认拒绝覆盖，修订时使用新候选路径。区域、等比缩放、Alpha 和内容矩形/锚点变换复用视频工具语义。
 
-图片报告使用 `cocos-image-atlas/2`，绑定来源清单路径、每帧实际图与记录，SHA 仅可选追踪、游戏时点、cell 和 Cocos 配置；不用 `video_path/source_timestamp`。报告内的 `cc` 为 `cocos-creator-frame-atlas/2` 描述清单，只说明待接入的 Creator `SpriteFrame`、`UITransform` 与 `AnimationClip`，不代表这些资产已物化。accepted 使用 `cocos-image-atlas-workflow/1`：
+图片报告使用 `cocos-image-atlas/2`，绑定来源清单路径、每帧实际图与记录，SHA 仅可选追踪、游戏时点、cell 和 Cocos 配置；不用 `video_path/source_timestamp`。报告内的 `cc` 为 `cocos-creator-frame-atlas/2` 描述清单，只说明待接入的 Creator `SpriteFrame`、`UITransform` 与 `AnimationClip`，不代表这些资产已物化。默认图集是 Scene/Prefab 静态 UUID 引用的普通资源，accepted 的 `spritesheet.file` 使用 `assets/animations/` 等已规划目录，并省略 `creator_resource_path`；报告 `cc.texture` 同样省略该字段。accepted 使用 `cocos-image-atlas-workflow/1`：
 
 ```json
 {
@@ -129,11 +128,11 @@ node <skill-dir>/scripts/images-to-atlas.mjs `
   "source_manifest": { "file": "evidence/animation.image-source.json", "sha256": "sha256:<实际摘要>" },
   "quality_report": { "file": "evidence/animation.image-atlas.json", "sha256": "sha256:<实际摘要>" },
   "preview": { "file": "evidence/animation.preview.html", "sha256": "sha256:<实际摘要>" },
-  "spritesheet": { "file": "assets/resources/animations/animation.png", "creator_resource_path": "animations/animation", "sha256": "sha256:<实际摘要>" }
+  "spritesheet": { "file": "assets/animations/animation.png", "sha256": "sha256:<实际摘要>" }
 }
 ```
 
-示例摘要仅用于展示可选追踪字段；如填写，须为对应实际文件的 64 位小写十六进制值。资产继续登记 `route: frame-animation`；spritesheet 物理 PNG 在 `assets/resources/` 下并登记在 `runtime_outputs`。`creator_resource_path` 是相对 `assets/resources/` 的无扩展名标识，例如 `animations/animation`，不是 URL，须与报告 `cc.texture.creator_resource_path` 一致。通用资源清单的来源、许可和人工证据仍须填写，嵌套来源清单不会替代它们。固定 cell/透明留白属于帧动画合同，不把每个帧登记成普通静态资产来绕过帧动画文件门。若上游已经冻结为静态生成图片的 `individual/atlas_allowed=false` 合同，先按既有变更流程明确选择帧动画路线；本技能不自动覆盖该合同，也不通过虚报生产方法解除其限制。
+示例摘要仅用于展示可选追踪字段；如填写，须为对应实际文件的 64 位小写十六进制值。资产继续登记 `route: frame-animation`；spritesheet PNG 在普通资源目录下并登记于 `runtime_outputs`，该登记字段不表示动态加载。只有明确通过 `resources.load/loadDir` 按路径动态加载时，才将图集置于 `assets/resources/`，并同时在 spritesheet 与报告 `cc.texture` 中填写相对 `assets/resources/` 的无扩展名 `creator_resource_path`，例如 `animations/animation`。此 key 必须匹配实际文件：`assets/resources/animations/animation.png` 对应 `animations/animation`；资源位于 `resources/` 外却填写 key，或位于 `resources/` 内但缺 key，均应拒绝。不要根据文件名或目录补造 key。图集的显式 `creator_resource_path` 已声明动态用途，不必在通用清单重复写 `resource_loading`；Asset Bundle 动态加载不要求将资源移入 `resources/`。普通资源目录选择见[项目目录规范](../../cocos-game-architecture/references/project-structure.md#资源与引用)。通用资源清单的来源、许可和人工证据仍须填写，嵌套来源清单不会替代它们。固定 cell/透明留白属于帧动画合同，不把每个帧登记成普通静态资产来绕过帧动画文件门。若上游已经冻结为静态生成图片的 `individual/atlas_allowed=false` 合同，先按既有变更流程明确选择帧动画路线；本技能不自动覆盖该合同，也不通过虚报生产方法解除其限制。
 
 Creator 资源导入和节点/组件/动画接入按[Creator MCP 协议](../../cocos-game-workflow-control/references/cocos-mcp-protocol.md)执行，先读取实时 `tools/list` schema；禁止手写 `.meta`、`.scene` 或 `.prefab`。`assetAdvanced_refresh_assets_and_wait` 只等待 `.meta` 存在，随后仍须按协议读回资源信息、UUID 和可发现的子资源。若当前工具 schema 无可用 `SpriteFrame` 子资源查询或所需编辑能力，停止受影响接入并报告 pending/blocked。
 

@@ -84,11 +84,11 @@ test("图片打包按 index 排列、排除循环闭合帧并保持固定锚点�
     width: 12,
     height: 12,
     anchor: { x: 3, y: 14 },
-    creatorResourcePath: "animations/packed",
   });
 
   assert.equal(report.schema, "cocos-image-atlas/2");
   assert.equal(report.cc.schema, "cocos-creator-frame-atlas/2");
+  assert.equal(Object.hasOwn(report.cc.texture, "creator_resource_path"), false, "普通静态图集不需要 resources.load 标识");
   assert.equal(report.cc.sprite_frames.length, 3);
   assert.equal(report.input.fps, 3, "FPS 必须来自来源清单");
   assert.equal(report.animation.loop, true, "循环必须来自来源清单");
@@ -114,6 +114,23 @@ test("图片打包按 index 排列、排除循环闭合帧并保持固定锚点�
   assert.match(imagesAtlasHelp(), /--project-root/u);
   assert.match(imagesAtlasHelp(), /相对路径基于 project-root/u);
   assert.doesNotMatch(imagesAtlasHelp(), /--fps\b|--loop\b/u, "CLI 不得覆盖来源时间轴");
+  assert.match(imagesAtlasHelp(), /静态引用：[^\n]*assets\/animations/u);
+  assert.match(imagesAtlasHelp(), /动态加载：[^\n]*assets\/resources[^\n]*--creator-resource-path/u);
+});
+
+/** 证明图片打包器为显式 resources.load 输出准确写入匹配的资源键。 */
+test("图片图集的显式动态资源键与真实导入位置一致", async (t) => {
+  const directory = await testDirectory(t);
+  const { manifestPath } = await createImageSource(directory);
+  const report = await imagesToAtlas({
+    sourceManifest: manifestPath,
+    projectRoot: directory,
+    outputSheet: "assets/resources/animations/packed.png",
+    creatorResourcePath: "animations/packed",
+  });
+
+  assert.equal(report.cc.texture.creator_resource_path, "animations/packed");
+  assert.equal(report.artifacts.sheet.file, join(directory, "assets", "resources", "animations", "packed.png"));
 });
 
 /** 从项目目录之外运行 API 和 CLI，确认相对来源与输出都锚定在 project-root。 */
