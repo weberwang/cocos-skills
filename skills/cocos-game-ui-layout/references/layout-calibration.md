@@ -19,7 +19,7 @@ V2 决定目标关系和初始布局，V3 提供匹配节点的真实资源。V4
 
 布局矩形和资源可见边界分别检查。纹理透明留白、`contain`/`cover` 裁切、字形墨迹、字体 fallback、baseline、光效外缘可能使画面内容超出或小于矩形；机器 bounds 通过不能证明轮廓或文字视觉对齐，需由用户检查实际画面。
 
-V2 图片目标框按完整未裁切源纹理定义，主体安全边距与合法光影空间属于内部构图。若冻结图测量只取可见主体，应在 V3 生产前统一画布与主体比例；不使用 V4 移动对象去补偿透明边距、纹理比例或错误尺寸。默认文字实测超框应修正字体、内容、尺寸或容器；显式 `overflow="visible"` 仍需检查相邻节点与留白。
+V2 图片目标框按完整未裁切正式 SpriteFrame 尺寸定义，主体安全边距与合法光影空间属于内部构图。若冻结图测量只取可见主体，应在 V3 生产前统一画布与主体比例；对节点矩形做中心策略前先检查资源透明留白、比例与 RAW 尺寸。确需光学补偿时，只能在 V2 以带理由的 `center_alignment` reference 策略确认位置；不得在 V4 静默移动对象补偿透明边距、纹理比例或错误尺寸，详见[居中策略与组合定位](center-alignment.md)。普通固定视觉图片保持 `sprite_geometry={type:'SIMPLE',size_mode:'RAW',content_size:null}` 与 `Sprite.SizeMode.RAW`，即使底板 Sprite 同时是组件根并拥有图标/文字子项，分组容器的 bounds、定位参照和布局策略也不得改写其 `UITransform.contentSize`，不能对普通图片使用 `STRETCH`/`FLEX`，也不通过缩放底板根单独调整图片。只有已冻结九宫格使用 `SLICED + CUSTOM` 设置底板自身显示框；更新九宫格 `contentSize` 不会等比缩放子项，子项按布局关系单独重排，详见[图片尺寸边界](cocos-adapter.md#图片原尺寸与九宫格尺寸)。Widget 不用于猜测兄弟定位；兄弟位置参照由共享布局入口按参照 bounds 计算，再换算到实际父级坐标。`ui_layout.visual_overflow` 只允许子项越出非根父框，不放宽 viewport、安全区、裁切或交互边界；文字内容超出目标框仍须按文字合同检查，并确认相邻节点与留白。
 
 | 偏差来源 | 处理方式 |
 | --- | --- |
@@ -33,7 +33,7 @@ V2 图片目标框按完整未裁切源纹理定义，主体安全边距与合�
 
 ## 关键几何验收
 
-V2 在 `critical_alignments` 与布局不变量中声明关键对齐线、主区域边距、节点矩形和组间关系，并明确适用视口、scene/state 与语言。V4 对照这些事实并采集同条件的真实 bounds；不同视口按已声明的响应式关系验证，不能把基准绝对坐标套到所有设备。
+V2 在 `critical_alignments` 与布局不变量中声明关键对齐线、主区域边距、节点矩形和组间关系，并明确适用视口、scene/state 与语言。节点定位的九点停靠由水平 `left/center/right`、垂直 `top/center/bottom`、自身/参照锚点和偏移表示；根据 resize 后应保持的意图选择，不按当前图像落入的几何九等分格推断。选择 center 的轴按[居中策略与组合定位](center-alignment.md)区分 strict 与显式 reference，图文组按联合 bounds 居中。它与九宫格纹理拉伸完全独立，也不同于 Creator Node 的中心 `anchorPoint`。V4 对照这些事实并采集同条件的真实 bounds；不同视口按已声明的响应式关系验证，不能把基准绝对坐标套到所有设备。
 
 `usability` 是默认值，不要求整屏像素差或全矩阵。项目在 `critical_alignments[].tolerance` 中声明关键矩形几何容差时，机器必须校验实际 x/y/width/height 与目标的差值，即使仍使用 usability；不能靠 `test_status=passed` 或手写 delta=0 放行超差。单位使用同一测量空间的 `px`、`logical-px`、`css-px` 或 `css-logical-px`，由项目决定，不把编辑器网格当作验收阈值。
 

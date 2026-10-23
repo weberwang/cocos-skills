@@ -5,9 +5,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { decodePngRgba, encodePngRgba } from "../../cocos-game-asset-integration/scripts/effect_image_raster.mjs";
-import { computeLayoutAnnotationIdentitySha256, deriveAutomaticLayoutFacts, renderLayoutAnnotation } from "../../cocos-game-asset-integration/scripts/layout_annotation_contract.mjs";
+import { computeLayoutAnnotationIdentitySha256, deriveAutomaticLayoutFacts, deriveLayoutNodesFromDecompositionElements, renderLayoutAnnotation } from "../../cocos-game-asset-integration/scripts/layout_annotation_contract.mjs";
 import { buildLayoutNodesDocument, buildLayoutReviewBindings, computeLayoutReviewIdentitySha256, deriveLayoutReviewArtifactPaths, renderLayoutReviewBundle, serializeJson, sha256 } from "../../cocos-game-asset-integration/scripts/layout_review_bundle.mjs";
 import { readLayoutReviewPayload } from "../../cocos-game-asset-integration/scripts/layout_review_page.mjs";
+import { validateAutomaticLayoutDecision } from "../../cocos-game-asset-integration/scripts/automatic-layout-decision.mjs";
 import { computeLayoutAnnotationConfirmationSha256, computeLayoutUserMessageSha256, validateLayoutAnnotationConfirmation } from "./layout_annotation_confirmation.mjs";
 
 const SHA = `sha256:${"a".repeat(64)}`;
@@ -28,14 +29,16 @@ function confirmation(overrides = {}) {
 }
 
 /** 构造文件级布局确认链，覆盖 PNG、审阅页、节点 JSON、decision 和 receipt。 */
-async function fileBackedConfirmation() {
+async function fileBackedConfirmation({ centerAlignmentById = {}, extraMeasuredNodes = [] } = {}) {
   const projectRoot = await mkdtemp(join(tmpdir(), "layout-confirmation-"));
   const original = encodePngRgba(64, 48, Buffer.alloc(64 * 48 * 4, 220)); const targetSha = sha256(original); const referenceFile = "reference.png"; await writeFile(join(projectRoot, referenceFile), original);
-  const nodes = [{ layout_node_id: "panel", element_id: "panel", element_type: "container", parent_element_id: "viewport", parent_layout_node_id: "viewport", semantic_grouping: { kind: "region", rationale: "组织对话框中的独立入口" }, ui_layout: { grouping_basis: ["POSITION"], layout_owner: "SELF", size_policy: "FIXED", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "NONE" }, region_id: "panel-region", component_id: "panel", placement_id: "panel-placement", target_bounds: { x: 2, y: 2, width: 16, height: 12 }, layout_role: "container", axis_alignment: { horizontal: "center", vertical: "center" } }, { layout_node_id: "button", element_id: "button", element_type: "component", parent_element_id: "panel", parent_layout_node_id: "panel", semantic_grouping: { kind: "standalone", rationale: "完整按钮在区域内独立布局" }, ui_layout: { grouping_basis: ["INTERACTION"], layout_owner: "PARENT", size_policy: "FIXED", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "HIT_TARGET" }, region_id: "panel-region", component_id: "button", placement_id: "button-placement", target_bounds: { x: 5, y: 5, width: 6, height: 4 }, node_type: "element", axis_alignment: { horizontal: "center", vertical: "center" } }];
-  const elements = nodes.map((node) => ({ element_id: node.element_id, element_type: node.element_type, role: node.layout_role ?? node.node_type, bounds: { ...node.target_bounds }, scene_id: "main", state_id: "default", region_id: "panel-region", component_id: node.component_id, placement_id: node.placement_id, parent_element_id: node.parent_element_id, semantic_grouping: node.semantic_grouping, ui_layout: node.ui_layout, empty_container: node.element_type === "container" ? false : false }));
+  const measuredNodes = [{ layout_node_id: "panel", element_id: "panel", element_type: "container", parent_element_id: "viewport", parent_layout_node_id: "viewport", semantic_grouping: { kind: "region", rationale: "组织对话框中的独立入口" }, ui_layout: { grouping_basis: ["POSITION"], layout_owner: "SELF", size_policy: "FIXED", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "NONE" }, region_id: "panel-region", component_id: "panel", placement_id: "panel-placement", target_bounds: { x: 2, y: 2, width: 16, height: 12 }, layout_role: "container", axis_alignment: { horizontal: "center", vertical: "center" } }, { layout_node_id: "button", element_id: "button", element_type: "component", parent_element_id: "panel", parent_layout_node_id: "panel", semantic_grouping: { kind: "standalone", rationale: "完整按钮在区域内独立布局" }, ui_layout: { grouping_basis: ["INTERACTION"], layout_owner: "PARENT", size_policy: "FIXED", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "HIT_TARGET" }, region_id: "panel-region", component_id: "button", placement_id: "button-placement", target_bounds: { x: 5, y: 5, width: 6, height: 4 }, node_type: "element", axis_alignment: { horizontal: "center", vertical: "center" } }, ...extraMeasuredNodes];
+  const elements = measuredNodes.map((node) => ({ element_id: node.element_id, element_type: node.element_type, role: node.layout_role ?? node.node_type, bounds: { ...node.target_bounds }, scene_id: "main", state_id: "default", region_id: "panel-region", component_id: node.component_id, placement_id: node.placement_id, parent_element_id: node.parent_element_id, semantic_grouping: node.semantic_grouping, ui_layout: node.ui_layout, empty_container: node.element_type === "container" ? false : false }));
   const upstreamSha = `sha256:${"b".repeat(64)}`; const proposalFile = "evidence/v2/proposal.json"; const proposal = { proposal_id: "proposal-1", target_sha256: targetSha, scene_id: "main", state_id: "default", annotation_file: "evidence/v2/decomposition.png", annotation_sha256: upstreamSha, created_at: "2025-12-31T23:00:00Z", decomposition_elements: elements, technical_analysis: { decomposition_elements: elements, regions: [{ region_id: "panel-region", scene_id: "main", state_id: "default", bounds: { x: 0, y: 0, width: 64, height: 48 }, decomposition_elements: elements }] }, regions: [{ region_id: "panel-region", scene_id: "main", state_id: "default" }] }; const proposalBytes = Buffer.from(JSON.stringify(proposal), "utf8"); const proposalSha = sha256(proposalBytes); await mkdir(dirname(join(projectRoot, proposalFile)), { recursive: true }); await writeFile(join(projectRoot, proposalFile), proposalBytes);
+  const layoutDecisionFile = "evidence/v2/automatic-layout-decision.json"; const layoutDecision = { decision_schema: "automatic-layout-decision/1.0", decision_id: "layout-decision-1", decision_method: "visual-judgement", target_sha256: targetSha, scene_id: "main", state_id: "default", decomposition_confirmation_id: "decomp-1", decomposition_confirmation_sha256: upstreamSha, proposal_sha256: proposalSha, elements: measuredNodes.map((node) => ({ element_id: node.element_id, horizontal_alignment: node.axis_alignment.horizontal, vertical_alignment: node.axis_alignment.vertical, ...(centerAlignmentById[node.element_id] !== undefined ? { center_alignment: centerAlignmentById[node.element_id] } : {}) })) }; const layoutDecisionBytes = serializeJson(layoutDecision); await writeFile(join(projectRoot, layoutDecisionFile), layoutDecisionBytes); const layoutDecisionSha = sha256(layoutDecisionBytes);
+  const decisionErrors = []; const alignmentDecisions = validateAutomaticLayoutDecision(layoutDecision, { elements, sceneId: "main", stateId: "default", decompositionConfirmationId: "decomp-1" }, decisionErrors); assert.deepEqual(decisionErrors, []);
+  const nodes = deriveLayoutNodesFromDecompositionElements(elements, { width: 64, height: 48 }, { sceneId: "main", stateId: "default", alignmentDecisions });
   const facts = deriveAutomaticLayoutFacts(nodes, { width: 64, height: 48 }, { sceneId: "main", stateId: "default" });
-  const layoutDecisionFile = "evidence/v2/automatic-layout-decision.json"; const layoutDecision = { decision_schema: "automatic-layout-decision/1.0", decision_id: "layout-decision-1", decision_method: "visual-judgement", target_sha256: targetSha, scene_id: "main", state_id: "default", decomposition_confirmation_id: "decomp-1", decomposition_confirmation_sha256: upstreamSha, proposal_sha256: proposalSha, elements: nodes.map((node) => ({ element_id: node.element_id, horizontal_alignment: node.axis_alignment.horizontal, vertical_alignment: node.axis_alignment.vertical })) }; const layoutDecisionBytes = serializeJson(layoutDecision); await writeFile(join(projectRoot, layoutDecisionFile), layoutDecisionBytes); const layoutDecisionSha = sha256(layoutDecisionBytes);
   const rendered = renderLayoutAnnotation(original, { width: 64, height: 48 }, facts, { targetSha256: targetSha, sceneId: "main", stateId: "default", decompositionConfirmationId: "decomp-1", decompositionConfirmationSha256: upstreamSha, decompositionProposalSha256: proposalSha, layoutDecisionId: layoutDecision.decision_id, layoutDecisionSha256: layoutDecisionSha });
   const imageFile = "evidence/v2/layout.png"; await writeFile(join(projectRoot, imageFile), rendered.bytes); const imageSha = sha256(rendered.bytes); const identitySha = computeLayoutAnnotationIdentitySha256(imageSha, rendered.width, rendered.height, rendered.metadataSha256);
   const paths = deriveLayoutReviewArtifactPaths(projectRoot, join(projectRoot, imageFile)); const context = { projectRoot, viewport: { width: 64, height: 48 }, targetSha256: targetSha, sceneId: "main", stateId: "default", decompositionConfirmationId: "decomp-1", decompositionConfirmationSha256: upstreamSha, proposalSha256: proposalSha, proposalFile, referenceFile, referenceSha256: targetSha, layoutDecisionId: layoutDecision.decision_id, layoutDecisionSha256: layoutDecisionSha, annotationSha256: imageSha };
@@ -87,6 +90,100 @@ test("布局确认文件门拒绝伪造 user receipt 和空 JSON", async () => {
 
 test("布局确认文件门通过真实 PNG、审阅页、节点 JSON、decision 和 receipt", async () => {
   const value = await fileBackedConfirmation(); const errors = []; validateLayoutAnnotationConfirmation(value.record, value.context, errors); assert.deepEqual(errors, []);
+});
+
+test("proposal测量有误差时文件确认按strict重算居中且保留RAW尺寸", async () => {
+  const value = await fileBackedConfirmation();
+  const proposal = JSON.parse(await readFile(join(value.projectRoot, value.context.proposalFile), "utf8"));
+  const nodesDocument = JSON.parse(await readFile(join(value.projectRoot, value.record.layout_nodes_file), "utf8"));
+  const measuredPanel = proposal.decomposition_elements.find((element) => element.element_id === "panel").bounds;
+  const finalPanel = nodesDocument.layout_nodes.find((node) => node.layout_node_id === "panel");
+  assert.notEqual(finalPanel.target_bounds.x, measuredPanel.x, "布局候选应修正proposal中的测量偏差");
+  assert.deepEqual(
+    { width: finalPanel.target_bounds.width, height: finalPanel.target_bounds.height },
+    { width: measuredPanel.width, height: measuredPanel.height },
+    "严格居中只能调整位置，不得改变原始尺寸",
+  );
+
+  // 文件门必须能仅凭绑定 proposal 和 decision 复算，不能依赖调用方额外传入的布局节点。
+  const { layoutNodes: _untrustedContextNodes, ...contextWithoutLayoutNodes } = value.context;
+  const errors = [];
+  validateLayoutAnnotationConfirmation(value.record, contextWithoutLayoutNodes, errors);
+  assert.deepEqual(errors, []);
+});
+
+test("有理由的reference中心偏移可通过文件确认", async () => {
+  const value = await fileBackedConfirmation({
+    centerAlignmentById: {
+      button: { horizontal: { mode: "reference", offset: 3, reason: "图标视觉重心向右补偿" } },
+    },
+  });
+  const errors = [];
+  validateLayoutAnnotationConfirmation(value.record, value.context, errors);
+  assert.deepEqual(errors, []);
+});
+
+test("绑定decision的图文虚拟组整体居中且广告角标独立", async () => {
+  const value = await fileBackedConfirmation({
+    centerAlignmentById: { button: { member_ids: ["button", "label"] } },
+    extraMeasuredNodes: [
+      { layout_node_id: "label", element_id: "label", element_type: "component", parent_element_id: "panel", parent_layout_node_id: "panel", semantic_grouping: { kind: "standalone", rationale: "按钮文字与主图标共同表达按钮功能" }, ui_layout: { grouping_basis: ["POSITION"], layout_owner: "PARENT", size_policy: "FIXED", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "NONE", position_reference_id: "button" }, region_id: "panel-region", component_id: "button", placement_id: "label-placement", target_bounds: { x: 12, y: 5, width: 4, height: 4 }, node_type: "element", axis_alignment: { horizontal: "center", vertical: "center" } },
+      { layout_node_id: "ad-badge", element_id: "ad-badge", element_type: "component", parent_element_id: "panel", parent_layout_node_id: "panel", semantic_grouping: { kind: "standalone", rationale: "广告标记独立显示" }, ui_layout: { grouping_basis: ["POSITION"], layout_owner: "PARENT", size_policy: "FIXED", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "NONE" }, region_id: "panel-region", component_id: "ad-badge", placement_id: "ad-badge-placement", target_bounds: { x: 14, y: 3, width: 2, height: 2 }, node_type: "element", axis_alignment: { horizontal: "right", vertical: "top" } },
+    ],
+  });
+  const errors = [];
+  validateLayoutAnnotationConfirmation(value.record, value.context, errors);
+  assert.deepEqual(errors, []);
+
+  const facts = deriveAutomaticLayoutFacts(value.context.layoutNodes, value.context.viewport, { sceneId: "main", stateId: "default" });
+  const icon = facts.find((fact) => fact.layout_node_id === "button").target_bounds;
+  const label = facts.find((fact) => fact.layout_node_id === "label").target_bounds;
+  const panel = facts.find((fact) => fact.layout_node_id === "panel").target_bounds;
+  const badge = facts.find((fact) => fact.layout_node_id === "ad-badge").target_bounds;
+  const groupCenter = (Math.min(icon.x, label.x) + Math.max(icon.x + icon.width, label.x + label.width)) / 2;
+  assert.equal(groupCenter, panel.x + panel.width / 2);
+  assert.equal(badge.x + badge.width, panel.x + panel.width - 2, "广告角标仍按自身停靠，不扩展主图文居中范围");
+});
+
+test("文件确认拒绝把严格居中决策改为reference而沿用旧bounds", async () => {
+  const value = await fileBackedConfirmation();
+  const decisionPath = join(value.projectRoot, value.record.layout_decision_file);
+  const decision = JSON.parse(await readFile(decisionPath, "utf8"));
+  decision.elements.find((element) => element.element_id === "button").center_alignment = {
+    horizontal: { mode: "reference", offset: 1, reason: "篡改决策测试" },
+  };
+  await writeFile(decisionPath, serializeJson(decision));
+
+  const errors = [];
+  validateLayoutAnnotationConfirmation(value.record, value.context, errors);
+  assert(errors.some((message) => message.includes("target_bounds") && message.includes("center_alignment/decision/proposal 重算")), errors.join("；"));
+});
+
+test("文件确认拒绝改最终bounds或清除offset但保留bounds", async () => {
+  const changedBounds = await fileBackedConfirmation();
+  const changedBoundsPath = join(changedBounds.projectRoot, changedBounds.record.layout_nodes_file);
+  const changedBoundsDocument = JSON.parse(await readFile(changedBoundsPath, "utf8"));
+  const changedButton = changedBoundsDocument.layout_nodes.find((node) => node.layout_node_id === "button");
+  changedButton.bounds.x += 1;
+  changedButton.target_bounds.x += 1;
+  await writeFile(changedBoundsPath, serializeJson(changedBoundsDocument));
+  const boundsErrors = [];
+  validateLayoutAnnotationConfirmation(changedBounds.record, changedBounds.context, boundsErrors);
+  assert(boundsErrors.some((message) => message.includes("bounds") && message.includes("center_alignment/decision/proposal 重算")), boundsErrors.join("；"));
+
+  const clearedOffset = await fileBackedConfirmation({
+    centerAlignmentById: {
+      button: { horizontal: { mode: "reference", offset: 3, reason: "图标视觉重心补偿" } },
+    },
+  });
+  const clearedOffsetPath = join(clearedOffset.projectRoot, clearedOffset.record.layout_nodes_file);
+  const clearedOffsetDocument = JSON.parse(await readFile(clearedOffsetPath, "utf8"));
+  const offsetButton = clearedOffsetDocument.layout_nodes.find((node) => node.layout_node_id === "button");
+  offsetButton.offset = { ...offsetButton.offset, x: 0 };
+  await writeFile(clearedOffsetPath, serializeJson(clearedOffsetDocument));
+  const offsetErrors = [];
+  validateLayoutAnnotationConfirmation(clearedOffset.record, clearedOffset.context, offsetErrors);
+  assert(offsetErrors.some((message) => message.includes("offset") && message.includes("center_alignment/decision/proposal 重算")), offsetErrors.join("；"));
 });
 
 test("真实布局工件同批更新后仍拒绝不继承 proposal 的语义理由", async () => {

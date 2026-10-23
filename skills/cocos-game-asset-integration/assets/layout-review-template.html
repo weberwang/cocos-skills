@@ -272,6 +272,11 @@
       if (uiLayout?.minimum_size) addDetailRow("最小尺寸", `${uiLayout.minimum_size.width} × ${uiLayout.minimum_size.height}`);
       addDetailRow("子节点", relationNames(node.child_layout_node_ids));
       addDetailRow("水平 / 垂直对齐", formatAlignment(node.axis_alignment));
+      for (const [axis, label] of [["horizontal", "水平居中"], ["vertical", "垂直居中"]]) {
+        const policy = node.center_alignment?.[axis];
+        if (policy) addDetailRow(label, policy.mode === "strict" ? "严格居中" : `中心参照偏移=${policy.offset}；${policy.reason}`);
+      }
+      if (node.center_alignment?.member_ids) addDetailRow("整体居中成员", relationNames(node.center_alignment.member_ids));
       addDetailRow("偏移", node.offset ? `x=${node.offset.x ?? "—"}，y=${node.offset.y ?? "—"}` : "—");
       addDetailRow("位置与尺寸", formatBounds(node.target_bounds));
       addDetailRow("父节点边界", formatBounds(node.parent_target_bounds));

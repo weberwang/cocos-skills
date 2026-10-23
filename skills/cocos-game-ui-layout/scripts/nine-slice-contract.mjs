@@ -1,3 +1,5 @@
+import { hasSpriteRendering, isBackgroundDisplayNode, isLayoutContainer, isSpriteContainer } from "./display-node-role.mjs";
+
 /**
  * V2 冻结、V3 生产和正式界面渲染共用的纯九宫格数据合同。
  * 必评估对象只由显式生产归属、职责或视觉路线判定，不猜名称/像素，也不隐式裁切或缩放角边。
@@ -11,8 +13,6 @@ const NINE_SLICE_DECISION_ROLES = new Set([
   "button", "button-skin", "panel", "panel-frame", "background-frame", "decorative-frame",
   "card-frame", "input-skin", "tooltip-skin", "selection-skin", "nine-slice",
 ]);
-const NINE_SLICE_BACKGROUND_ROLES = new Set(["background", "full-bleed", "fullbleed"]);
-const NINE_SLICE_CONTAINER_ROLES = new Set(["container", "parent", "group", "layout-container", "empty-container"]);
 
 /** 判断非数组普通对象。 */
 function isRecord(value) {
@@ -31,33 +31,27 @@ function normalizeRole(value) {
   return typeof value === "string" ? value.trim().toLowerCase().replace(/[\s_]+/gu, "-").replace(/-+/gu, "-") : "";
 }
 
-/** 判断固定生产图片叶子是否必须在 V2 明确选择九宫格或 not-applicable。 */
+/** 判断固定生产图片是否必须在 V2 明确选择九宫格或 not-applicable。 */
 export function requiresNineSliceDecision(input = {}) {
   const ownerType = input.owner_type ?? input.ownerType;
   const elementType = input.element_type ?? input.elementType;
-  const layer = input.region_layer ?? input.regionLayer ?? input.layer;
   const role = normalizeRole(input.role ?? input.layout_role ?? input.layoutRole);
   const routeType = normalizeRole(input.visual_route_element_type ?? input.visualRouteElementType
     ?? input.visual_route_analysis?.element_type ?? input.visualRouteAnalysis?.elementType);
-  if (ownerType !== "fixed-production-visual" || elementType !== "component") return false;
+  if (ownerType !== "fixed-production-visual" || !["component", "container"].includes(elementType) || !hasSpriteRendering(input)) return false;
   const uiSkinRole = NINE_SLICE_DECISION_ROLES.has(role) || NINE_SLICE_DECISION_ROLES.has(routeType);
-  // 安全区铺满只是几何策略；背景排除只接受权威 layer，且 UI 路由优先于元素自报 background 角色。
-  if (layer === "background") return false;
+  if (isBackgroundDisplayNode(input)) return false;
   return uiSkinRole;
 }
 
-/** 判断 stretch 是否落在叶子显示对象上，职责判定采用完整角色 token 而不是子串匹配。 */
+/** 判断 stretch 是否落在允许的图片显示对象上，职责判定采用完整角色 token。 */
 export function isNineSliceStretchTargetAllowed(input = {}) {
   const elementType = input.element_type ?? input.elementType;
-  const layer = input.region_layer ?? input.regionLayer ?? input.layer;
-  const role = normalizeRole(input.role ?? input.layout_role ?? input.layoutRole);
-  const routeType = normalizeRole(input.visual_route_element_type ?? input.visualRouteElementType
-    ?? input.visual_route_analysis?.element_type ?? input.visualRouteAnalysis?.elementType);
-  if (layer === "background" || elementType !== "component" || input.is_container === true || input.isContainer === true) return false;
-  if (NINE_SLICE_CONTAINER_ROLES.has(role)) return false;
-  // 明确 UI 皮肤职责优先于元素自报 background/full-bleed，权威背景 layer 则始终排除。
-  if (NINE_SLICE_DECISION_ROLES.has(role) || NINE_SLICE_DECISION_ROLES.has(routeType)) return true;
-  return !NINE_SLICE_BACKGROUND_ROLES.has(role) && !NINE_SLICE_BACKGROUND_ROLES.has(routeType);
+  const spriteContainer = isSpriteContainer(input);
+  if (isBackgroundDisplayNode(input) || !["component", "container"].includes(elementType)) return false;
+  // 渲染身份与容器职责独立：通用 container/group 角色不能否定显式 Sprite 底板。
+  if (isLayoutContainer(input) && !spriteContainer) return false;
+  return true;
 }
 
 /** 规范化并验证明确的九宫格适用决策。 */

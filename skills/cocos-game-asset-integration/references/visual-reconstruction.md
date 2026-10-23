@@ -42,13 +42,13 @@ V2 布局标注在拆解图确认之后串行产出：阶段 A 先从冻结事�
 
 按[游戏内文案](../../cocos-game-ui-layout/references/game-copy.md#资源拆解与界面实现)只登记冻结目标中实际可见的文字/数值及其显示来源，不能从 GDD 的业务说明补出文本节点。目标文案需要调整时先修订受影响的上游目标，再拆解，不在还原时静默删改。
 
-效果图拆解必须先看整屏构图，再冻结 `decomposition_elements`、视觉元素/组件、状态事实和 `display_layer_planning`；不能先拆资产、最后凭感觉补坐标。`target_bounds` 是参考图测量事实，不是运行时硬编码；布局节点在拆解确认后由元素 bounds/role 自动推导，布局合同负责运行时计算和响应式变换；runtime measurement 只是候选证据，不能回写或替代参考事实。
+效果图拆解必须先看整屏构图，再冻结 `decomposition_elements`、视觉元素/组件、状态事实和 `display_layer_planning`；不能先拆资产、最后凭感觉补坐标。proposal 的 `bounds` 是参考图测量事实，不是运行时硬编码；拆解确认后，布局节点由元素 bounds/role 和显式中心策略推导，允许按 strict/reference 策略平移节点或整组位置。父级或定位参照的整体位移沿关系传播到依赖节点，在非 center 轴也保持其相对间距；相关规则见[居中策略与组合定位](../../cocos-game-ui-layout/references/center-alignment.md)。该过程保留 proposal 原 bounds、节点尺寸、身份和顺序。布局合同负责运行时计算和响应式变换；runtime measurement 只是候选证据，不能回写或替代参考事实。
 
 每个区域必须登记唯一 `annotation_number`、`region_id`、`layout_node_ids`、owner、实现计划和精确 `bounds`。每个 placement 必须有唯一 `layout_node_id`，只能引用本区域节点；没有 placement 的运行时区域必须由 `runtime_implementation.layout_node_ids` 消费。节点不得孤立、跨区域、被多个 placement 重复消费或同时被 placement 与 runtime 重复消费，除非另有显式复用合同和 placement 级证据。
 
 文本节点必须作为独立拆解对象登记 `text_node_id`、content/source、semantic role、动态/本地化标记、目标 bounds、字体身份与置信状态、字号/字重/样式、行高、字距、对齐、baseline、fill/stroke/shadow、wrap、planned test ID 和实现路线。动态或本地化文本禁止 `image-text`；固定品牌字标可用图片，但必须保留可访问语义。
 
-父子几何必须可复核：先确定 `parent_layout_node_id`，再冻结 `parent_target_bounds`，测量 child 到父内容框四边的 `relative_position.left/right/top/bottom`。水平 `left/center/right` 与垂直 `top/center/bottom` 由智能布局结合原图构图、视觉重心和元素语义写入显式 `axis_alignment`，不能由距离自动反推；测量只用于包含校验、偏移计算和漂移检测。`offset`、`self_anchor`、`reference_anchor` 必须与该视觉决策一致。
+父子几何必须可复核：先确定 `parent_layout_node_id`，再冻结 `parent_target_bounds`，测量 child 到父内容框四边的 `relative_position.left/right/top/bottom`。水平 `left/center/right` 与垂直 `top/center/bottom` 由智能布局结合原图构图、视觉重心和元素语义写入显式 `axis_alignment`，不能由距离自动反推。中心轴的严格/允许偏移策略、组合居中及最终 bounds/offset 派生按[居中策略与组合定位](../../cocos-game-ui-layout/references/center-alignment.md)执行；测量只用于校验与偏移复算，不能把原始中心差自动当作视觉补偿。`offset`、`self_anchor`、`reference_anchor` 必须与该视觉决策一致。
 
 ## V3 正式资源验收
 

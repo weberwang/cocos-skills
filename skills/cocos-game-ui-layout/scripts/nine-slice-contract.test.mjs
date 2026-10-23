@@ -29,7 +29,7 @@ test("九宫格拒绝无中心区、非整数切片和未声明的隐式裁切�
   ]) assert.throws(() => validateNineSliceContract(invalid));
 });
 
-test("是否必评估由固定生产叶子图片的显式职责派生，不猜名称或纹理", () => {
+test("是否必评估由固定图片的显式皮肤职责派生，普通结构容器不要求决策", () => {
   assert.equal(requiresNineSliceDecision({ owner_type: "fixed-production-visual", element_type: "component", role: "button-skin" }), true);
   assert.equal(requiresNineSliceDecision({ owner_type: "fixed-production-visual", element_type: "component", role: "background-frame" }), true);
   assert.equal(requiresNineSliceDecision({ owner_type: "fixed-production-visual", element_type: "component", role: "illustration", visual_route_analysis: { element_type: "panel-frame" } }), true);
@@ -39,6 +39,8 @@ test("是否必评估由固定生产叶子图片的显式职责派生，不猜�
   assert.equal(requiresNineSliceDecision({ owner_type: "fixed-production-visual", element_type: "component", role: "full-bleed", safe_area_policy: "FULL_BLEED", visual_route_analysis: { element_type: "button-skin" } }), true);
   assert.equal(requiresNineSliceDecision({ owner_type: "runtime-rendered", element_type: "component", role: "button" }), false);
   assert.equal(requiresNineSliceDecision({ owner_type: "fixed-production-visual", element_type: "container", role: "button" }), false);
+  assert.equal(requiresNineSliceDecision({ owner_type: "fixed-production-visual", element_type: "container", render_kind: "sprite", role: "button-skin" }), true);
+  assert.equal(requiresNineSliceDecision({ owner_type: "fixed-production-visual", element_type: "container", role: "button-skin", nine_slice: panel }), false);
   assert.equal(requiresNineSliceDecision({ owner_type: "fixed-production-visual", element_type: "component", role: "panel", layer: "background" }), false);
 });
 
@@ -48,6 +50,8 @@ test("九宫格拉伸只排除权威背景和结构容器，不用职责子串�
   assert.equal(isNineSliceStretchTargetAllowed({ element_type: "component", role: "background", layer: "hud" }), false);
   assert.equal(isNineSliceStretchTargetAllowed({ element_type: "component", role: "container", layer: "hud" }), false);
   assert.equal(isNineSliceStretchTargetAllowed({ element_type: "container", role: "panel-frame", layer: "hud" }), false);
+  assert.equal(isNineSliceStretchTargetAllowed({ element_type: "container", render_kind: "sprite", owner_type: "fixed-production-visual", role: "panel-frame", layer: "hud" }), true);
+  assert.equal(isNineSliceStretchTargetAllowed({ element_type: "container", role: "panel-frame", nine_slice: panel, layer: "hud" }), false);
   assert.equal(isNineSliceStretchTargetAllowed({ element_type: "component", role: "background-frame", safe_area_policy: "FULL_BLEED" }), true);
   assert.equal(isNineSliceStretchTargetAllowed({ element_type: "component", role: "background", visual_route_analysis: { element_type: "panel" } }), true);
 });
@@ -57,6 +61,15 @@ test("300×180目标保留边角逻辑尺寸且留有中心，过小目标被拒
   assert.deepEqual(target.borders, panel.borders);
   assert.throws(() => validateNineSliceTargetBounds(panel, { x: 0, y: 0, width: 24, height: 80 }), /大于/);
   assert.throws(() => validateNineSliceTargetBounds(panel, { x: 0, y: 0, width: 80, height: 20 }), /大于/);
+});
+
+test("通用容器角色不覆盖显式Sprite身份，纯结构角色仍拒绝九宫格", () => {
+  for (const role of ["container", "parent", "group", "layout-container", "empty-container"]) {
+    const node = { element_type: "container", role, region_layer: "hud" };
+    assert.equal(isNineSliceStretchTargetAllowed(node), false);
+    assert.equal(isNineSliceStretchTargetAllowed({ ...node, render_kind: "sprite" }), true);
+    assert.equal(isNineSliceStretchTargetAllowed({ ...node, render_kind: "sprite", region_layer: "background" }), false);
+  }
 });
 
 test("决策比较保留正反选择差异", () => {

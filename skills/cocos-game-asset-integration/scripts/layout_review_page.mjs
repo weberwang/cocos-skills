@@ -10,6 +10,8 @@ import { readFileSync } from "node:fs";
 import { deriveAutomaticLayoutFacts } from "./layout_annotation_contract.mjs";
 import { readPngDimensions } from "./validate_visual_manifest.mjs";
 import { validateUiLayout } from "./ui-layout-organization.mjs";
+import { validateSpriteGeometry } from "../../cocos-game-ui-layout/scripts/sprite-layout-sizing.mjs";
+import { hasSpriteRendering } from "../../cocos-game-ui-layout/scripts/display-node-role.mjs";
 
 export const LAYOUT_REVIEW_SCHEMA = "cocos-layout-review/1.0";
 export const LAYOUT_REVIEW_STATUS = "candidate-awaiting-layout-confirmation";
@@ -136,10 +138,13 @@ export function validateReviewNodesDocument(nodesDocument) {
     nodeIds.add(node.layout_node_id);
     if (node.is_root_container === true) throw new Error(`nodesDocument.layout_nodes[${index}] 必须是非 root 节点`);
     const uiErrors = [];
-    validateUiLayout(node.ui_layout, { rootParent: ROOT_IDS.has(node.parent_layout_node_id), container: node.is_container === true, emptyContainer: node.empty_container === true }, uiErrors, `nodesDocument.layout_nodes[${index}].ui_layout`);
+    validateUiLayout(node.ui_layout, { rootParent: ROOT_IDS.has(node.parent_layout_node_id), container: node.is_container === true, emptyContainer: node.empty_container === true && !hasSpriteRendering(node) }, uiErrors, `nodesDocument.layout_nodes[${index}].ui_layout`);
     if (uiErrors.length > 0) throw new Error(uiErrors[0]);
     if (node.scene_id !== undefined && node.scene_id !== nodesDocument.scene_id) throw new Error(`布局节点 ${node.layout_node_id} 的 scene_id 与文档不一致`);
     if (node.state_id !== undefined && node.state_id !== nodesDocument.state_id) throw new Error(`布局节点 ${node.layout_node_id} 的 state_id 与文档不一致`);
+    const spriteErrors = [];
+    validateSpriteGeometry(node, spriteErrors, `布局节点 ${node.layout_node_id}`);
+    if (spriteErrors.length) throw new Error(spriteErrors[0]);
     const target = targetBoundsOf(node);
     const parent = node.parent_target_bounds ?? node.parentTargetBounds;
     validateBounds(target, viewport, `布局节点 ${node.layout_node_id}.target_bounds`);
@@ -168,9 +173,9 @@ export function validateReviewNodesDocument(nodesDocument) {
   // 这里只比对现有 facts 与推导结果；页面展示仍使用传入节点原顺序和原字段。
   const derivedById = new Map(derivedFacts.map((fact) => [fact.layout_node_id, fact]));
   const comparableFields = [
-    "layout_node_id", "element_id", "display_name", "layout_role", "parent_layout_node_id", "parent_target_bounds",
+    "layout_node_id", "element_id", "display_name", "layout_role", "render_kind", "parent_layout_node_id", "parent_target_bounds", "reference_id", "reference_target_bounds", "sprite_geometry",
     "target_bounds", "bounds", "depth", "color", "is_container", "empty_container", "child_layout_node_ids",
-    "relative_position", "axis_alignment", "offset", "self_anchor", "reference_anchor", "docking",
+    "relative_position", "axis_alignment", "center_alignment", "offset", "self_anchor", "reference_anchor", "docking",
     "is_root_container", "scene_id", "state_id", "marker_id", "parent_marker_id", "ui_layout"
   ];
   const compareFact = (fact, derived, label) => {

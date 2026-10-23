@@ -47,6 +47,7 @@ function normalizeDecompositionElementDefinition(value) {
   return {
     element_id: firstDefined(value, ["element_id", "elementId"], ""),
     element_type: firstDefined(value, ["element_type", "elementType", "type"], ""),
+    ...(value.render_kind !== undefined ? { render_kind: value.render_kind } : {}),
     role: firstDefined(value, ["role", "layout_role", "layoutRole", "node_type", "nodeType"], ""),
     bounds: bounds ? { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height } : null,
     scene_id: firstDefined(value, ["scene_id", "sceneId"], ""),
@@ -70,6 +71,9 @@ function normalizeComponentInventoryDefinition(value) {
   if (!isObject(value)) return value ?? null;
   const components = (Array.isArray(value.components) ? value.components : []).map((component) => ({
     component_id: firstDefined(component, ["component_id", "componentId"], ""),
+    ...(component.render_kind !== undefined ? { render_kind: component.render_kind } : {}),
+    ...(component.element_type !== undefined ? { element_type: component.element_type } : {}),
+    ...(component.is_container !== undefined ? { is_container: component.is_container } : {}),
     atomic_visual_key: firstDefined(component, ["atomic_visual_key", "atomicVisualKey"], ""),
     role: firstDefined(component, ["role", "component_role"], ""),
     reusable: component?.reusable,
@@ -85,6 +89,7 @@ function normalizeComponentInventoryDefinition(value) {
     })).sort((left, right) => String(left.state_id).localeCompare(String(right.state_id))),
     placements: (Array.isArray(component?.placements) ? component.placements : []).map((placement) => ({
       placement_id: firstDefined(placement, ["placement_id", "placementId"], ""),
+      ...(placement.render_kind !== undefined ? { render_kind: placement.render_kind } : {}),
       element_id: firstDefined(placement, ["element_id", "elementId"], null),
       layout_node_id: firstDefined(placement, ["layout_node_id", "layoutNodeId"], ""),
       parent_element_id: firstDefined(placement, ["parent_element_id", "parentElementId"], null),

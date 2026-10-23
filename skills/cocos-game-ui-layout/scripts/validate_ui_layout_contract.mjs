@@ -10,6 +10,7 @@ import { layoutNodeIdentityProjection, validateEffectImageParentChildLayoutNodes
 import { resolveVisualValidationMode, validateVisualValidationPolicy } from "../../cocos-game-workflow-control/scripts/visual-validation-policy.mjs";
 import { matchesRepresentativeViewport, measuredOrientation, resolveOrientationCoverage } from "../../cocos-game-workflow-control/scripts/orientation-validation-scope.mjs";
 import { validateUiInteractionTree, validateUiLayout } from "../../cocos-game-asset-integration/scripts/ui-layout-organization.mjs";
+import { hasSpriteRendering } from "./display-node-role.mjs";
 
 const ROOT_REQUIRED = ["schema_version", "contract_id", "contract_version", "scope", "fidelity", "frozen_visual_target", "logicalViewportSpace", "designResolutionPolicy", "canvasBackingPolicy", "runtimeDprPolicy", "maxRuntimeDpr", "scaleMode", "cameraViewportPolicy", "cameraZoomPolicy", "cameraOriginPolicy", "inputCoordinatePolicy", "safeAreaPolicy", "resizePolicy", "orientationPolicy", "textResolutionPolicy", "assetResolutionPolicy", "performanceBudget", "representativeViewports", "requiredRuntimeEvidence", "targets", "coordinate_spaces", "regions", "layout_nodes", "content", "platform_insets", "scrolling", "dynamic_content", "overlay_rules", "breakpoints", "invariants", "critical_alignments", "parity_cases", "evidence_matrix"];
 const REQUIRED_EVIDENCE_AXES = new Set(["breakpoint-neighbors", "width", "height", "orientation", "text-scale", "localization", "safe-area", "action-state", "dpr", "dynamic-values", "scene-lifecycle", "overlay-keyboard-scroll"]);
@@ -613,7 +614,7 @@ function validateLayoutNodes(document, fidelity, binding, spaces, regionIds, err
       if (!scopedIds.has(node.region_id)) errors.push(`${label}.region_id 未绑定 scope.ui_ids：${node.region_id}`);
     }
     if (isString(node.coordinate_space) && !spaces.has(node.coordinate_space)) errors.push(`${label}.coordinate_space 引用不存在的坐标空间：${node.coordinate_space}`);
-    if (requiresLayoutNodes) validateUiLayout(node.ui_layout, { rootParent: ["viewport", "safe-area"].includes(node.parent_layout_node_id), container: node.is_container === true || node.element_type === "container", emptyContainer: node.empty_container === true }, errors, `${label}.ui_layout`);
+    if (requiresLayoutNodes) validateUiLayout(node.ui_layout, { rootParent: ["viewport", "safe-area"].includes(node.parent_layout_node_id), container: node.is_container === true || node.element_type === "container", emptyContainer: node.empty_container === true && !hasSpriteRendering(node) }, errors, `${label}.ui_layout`);
     validateLayoutOffset(node.offset, label, errors);
     if (!isNumber(node.z_order)) errors.push(`${label}.z_order 必须是有限数值`);
     validateMeasurement(node.target_bounds, `${label}.target_bounds`, errors);

@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { decodePngRgba } from "../../cocos-game-asset-integration/scripts/effect_image_raster.mjs";
-import { deriveAutomaticLayoutFacts, validateLayoutAnnotationPng } from "../../cocos-game-asset-integration/scripts/layout_annotation_contract.mjs";
+import { deriveAutomaticLayoutFacts, deriveLayoutNodesFromDecompositionElements, validateLayoutAnnotationPng } from "../../cocos-game-asset-integration/scripts/layout_annotation_contract.mjs";
 import { validateDecompositionElements } from "../../cocos-game-asset-integration/scripts/decomposition-elements.mjs";
 import { validateAutomaticLayoutDecision } from "../../cocos-game-asset-integration/scripts/automatic-layout-decision.mjs";
 import { readAndValidateLayoutReviewPayload, validateLayoutNodesDocument } from "../../cocos-game-asset-integration/scripts/layout_review_bundle.mjs";
@@ -86,12 +86,6 @@ function validateLayoutDecisionDocument(document, record, label, errors, receipt
   if (nonEmptyString(document.accepted_at) && document.accepted_at !== record.accepted_at) errors.push(`${label}.accepted_at 未绑定布局确认时间`);
 }
 
-/** 按场景确认上下文推导同批布局事实，供 HTML/JSON/PNG 做三方比较。 */
-function expectedLayoutFacts(context, nodesDocument, errors, label) {
-  if (!Array.isArray(context.layoutNodes) || !isObject(nodesDocument?.viewport)) return null;
-  try { return deriveAutomaticLayoutFacts(context.layoutNodes, nodesDocument.viewport, { sceneId: context.sceneId, stateId: context.stateId }); } catch (error) { errors.push(`${label} 无法从当前 layout_nodes 重建 PNG 布局事实：${error.message}`); return null; }
-}
-
 /** 读取提案中用于验证父级/语义的区域边界；不从布局节点反推拆解区域。 */
 function proposalRegions(proposal) {
   const regions = proposal?.technical_analysis?.regions;
@@ -102,25 +96,108 @@ function proposalRegions(proposal) {
 /** 读取布局节点的真实元素几何，兼容节点文档中的 target_bounds/bounds 同义位置。 */
 function nodeBounds(node) { return node?.target_bounds ?? node?.targetBounds ?? node?.bounds; }
 
-/** 校验手工布局节点必须逐项继承真实 proposal 的语义归属，禁止改 parent 后复用旧确认。 */
-function validateLayoutNodesAgainstProposal(proposal, nodesDocument, context, errors, label) {
+/** 从绑定的 proposal 和 decision 重建布局事实；确认时不能信任节点文件自带的策略或偏移。 */
+function validateLayoutNodesAgainstProposal(proposal, nodesDocument, decisionDocument, record, errors, label) {
   const elements = proposal?.decomposition_elements;
   const regions = proposalRegions(proposal);
   const elementErrors = [];
-  const elementById = validateDecompositionElements(elements, regions, nodesDocument?.viewport ?? context.viewport, `${label}.proposal.decomposition_elements`, elementErrors);
+  const elementById = validateDecompositionElements(elements, regions, nodesDocument?.viewport, `${label}.proposal.decomposition_elements`, elementErrors);
   errors.push(...elementErrors);
   if (!(elementById instanceof Map) || elementById.size !== elements?.length) return;
   const actualNodes = Array.isArray(nodesDocument?.layout_nodes) ? nodesDocument.layout_nodes : [];
   if (actualNodes.length !== elements.length) { errors.push(`${label}.layout_nodes 必须与 proposal.decomposition_elements 数量一致`); return; }
+
+  const decisionErrors = [];
+  const alignmentDecisions = validateAutomaticLayoutDecision(decisionDocument, {
+    elements,
+    sceneId: record.scene_id,
+    stateId: record.state_id,
+    decompositionConfirmationId: record.decomposition_confirmation_id,
+  }, decisionErrors, `${label}.layout_decision`);
+  errors.push(...decisionErrors);
+  if (!alignmentDecisions) return;
+
+  let expectedNodes;
+  let expectedFacts;
+  try {
+    expectedNodes = deriveLayoutNodesFromDecompositionElements(elements, nodesDocument.viewport, {
+      sceneId: record.scene_id,
+      stateId: record.state_id,
+      alignmentDecisions,
+    });
+    // 中心解析只平移 bounds；元素尺寸仍必须直接继承已确认的拆解测量。
+    for (const [index, element] of elements.entries()) {
+      const sourceBounds = element.bounds;
+      const derivedBounds = nodeBounds(expectedNodes[index]);
+      if (!sourceBounds || derivedBounds?.width !== sourceBounds.width || derivedBounds?.height !== sourceBounds.height) {
+        throw new Error(`元素 ${element.element_id} 的宽高不得由布局阶段改写`);
+      }
+    }
+    expectedFacts = deriveAutomaticLayoutFacts(expectedNodes, nodesDocument.viewport, { sceneId: record.scene_id, stateId: record.state_id });
+  } catch (error) {
+    errors.push(`${label}.layout_nodes 无法按绑定 decision/proposal 重建：${error.message}`);
+    return;
+  }
+
+  if (decisionDocument?.decision_id !== record.layout_decision_id) errors.push(`${label}.layout_decision.decision_id 未绑定确认记录`);
   for (const [index, element] of elements.entries()) {
     const node = actualNodes[index];
-    const expectedBounds = element.bounds;
+    const expectedFact = expectedFacts.find((fact) => fact.layout_node_id === element.element_id);
     const expectedContainer = element.element_type === "container";
     const expectedEmpty = expectedContainer && element.empty_container === true;
-    if (!node || node.layout_node_id !== element.element_id || node.element_id !== element.element_id || node.element_type !== element.element_type || node.is_container !== expectedContainer || node.empty_container !== expectedEmpty || node.parent_layout_node_id !== element.parent_element_id || node.parent_element_id !== element.parent_element_id || canonicalJson(nodeBounds(node)) !== canonicalJson(expectedBounds) || node.scene_id !== element.scene_id || node.state_id !== element.state_id || node.component_id !== element.component_id || node.placement_id !== element.placement_id || canonicalJson(node.semantic_grouping) !== canonicalJson(element.semantic_grouping) || canonicalJson(node.ui_layout) !== canonicalJson(element.ui_layout)) {
-      errors.push(`${label}.layout_nodes[${index}] 未逐项继承 proposal 的元素、bounds、semantic_grouping、ui_layout 或 parent_element_id`);
-    }
+    const sourceIdentityMatches = node
+      && node.layout_node_id === element.element_id
+      && node.element_id === element.element_id
+      && node.element_type === element.element_type
+      && node.render_kind === element.render_kind
+      && node.is_container === expectedContainer
+      && node.empty_container === expectedEmpty
+      && node.parent_layout_node_id === element.parent_element_id
+      && node.parent_element_id === element.parent_element_id
+      && node.scene_id === element.scene_id
+      && node.state_id === element.state_id
+      && node.region_id === element.region_id
+      && node.component_id === element.component_id
+      && node.placement_id === element.placement_id
+      && canonicalJson(node.semantic_grouping) === canonicalJson(element.semantic_grouping)
+      && canonicalJson(node.ui_layout) === canonicalJson(element.ui_layout);
+    if (!sourceIdentityMatches) errors.push(`${label}.layout_nodes[${index}] 未逐项继承 proposal 的元素身份、semantic_grouping、ui_layout 或 parent_element_id`);
+
+    // 同时比较最终目标矩形、中心策略和定位快照，避免仅改 bounds 或清零 offset 绕过确认。
+    const expectedGeometry = {
+      bounds: expectedFact?.bounds,
+      target_bounds: expectedFact?.target_bounds,
+      axis_alignment: expectedFact?.axis_alignment,
+      center_alignment: expectedFact?.center_alignment,
+      offset: expectedFact?.offset,
+      docking: expectedFact?.docking,
+      relative_position: expectedFact?.relative_position,
+      reference_id: expectedFact?.reference_id,
+      parent_target_bounds: expectedFact?.parent_target_bounds,
+      reference_target_bounds: expectedFact?.reference_target_bounds,
+      self_anchor: expectedFact?.self_anchor,
+      reference_anchor: expectedFact?.reference_anchor,
+      sprite_geometry: expectedFact?.sprite_geometry,
+    };
+    const actualGeometry = {
+      bounds: node?.bounds,
+      target_bounds: nodeBounds(node),
+      axis_alignment: node?.axis_alignment ?? node?.axisAlignment,
+      center_alignment: node?.center_alignment,
+      offset: node?.offset,
+      docking: node?.docking,
+      relative_position: node?.relative_position,
+      reference_id: node?.reference_id,
+      parent_target_bounds: node?.parent_target_bounds,
+      reference_target_bounds: node?.reference_target_bounds,
+      self_anchor: node?.self_anchor,
+      reference_anchor: node?.reference_anchor,
+      sprite_geometry: node?.sprite_geometry,
+    };
+    const changedGeometry = Object.keys(expectedGeometry).filter((field) => canonicalJson(actualGeometry[field]) !== canonicalJson(expectedGeometry[field]));
+    if (changedGeometry.length > 0) errors.push(`${label}.layout_nodes[${index}] 的 ${changedGeometry.join("、")} 未按绑定 center_alignment/decision/proposal 重算`);
   }
+  return expectedFacts;
 }
 
 /** 校验 review.html、layout-nodes.json 及其引用文件的真实内容和归属。 */
@@ -130,7 +207,16 @@ function validateLayoutReviewFiles(record, context, files, image, errors, label)
   const expected = { projectRoot: context.projectRoot, sceneId: record.scene_id, stateId: record.state_id, decompositionConfirmationId: record.decomposition_confirmation_id, layoutDecisionId: record.layout_decision_id, referenceFile: context.referenceFile ?? context.reference_file, proposalFile: context.proposalFile ?? context.proposal_file };
   const payload = readAndValidateLayoutReviewPayload(review.bytes, nodes.bytes, expected, errors, label);
   if (!payload) return;
-  const expectedFacts = expectedLayoutFacts(context, payload.externalNodes, errors, label);
+  const bindings = payload.bindings;
+  const references = [];
+  for (const [name, item] of [["reference", bindings.reference], ["proposal", bindings.proposal]]) if (isObject(item)) references.push([name, readBoundFile(context.projectRoot, item.file, `${label}.${name}`, errors, name === "proposal")]);
+  const proposal = references.find(([name]) => name === "proposal")?.[1];
+  let expectedFacts = null;
+  if (proposal?.json && layoutDecision?.json) {
+    expectedFacts = validateLayoutNodesAgainstProposal(proposal.json, payload.externalNodes, layoutDecision.json, record, errors, label);
+  } else {
+    errors.push(`${label} 缺少可用 proposal 或 layout decision，无法复算最终布局几何`);
+  }
   const nodeErrors = [];
   validateLayoutNodesDocument(payload.externalNodes, { ...expected, layoutNodes: expectedFacts?.filter((node) => node.is_root_container !== true), rootNodes: expectedFacts?.filter((node) => node.is_root_container === true) }, nodeErrors, `${label}.layout_nodes`);
   errors.push(...nodeErrors);
@@ -140,13 +226,8 @@ function validateLayoutReviewFiles(record, context, files, image, errors, label)
     const documentFacts = [...payload.externalNodes.layout_nodes, ...payload.externalNodes.root_nodes];
     if (!Array.isArray(annotationMetadata?.nodes) || canonicalJson(annotationMetadata.nodes) !== canonicalJson(documentFacts)) errors.push(`${label} layout-nodes.json 与标准 PNG 的实际布局 facts 不一致`);
   } catch (error) { errors.push(`${label} 无法读取标准 PNG 布局 facts：${error.message}`); }
-  const bindings = payload.bindings;
   const bindingPairs = [["layout_annotation_file", bindings.annotation?.file], ["layout_review_file", record.layout_review_file], ["layout_nodes_file", bindings.nodes?.file], ["layout_decision_file", bindings.decision?.file]];
   for (const [field, actual] of bindingPairs) if (actual !== record[field]) errors.push(`${label}.${field} 未绑定确认记录`);
-  const references = [];
-  for (const [name, item] of [["reference", bindings.reference], ["proposal", bindings.proposal]]) if (isObject(item)) references.push([name, readBoundFile(context.projectRoot, item.file, `${label}.${name}`, errors, name === "proposal")]);
-  const reference = references.find(([name]) => name === "reference")?.[1]; const proposal = references.find(([name]) => name === "proposal")?.[1];
-  if (proposal?.json) validateLayoutNodesAgainstProposal(proposal.json, payload.externalNodes, context, errors, label);
 }
 
 /** 校验独立布局确认；布局阶段必须提供上游拆解和完整审阅页上下文。 */
@@ -180,14 +261,7 @@ export function validateLayoutAnnotationConfirmation(record, context = {}, error
       try { nodesDocument = JSON.parse(nodes.bytes.toString("utf8")); } catch (error) { errors.push(`${label}.layout_nodes 不是合法 JSON：${error.message}`); }
     }
     if (layoutDecision) {
-      const decisionErrors = [];
-      const finalNodes = (context.layoutNodes ?? nodesDocument?.layout_nodes ?? []).filter((node) => node?.is_root_container !== true);
-      const elements = finalNodes.map((node) => ({ element_id: node.element_id ?? node.layout_node_id }));
-      const decisionMap = validateAutomaticLayoutDecision(layoutDecision.json, { elements, sceneId: record.scene_id, stateId: record.state_id, decompositionConfirmationId: record.decomposition_confirmation_id }, decisionErrors);
-      errors.push(...decisionErrors.map((message) => `${label}.layout_decision ${message}`));
       if (layoutDecision.json?.decision_id !== record.layout_decision_id) errors.push(`${label}.layout_decision.decision_id 未绑定确认记录`);
-      if (!decisionMap) errors.push(`${label}.layout_decision 必须为每个最终布局元素提供显式对齐`);
-      else for (const node of finalNodes) { const elementId = node.element_id ?? node.layout_node_id; const expected = node.axis_alignment ?? node.axisAlignment; const actual = decisionMap.get(elementId); if (!isObject(expected) || actual?.horizontal !== expected.horizontal || actual?.vertical !== expected.vertical) errors.push(`${label}.layout_decision.${elementId} 与最终布局节点 axis_alignment 不一致`); }
     }
     if (review && nodes && image && layoutDecision) validateLayoutReviewFiles(record, context, { review, nodes, layoutDecision }, image, errors, `${label}.layout_review`);
     if (decision) validateLayoutDecisionDocument(decision.json, record, `${label}.decision_record`, errors);

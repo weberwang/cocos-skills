@@ -13,6 +13,7 @@ import { collectImageGenerationRasterViolations } from "./visual-imagegen-format
 import { validateFixedVisualProductionMethod } from "./visual-decomposition-confirmation.mjs";
 import { canonicalJson, isPlainObject as isObject, nonEmptyString, normalizeContractPath as normalizeProjectRelativePath } from "./visual-contract-core.mjs";
 import { equalNineSliceContracts, isNineSliceStretch, isNineSliceStretchTargetAllowed, validateNineSliceContract, validateNineSliceTargetBounds } from "../../cocos-game-ui-layout/scripts/nine-slice-contract.mjs";
+import { validateDisplayNodeRole } from "../../cocos-game-ui-layout/scripts/display-node-role.mjs";
 
 export { atomicImageRequirementsEqual, deriveAtomicImageRequirements, normalizeAtomicComponents, normalizeAtomicImageRequirements };
 export { validateFixedVisualProductionMethod } from "./visual-decomposition-confirmation.mjs";
@@ -122,6 +123,9 @@ export function normalizeComponentInventory(value = {}) {
     created_at: value.created_at ?? value.createdAt ?? "",
     components: components.map((component) => ({
       component_id: component?.component_id ?? component?.componentId ?? "",
+      ...(component?.render_kind !== undefined ? { render_kind: component.render_kind } : {}),
+      ...(component?.element_type !== undefined ? { element_type: component.element_type } : {}),
+      ...(component?.is_container !== undefined ? { is_container: component.is_container } : {}),
       atomic_visual_key: component?.atomic_visual_key ?? component?.atomicVisualKey ?? "",
       role: semanticToken(component?.role ?? component?.component_role ?? ""),
       reusable: component?.reusable,
@@ -130,6 +134,7 @@ export function normalizeComponentInventory(value = {}) {
         : (Array.isArray(component?.stateCoverage) ? component.stateCoverage : null),
       placements: Array.isArray(component?.placements) ? component.placements.map((placement) => ({
         placement_id: placement?.placement_id ?? placement?.placementId ?? "",
+        ...(placement?.render_kind !== undefined ? { render_kind: placement.render_kind } : {}),
         bounds: isObject(placement?.bounds) ? { x: placement.bounds.x, y: placement.bounds.y, width: placement.bounds.width, height: placement.bounds.height } : null,
         interaction_required: placement?.interaction_required ?? placement?.interactionRequired,
         ...(placement?.nine_slice !== undefined ? { nine_slice: validateNineSliceContract(placement.nine_slice, `placement ${placement?.placement_id ?? "?"}.nine_slice`) } : {}),
@@ -337,11 +342,14 @@ function validateInventory(region, context, errors, options = {}, canonicalRegio
     seenAtomicKeys.add(component.atomic_visual_key);
     if (!nonEmptyString(component.role)) componentFail("缺少 role", { missing: `component_inventory.components[${index}].role` });
     if (typeof component.reusable !== "boolean") componentFail("reusable 必须显式为布尔值", { missing: `component_inventory.components[${index}].reusable` });
+    const displayErrors = [];
+    validateDisplayNodeRole({ ...component, owner_type: region.owner_type, region_layer: region.layer, visual_route_element_type: canonicalRegion.visual_route_analysis?.element_type }, displayErrors, `component ${component.component_id}`);
+    for (const message of displayErrors) componentFail(message);
     if (component.nine_slice !== undefined && isNineSliceStretch(component.nine_slice)) {
       // 使用规范化区域的权威视觉路线，保证 V2/V3/V4 判定一致，不按 background 名称子串推断职责。
       const routeAnalysis = canonicalRegion.visual_route_analysis;
       const routeElementType = routeAnalysis?.element_type ?? routeAnalysis?.elementType;
-      if (!isNineSliceStretchTargetAllowed({ element_type: "component", role: component.role, region_layer: region.layer, visual_route_element_type: routeElementType })) componentFail("九宫格 stretch 只能用于非背景的叶子图片皮肤，不能用于结构容器");
+      if (!isNineSliceStretchTargetAllowed({ ...component, element_type: component.element_type ?? "component", role: component.role, region_layer: region.layer, visual_route_element_type: routeElementType })) componentFail("九宫格 stretch 只能用于非背景图片或显式 Sprite 底板容器，不能用于纯结构容器");
       if (region.owner_type !== undefined && region.owner_type !== "fixed-production-visual") componentFail("九宫格 stretch 只能用于 fixed-production-visual 图片资产");
     }
     const rawComponent = Array.isArray(raw.components) ? raw.components[index] : null;

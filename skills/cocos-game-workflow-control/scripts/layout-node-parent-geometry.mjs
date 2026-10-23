@@ -5,6 +5,12 @@
  * 场景拆解、UI 布局合同和视觉资源映射入口都必须消费这里的诊断结果。
  */
 
+import { allowsVisualOverflow, positionReferenceId, validateUiPositionReferences } from "../../cocos-game-asset-integration/scripts/ui-layout-organization.mjs";
+import { validateSpriteGeometry } from "../../cocos-game-ui-layout/scripts/sprite-layout-sizing.mjs";
+import { validateContainerRootReuse } from "../../cocos-game-asset-integration/scripts/container-root-policy.mjs";
+import { isLayoutContainer } from "../../cocos-game-ui-layout/scripts/display-node-role.mjs";
+import { validateCenterAlignmentNodes } from "../../cocos-game-ui-layout/scripts/center-alignment.mjs";
+
 /** 判断是否为普通对象。 */
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -91,8 +97,10 @@ export function layoutNodeIdentityProjection(node) {
     reference_id: readLayoutNodeField(node, "reference_id", "referenceId"),
     parent_layout_node_id: readLayoutNodeField(node, "parent_layout_node_id", "parentLayoutNodeId"),
     parent_target_bounds: readLayoutNodeField(node, "parent_target_bounds", "parentTargetBounds"),
+    reference_target_bounds: readLayoutNodeField(node, "reference_target_bounds"),
     relative_position: readLayoutNodeField(node, "relative_position", "relativePosition"),
     axis_alignment: readLayoutNodeField(node, "axis_alignment", "axisAlignment"),
+    center_alignment: readLayoutNodeField(node, "center_alignment"),
     self_anchor: readLayoutNodeField(node, "self_anchor", "selfAnchor"),
     reference_anchor: readLayoutNodeField(node, "reference_anchor", "referenceAnchor"),
     offset: readLayoutNodeField(node, "offset"),
@@ -103,6 +111,8 @@ export function layoutNodeIdentityProjection(node) {
     responsive_rule: readLayoutNodeField(node, "responsive_rule", "responsiveRule"),
     planned_test_id: readLayoutNodeField(node, "planned_test_id", "plannedTestId"),
     ui_layout: readLayoutNodeField(node, "ui_layout"),
+    sprite_geometry: readLayoutNodeField(node, "sprite_geometry"),
+    render_kind: readLayoutNodeField(node, "render_kind"),
   };
 }
 
@@ -124,6 +134,18 @@ export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport,
     : null;
   if (!viewportBounds) diagnostics.push({ index: -1, node_id: "*", message: `${label} 父级几何校验需要有效 target_viewport` });
   if (!Array.isArray(nodes) || nodes.length === 0) return diagnostics;
+  const centerErrors = [];
+  // 入口统一现有合同字段后再调用纯几何模块，避免不同命名入口使用不同居中规则。
+  const centeringNodes = nodes.filter(isObject).map((node) => ({
+    ...node,
+    layout_node_id: readLayoutNodeField(node, "layout_node_id", "layoutNodeId"),
+    parent_layout_node_id: readLayoutNodeField(node, "parent_layout_node_id", "parentLayoutNodeId"),
+    axis_alignment: readLayoutNodeField(node, "axis_alignment", "axisAlignment"),
+    target_bounds: readLayoutNodeField(node, "target_bounds", "targetBounds", "bounds"),
+    parent_target_bounds: readLayoutNodeField(node, "parent_target_bounds", "parentTargetBounds"),
+  }));
+  validateCenterAlignmentNodes(centeringNodes, centerErrors, label, targetViewport);
+  for (const message of centerErrors) diagnostics.push({ index: -1, node_id: "*", message });
 
   const nodeById = new Map();
   const nodeIndexes = new Map();
@@ -158,13 +180,11 @@ export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport,
     if (!isString(nodeId)) report(index, node, "layout_node_id 必须是非空字符串");
     if (!isString(parentId)) report(index, node, "缺少或无效 parent_layout_node_id");
     if (!isString(referenceId)) report(index, node, "缺少或无效 reference_id");
-    else if (isString(parentId) && referenceId !== parentId) report(index, node, "reference_id 必须等于 parent_layout_node_id");
+    else if (referenceId !== positionReferenceId(node, parentId)) report(index, node, "reference_id 必须等于 ui_layout.position_reference_id 或未声明时的实际父级");
     if (!isValidLayoutNodeBounds(parentBounds)) report(index, node, "parent_target_bounds 必须包含有限的 x/y 和正数 width/height");
     if (!isValidLayoutNodeBounds(targetBounds)) report(index, node, "target_bounds 必须包含有限的 x/y 和正数 width/height");
     if (!isObject(relative) || !["left", "right", "top", "bottom"].every((side) => Number.isFinite(relative[side]))) {
       report(index, node, "relative_position 必须包含有限的 left/right/top/bottom");
-    } else if (["left", "right", "top", "bottom"].some((side) => relative[side] < 0)) {
-      report(index, node, "relative_position 不允许出现负距离");
     }
     if (!isValidAxisAlignment(alignment)) report(index, node, "axis_alignment 必须声明合法 horizontal/vertical 轴向对齐");
     if (!isObject(offset) || !Number.isFinite(offset.x) || !Number.isFinite(offset.y)) report(index, node, "effect-image offset 必须是由显式轴向对齐决策推导的有限 x/y 数值");
@@ -173,6 +193,7 @@ export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport,
 
     if (isString(parentId)) {
       if (!stableRoots.has(parentId) && !nodeById.has(parentId)) report(index, node, `parent_layout_node_id 引用不存在的布局节点或稳定根：${parentId}`);
+      if (nodeById.has(parentId) && !isLayoutContainer(nodeById.get(parentId))) report(index, node, "parent_layout_node_id 必须引用显式容器，底板图片须声明兼任父容器");
       if (parentId === nodeId) report(index, node, "parent_layout_node_id 不能自引用");
       if (nodeById.has(parentId)) parentById.set(nodeId, parentId);
     }
@@ -195,7 +216,23 @@ export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport,
   }
   for (const nodeId of [...parentById.keys()].sort()) visit(nodeId);
 
-  let safeAreaBounds;
+  const canonicalNodes = nodes.filter(isObject).map((node) => ({
+    element_id: readLayoutNodeField(node, "layout_node_id", "layoutNodeId"),
+    parent_element_id: readLayoutNodeField(node, "parent_layout_node_id", "parentLayoutNodeId"),
+    ui_layout: node.ui_layout, scene_id: node.scene_id, state_id: node.state_id,
+    coordinate_space: node.coordinate_space, role: node.layout_role ?? node.role, region_layer: node.region_layer, visual_route_element_type: node.visual_route_element_type,
+  }));
+  const referenceErrors = [];
+  validateUiPositionReferences(canonicalNodes, referenceErrors, label);
+  validateContainerRootReuse(nodes, referenceErrors, label);
+  for (const message of referenceErrors) diagnostics.push({ index: -1, node_id: "*", message });
+
+  // 安全区参照也可能只被兄弟定位引用；冻结第一份有效根边界并复核所有快照。
+  let safeAreaBounds = nodes.filter(isObject).map((node) => {
+    if (readLayoutNodeField(node, "parent_layout_node_id", "parentLayoutNodeId") === "safe-area") return readLayoutNodeField(node, "parent_target_bounds", "parentTargetBounds");
+    if (readLayoutNodeField(node, "reference_id", "referenceId") === "safe-area") return node.reference_target_bounds;
+    return null;
+  }).find(isValidLayoutNodeBounds);
   for (const [index, node] of nodes.entries()) {
     if (!isObject(node)) continue;
     const parentId = readLayoutNodeField(node, "parent_layout_node_id", "parentLayoutNodeId");
@@ -214,7 +251,31 @@ export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport,
 
     if (!exactBoundsEqual(parentBounds, expectedParentBounds)) report(index, node, `parent_target_bounds 必须逐字段等于父节点/根的目标边界：${JSON.stringify(expectedParentBounds)}`);
     if ((parentId === "viewport" || parentId === "safe-area") && !containsBounds(viewportBounds, parentBounds)) report(index, node, "根 parent_target_bounds 必须完全位于 target_viewport 内");
-    if (!containsBounds(parentBounds, targetBounds)) report(index, node, "child target_bounds 必须完全位于 parent_target_bounds 内容框内");
+    if (!containsBounds(parentBounds, targetBounds) && (stableRoots.has(parentId) || !allowsVisualOverflow(node.ui_layout))) report(index, node, "child target_bounds 必须完全位于 parent_target_bounds 内容框内，或在非根父级下声明 visual_overflow.reason");
+    // 允许超出功能父框不代表允许越过画布或安全区；参照不同也不能放宽可见边界。
+    if (viewportBounds && !containsBounds(viewportBounds, targetBounds)) report(index, node, "target_bounds 必须完全位于 target_viewport 内");
+    let ancestor = parentId;
+    const ancestors = new Set();
+    while (nodeById.has(ancestor) && !ancestors.has(ancestor)) {
+      ancestors.add(ancestor);
+      ancestor = readLayoutNodeField(nodeById.get(ancestor), "parent_layout_node_id", "parentLayoutNodeId");
+    }
+    if (ancestor === "safe-area" && isValidLayoutNodeBounds(safeAreaBounds) && !containsBounds(safeAreaBounds, targetBounds)) report(index, node, "target_bounds 超出归属稳定根 safe-area，visual_overflow 不能放宽安全区");
+
+    const referenceId = readLayoutNodeField(node, "reference_id", "referenceId");
+    let referenceBounds;
+    if (referenceId === parentId) referenceBounds = expectedParentBounds;
+    else if (referenceId === "viewport") referenceBounds = viewportBounds;
+    else if (referenceId === "safe-area") referenceBounds = safeAreaBounds ?? viewportBounds;
+    else referenceBounds = readLayoutNodeField(nodeById.get(referenceId), "target_bounds", "targetBounds", "bounds");
+    const referenceSnapshot = node.reference_target_bounds;
+    if (!isValidLayoutNodeBounds(referenceBounds)) report(index, node, "reference_id 缺少可复核的定位参照边界");
+    else if ((referenceId !== parentId || referenceSnapshot !== undefined) && !exactBoundsEqual(referenceSnapshot, referenceBounds)) report(index, node, "reference_target_bounds 必须逐字段等于定位参照的目标边界");
+    if (stableRoots.has(referenceId) && isValidLayoutNodeBounds(referenceBounds) && !containsBounds(viewportBounds, referenceBounds)) report(index, node, "根 reference_target_bounds 必须完全位于 target_viewport 内");
+
+    const spriteErrors = [];
+    validateSpriteGeometry(node, spriteErrors, `${label}[${index}]`);
+    for (const message of spriteErrors) report(index, node, message);
 
     const relative = readLayoutNodeField(node, "relative_position", "relativePosition");
     const alignment = readLayoutNodeField(node, "axis_alignment", "axisAlignment");
@@ -228,7 +289,7 @@ export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport,
     };
     for (const side of ["left", "right", "top", "bottom"]) if (!nearlyEqual(relative[side], expectedRelative[side])) report(index, node, `relative_position.${side} 必须由 child/parent bounds 精确推导，预期 ${expectedRelative[side]}`);
     // 对齐方向由智能视觉决策提供；几何校验只验证该决策对应的 offset，避免用距离反推审美意图。
-    const expectedOffset = axisAlignmentOffset(parentBounds, targetBounds, alignment);
+    const expectedOffset = axisAlignmentOffset(referenceBounds, targetBounds, alignment);
     if (!expectedOffset || !nearlyEqual(offset.x, expectedOffset.x)) report(index, node, `offset.x 必须由显式 ${alignment.horizontal} 对齐决策推导，预期 ${expectedOffset?.x}`);
     if (!expectedOffset || !nearlyEqual(offset.y, expectedOffset.y)) report(index, node, `offset.y 必须由显式 ${alignment.vertical} 对齐决策推导，预期 ${expectedOffset?.y}`);
     const expectedAnchor = `${alignment.vertical}-${alignment.horizontal}`;

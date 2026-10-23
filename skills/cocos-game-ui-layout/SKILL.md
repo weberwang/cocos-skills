@@ -7,9 +7,9 @@ description: 为 Cocos Creator 3.x 游戏建立可验证的 UI 布局合同、�
 
 正式渲染 Node、Canvas UI 与独立显示层统一遵守[显示节点锚点与层级](references/display-object-layering.md)：具有 `UITransform` 的节点默认使用中心 `anchorPoint=(0.5, 0.5)`；例外逐对象记录原因并换算。场景须声明背景、世界、特效、HUD、瞬态层的实际层序、输入和生命周期归属，并在 V4 正式 Scene 中验证运行遮挡。
 
-UI 布局参照按[场景与弹窗尺寸参照](references/layout-hierarchy.md#场景与弹窗尺寸参照)统一确定：全屏 UI 的父级是场景，按场景逻辑尺寸相对布局；弹窗有底板时，内容按底板对应功能容器的宽高相对布局；弹窗没有底板时，按宿主场景逻辑尺寸相对布局。弹窗底板容器本身相对场景定位，底板位图与内容一起归属该容器；全屏装饰背景仍是独立显示层。安全区约束关键内容的可见范围，不替换这三种尺寸参照。
+UI 布局参照按[场景与弹窗尺寸参照](references/layout-hierarchy.md#场景与弹窗尺寸参照)统一确定：全屏 UI 的父级是场景，按场景逻辑尺寸相对布局；弹窗有底板时，内容按底板对应功能容器的宽高相对布局；弹窗没有底板时，按宿主场景逻辑尺寸相对布局。弹窗底板容器本身相对场景定位，简单结构中底板 Sprite 节点可直接兼任容器根；全屏装饰背景仍是独立显示层。安全区约束关键内容的可见范围，不替换这三种尺寸参照。
 
-效果图 V2 拆解与布局遵守[功能语义分组约束](references/functional-semantic-grouping.md)和[Cocos UI 节点组织](references/layout-hierarchy.md)：先在编号拆解图上确认位置依赖与信息分组，再由代理自动整理停靠方案并展示布局图/预览确认；不先发文字方案要求确认。位置依赖方必须成为被依赖元素所对应布局容器的子元素，共同表达同一信息且彼此无位置依赖的元素列为同组同级项。父容器职责、布局所有者、尺寸、溢出、安全区和输入归属仍在技术合同中维护；禁止按文字类型或几何最小包含关系自动归父级。
+效果图 V2 拆解与布局遵守[功能语义分组约束](references/functional-semantic-grouping.md)和[Cocos UI 节点组织](references/layout-hierarchy.md)：先在编号拆解图上确认功能归属、实际父级和独立位置参照，再由代理自动整理停靠方案并展示布局图/预览确认；不先发文字方案要求确认。位置依赖不强制直接父子：`parent_element_id`/`parent_layout_node_id` 表示真实功能、状态、交互、生命周期或布局管理归属；可选 `ui_layout.position_reference_id` 表示位置参照，省略时默认真实父级。共同表达同一信息的元素可同属功能组件并保持同级。简单“底板+图标+文本”优先由同一个底板节点兼任 `element_type=container` 和 `render_kind=sprite`，保留组件/placement 与图片资产身份，不拆成空根和底板叶子。只有真实独立职责才新增纯结构容器；它包裹可用底板与内容时须在 `ui_layout.independent_container_reason` 写明具体职责。父容器职责、布局所有者、尺寸、显式溢出、安全区和输入归属仍在技术合同中维护；禁止按类型、显示层序或最小几何包含关系自动归父级或加包装层。
 
 ## 全局控制接入
 
@@ -37,6 +37,8 @@ Creator 编辑器、AssetDB、Scene/Node/Component、Prefab 和构建操作按[C
 
 用户明确要求参考布局一致时，在已有关键项中声明适用视口和几何容差；已声明的关键矩形约束即使在 usability 模式也必须满足。这只收紧所声明的项目要求，不自动启用整屏像素差或全矩阵。实际可见主体、字形与布局矩形的差别按校准参考由用户检查。
 
+图片还原默认使用 `Sprite.SizeMode.RAW`，保留已验收 SpriteFrame 的完整未裁切原尺寸，不将布局 bounds 写入普通图片的 `UITransform.contentSize`；普通底板兼任父容器时也保留自身 RAW 图片尺寸计划。只有已冻结采用九宫格的图片使用 `Sprite.Type.SLICED` 与 `Sprite.SizeMode.CUSTOM` 并设置目标宽高。九点停靠由水平/垂直对齐、锚点和偏移表达，只描述位置意图，不是九宫格拉伸，也不触发切片或 CUSTOM。布局容器、文字与命中区域的尺寸独立管理，具体写入与重排边界见[Cocos 适配器](references/cocos-adapter.md#图片原尺寸与九宫格尺寸)。
+
 九宫格 UI 的源图生产尺寸、切片边宽和目标显示框分别声明，读取[拆解时确定九宫格](../cocos-game-asset-integration/references/nine-slice-ui.md)。V2 节点和 V3 expected asset 使用同一合同，V4 直接按此合同装配；文字默认禁止实际内容超出目标框，显式允许溢出时仍需人工检查邻项与留白。
 
 ## 核心流程
@@ -44,7 +46,7 @@ Creator 编辑器、AssetDB、Scene/Node/Component、Prefab 和构建操作按[C
 正式场景的布局校准与关键几何验收读取[布局校准与参考还原](references/layout-calibration.md)。V4 直接消费冻结 V2 布局与 V3 正式资源，在实际 Cocos Scene 中调整并复验受影响范围；布局矩形与素材可见边界分别检查，不能用可用性通过代替参考还原。
 
 1. 读取项目的 GDD/TDD、当前候选、总控审核漏斗和适用视觉阶段；确定稳定 UI ID、坐标空间、参照物、状态与平台输入。
-2. 复制 schema 1.2.0 [合同模板](assets/ui-layout-contract-template.yaml)。普通布局使用 `not-applicable` 并保持 `layout_nodes: []`；冻结视觉目标先用 `frozen-target/specified`。同时冻结上述根级视口/DPR/Camera/Input/性能字段，禁止使用旧 `targets.scale` 字段绕过新门禁。V2 先按位置依赖建立父子、按共同信息建立同级分组，代理内部维护完整技术 JSON 和 `decomposition_elements`，直接展示编号拆解图供人工确认；屏幕 UI 的 `ui_layout` 职责字段也保留在技术合同中。拆解图确认后由智能视觉判断生成逐元素 `left/center/right × top/center/bottom` 决策，再由同一入口同步生成布局 PNG、`layout-nodes.json`、`layout-decision.json`、离线 `review.html` 和 `generation-result.json`，用户直接检查最终布局图/审阅页并独立确认。无需先后确认文字提案或技术记录。随后登记由已确认元素和视觉决策共同推导的非空 `layout_nodes` 与关键对齐合同。
+2. 复制 schema 1.2.0 [合同模板](assets/ui-layout-contract-template.yaml)。普通布局使用 `not-applicable` 并保持 `layout_nodes: []`；冻结视觉目标先用 `frozen-target/specified`。同时冻结上述根级视口/DPR/Camera/Input/性能字段，禁止使用旧 `targets.scale` 字段绕过新门禁。V2 按真实职责记录父子归属，另按需声明位置参照；代理内部维护完整技术 JSON 和 `decomposition_elements`，直接展示编号拆解图供人工确认；屏幕 UI 的 `ui_layout` 职责字段也保留在技术合同中。拆解图确认后由智能视觉判断生成逐元素 `left/center/right × top/center/bottom` 决策，再由同一入口同步生成布局 PNG、`layout-nodes.json`、`layout-decision.json`、离线 `review.html` 和 `generation-result.json`，用户直接检查最终布局图/审阅页并独立确认。无需先后确认文字提案或技术记录。随后登记由已确认元素和视觉决策共同推导的非空 `layout_nodes` 与关键对齐合同。
 3. V3 正式资源验收后直接进入 V4：按[正式场景视觉还原与校准](../cocos-game-asset-integration/references/visual-alignment-authoring.md)在正式 Scene 中消费 V2 节点与布局合同、V3 验收资源，接入实际交互、动态数据和 required state。坐标、尺寸和响应式调整写入正式布局配置；冻结的 V2 节点结构仍按上游合同管理。具体 Cocos 视口、Camera、输入与幂等重排规则见[Cocos 适配参考](references/cocos-adapter.md)。
 4. specified 阶段运行结构检查 `node scripts/validate_ui_layout_contract.mjs <contract>`；verified 正式验收必须运行 `node scripts/validate_ui_layout_contract.mjs <contract> --check-files --project-root .`，读取冻结原图并检查目标/运行/parity 证据文件。
 5. 按 [证据矩阵](references/evidence-matrix.md) 生成 `orientationPolicy.allowed` 对应的代表性视口、关键状态和窄/宽尺寸证据；只支持单一方向时不验证另一方向，但仍覆盖同方向尺寸、DPR 和同页连续 resize。关键 UI/HUD 记录稳定 element/reference ID、双轴关系、目标/运行测量、实际测试 ID/状态、视觉证据和项目定义容差。V4 还必须记录 CSS/backing 尺寸、raw/effective DPR、Camera、输入命中、同页 resize 和独立 DISPLAY_LAYER 轨迹。`exact` 或明确的全覆盖需求才扩展到完整矩阵和严格 delta，方向轴仅覆盖项目支持方向。
@@ -60,13 +62,14 @@ Creator 编辑器、AssetDB、Scene/Node/Component、Prefab 和构建操作按[C
 
 V2 的布局决策顺序固定为“代理内部生成拆解事实和技术 JSON → 展示编号拆解图并人工确认 → 代理自动生成双轴对齐决策及独立布局图/审阅页 → 展示布局图并独立确认 → 冻结 V2”。用户可直接按图号指出拆解或布局需要调整，代理更新技术事实并重出相应图片；不另行等待文字方案确认。布局生成入口仍拒绝未确认拆解、缺失决策、元素漏绑或未绑定当前 scene/state/target 的输入；两次图像确认分别绑定上游拆解、视觉决策文件和最终布局图身份。
 
-效果图节点还必须声明 `parent_layout_node_id`、`parent_target_bounds`、`relative_position` 和 `axis_alignment`。拆解确认后，智能布局结合原图构图、视觉重心和元素语义，为每个元素显式判断水平 `left/center/right` 与垂直 `top/center/bottom`；该判断不能由四边距离自动反推。`relative_position` 仍由父子 bounds 测量，用于复核包含关系和几何漂移；`offset`、`self_anchor`、`reference_anchor` 则按已选 `axis_alignment` 计算。`reference_id` 必须等于父 ID，父级仅可为具体节点或 `viewport`/`safe-area`，不得循环。视觉决策文件及其 ID 会进入布局图和确认记录，缺失决策必须阻断布局生成。
+效果图节点还必须声明 `parent_layout_node_id`、`parent_target_bounds`、`reference_id`、`relative_position` 和 `axis_alignment`。拆解确认后，智能布局结合原图构图、视觉重心和元素语义，为每个元素显式判断水平 `left/center/right` 与垂直 `top/center/bottom`；中心轴按[严格居中、中心参照与组合居中](references/center-alignment.md)决定是否保留偏移。该判断不能由四边距离自动反推。`relative_position` 始终按实际父框测量；只有 `ui_layout.visual_overflow.reason` 明确声明时，子项才可超出非根父框，父框尺寸不扩大。`offset`、`self_anchor`、`reference_anchor` 则按有效定位参照与 `axis_alignment` 计算。省略 `position_reference_id` 时 `reference_id` 等于真实父 ID；显式参照可指向同 scene/state、同坐标空间的兄弟节点（可为叶子）、祖先节点或稳定根 `viewport`/`safe-area`，不允许跨分支引用任意叶子。`parent_target_bounds` 记录实际父框。生成的节点快照总包含 `reference_target_bounds`；底层合同使用同父参照时可省略该冗余字段并由 `parent_target_bounds` 推导，只有独立参照才必须显式声明且逐字段匹配目标 bounds。父边和定位参照边合并后不得有环，viewport、安全区、裁切和交互约束继续有效。视觉决策文件及其 ID 会进入布局图和确认记录，缺失决策必须阻断布局生成。
 
 ## 资源导航
 
 场景 `display_layer_planning` 只记录 scene master 与常驻 HUD。modal/popup 等瞬态弹窗建立独立 DISPLAY_LAYER Work Item，在自身合同中记录宿主场景、生命周期、输入阻断、层级、遮罩、焦点恢复和响应式事实，并于自身 V4 同屏验证打开→交互→关闭后的底层布局恢复。弹窗证据仍绑定 scene/layer/host，但不进入宿主场景验收。
 
 - 需要字段、关系表达或不变量写法时，读取 [references/layout-contract.md](references/layout-contract.md)。
+- 需要严格居中、带理由的中心偏移或图文组合整体居中时，读取 [references/center-alignment.md](references/center-alignment.md)。
 - 需要 Creator `Canvas`、`UITransform`、`Widget`、`Camera`、坐标转换、resize 或重排边界时，读取 [references/cocos-adapter.md](references/cocos-adapter.md)。
 - 需要对象默认锚点、例外或跨层合成顺序时，读取 [references/display-object-layering.md](references/display-object-layering.md)。
 - 需要 UI 根节点、父容器职责、`ui_layout` 字段或 V1/V2/V3/V4 节点组织规则时，读取 [references/layout-hierarchy.md](references/layout-hierarchy.md)。

@@ -55,18 +55,143 @@ test("拆解元素要求 ui_layout，非根父子和空容器必须说明实际�
   }
 });
 
-test("缺 parent、part 挂 region、容器环和越界父级均被拒绝", () => {
+test("功能类别不限制容器父级，但缺 parent、容器环和越界父级仍被拒绝", () => {
   const missing = validElements(); delete missing[3].parent_element_id;
   const missingErrors = []; validateSemanticGrouping(missing, { canvas: CANVAS }, missingErrors, "missing"); assert(missingErrors.some((message) => message.includes("parent_element_id")));
 
-  const wrongParent = validElements(); wrongParent[2].parent_element_id = "hud";
-  const wrongErrors = []; validateSemanticGrouping(wrongParent, { canvas: CANVAS }, wrongErrors, "part-parent"); assert(wrongErrors.some((message) => message.includes("层级不匹配")));
+  const partInRegion = validElements(); partInRegion[2].parent_element_id = "hud";
+  const partErrors = []; validateSemanticGrouping(partInRegion, { canvas: CANVAS }, partErrors, "part-parent"); assert.deepEqual(partErrors, []);
 
   const cycle = validElements(); cycle[0].parent_element_id = "entry";
   const cycleErrors = []; validateSemanticGrouping(cycle, { canvas: CANVAS }, cycleErrors, "cycle"); assert(cycleErrors.some((message) => message.includes("循环")));
 
   const outside = validElements(); outside[2].bounds.x = 80;
   const outsideErrors = []; validateSemanticGrouping(outside, { canvas: CANVAS }, outsideErrors, "outside"); assert(outsideErrors.some((message) => message.includes("超出显式父级")));
+});
+
+test("容器可在组件内部表达 region，部件可直接归属 region", () => {
+  const elements = validElements();
+  elements.push({ element_id: "inner-region", element_type: "container", role: "region", bounds: { x: 10, y: 10, width: 50, height: 20 }, scene_id: "main", state_id: "default", region_id: "hud", component_id: "entry-content", placement_id: "entry-content", parent_element_id: "entry", semantic_grouping: { kind: "region", rationale: "入口内需要独立管理的内容区域" }, ui_layout: { grouping_basis: ["LAYOUT"], layout_owner: "PARENT", size_policy: "FIXED", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "NONE" }, empty_container: false });
+  elements[2].parent_element_id = "inner-region";
+  const errors = []; validateSemanticGrouping(elements, { canvas: CANVAS }, errors, "nested-region");
+  assert.deepEqual(errors, []);
+});
+
+test("仅有理由的普通视觉溢出允许子项超出功能父级，根边界仍不可越过", () => {
+  const decorated = validElements();
+  decorated[2].bounds.x = 82;
+  decorated[2].ui_layout.visual_overflow = { reason: "右上角徽标叠加在图标边缘" };
+  const decoratedErrors = []; validateSemanticGrouping(decorated, { canvas: CANVAS }, decoratedErrors, "decorated");
+  assert.deepEqual(decoratedErrors, []);
+
+  const noReason = validElements();
+  noReason[2].bounds.x = 82;
+  noReason[2].ui_layout.visual_overflow = { reason: " " };
+  const noReasonErrors = []; validateSemanticGrouping(noReason, { canvas: CANVAS }, noReasonErrors, "no-reason");
+  assert(noReasonErrors.some((message) => message.includes("超出显式父级")));
+
+  const rootOverflow = validElements();
+  rootOverflow[4].bounds.x = 115;
+  rootOverflow[4].bounds.width = 10;
+  rootOverflow[4].ui_layout.visual_overflow = { reason: "根节点不接受溢出" };
+  const rootErrors = []; validateSemanticGrouping(rootOverflow, { canvas: CANVAS }, rootErrors, "root-overflow");
+  assert(rootErrors.some((message) => message.includes("超出显式父级")));
+});
+
+test("沿实际父链复核稳定根边界，角标溢出不能穿过 safe-area", () => {
+  const parentAndChildOutside = validElements();
+  parentAndChildOutside[0].parent_element_id = "safe-area";
+  parentAndChildOutside[1].bounds = { x: 70, y: 8, width: 30, height: 24 };
+  parentAndChildOutside[2].bounds = { x: 90, y: 12, width: 10, height: 12 };
+  parentAndChildOutside[3].bounds = { x: 75, y: 12, width: 12, height: 12 };
+  const ancestorErrors = [];
+  validateSemanticGrouping(parentAndChildOutside, { canvas: CANVAS, rootBounds: { "safe-area": { x: 0, y: 0, width: 90, height: 40 } } }, ancestorErrors, "ancestor-boundary");
+  assert(!ancestorErrors.some((message) => message.includes("entry-icon.bounds 超出显式父级 bounds")));
+  assert(ancestorErrors.some((message) => message.includes("entry-icon.bounds 超出所属稳定根 safe-area")));
+
+  const cornerCrossesSafeArea = validElements();
+  cornerCrossesSafeArea[0].parent_element_id = "safe-area";
+  cornerCrossesSafeArea[0].bounds = { x: 8, y: 8, width: 80, height: 32 };
+  cornerCrossesSafeArea[2].bounds = { x: 80, y: 12, width: 12, height: 12 };
+  cornerCrossesSafeArea[2].ui_layout.visual_overflow = { reason: "角标在入口右上角突出" };
+  const safeAreaErrors = [];
+  validateSemanticGrouping(cornerCrossesSafeArea, { canvas: CANVAS, rootBounds: { "safe-area": { x: 8, y: 8, width: 80, height: 32 } } }, safeAreaErrors, "safe-area-overflow");
+  assert(!safeAreaErrors.some((message) => message.includes("entry.bounds 超出所属稳定根 safe-area")));
+  assert(!safeAreaErrors.some((message) => message.includes("entry-icon.bounds 超出显式父级 bounds")));
+  assert(safeAreaErrors.some((message) => message.includes("entry-icon.bounds 超出所属稳定根 safe-area")));
+  assert(!safeAreaErrors.some((message) => message.includes("entry-icon.bounds 超出所属稳定根 viewport")));
+
+  const brokenRoot = validElements();
+  brokenRoot[1].parent_element_id = "missing-parent";
+  const brokenRootErrors = [];
+  validateSemanticGrouping(brokenRoot, { canvas: CANVAS }, brokenRootErrors, "broken-root");
+  assert(brokenRootErrors.some((message) => message.includes("parent_element_id 必须引用已声明容器或稳定根")));
+});
+
+test("定位参照支持同级和稳定根，并拒绝缺失、自指、背景及上下文不一致", () => {
+  const stableRoot = validElements();
+  stableRoot[4].ui_layout.position_reference_id = "safe-area";
+  stableRoot[4].ui_layout.grouping_basis = ["POSITION"];
+  const stableRootErrors = []; validateSemanticGrouping(stableRoot, { canvas: CANVAS }, stableRootErrors, "stable-root");
+  assert.deepEqual(stableRootErrors, []);
+
+  const missing = validElements();
+  missing[2].ui_layout.position_reference_id = "absent";
+  missing[2].ui_layout.grouping_basis = ["POSITION"];
+  const missingErrors = []; validateSemanticGrouping(missing, { canvas: CANVAS }, missingErrors, "missing-reference");
+  assert(missingErrors.some((message) => message.includes("position_reference_id") && message.includes("未引用")));
+
+  const self = validElements();
+  self[2].ui_layout.position_reference_id = "entry-icon";
+  self[2].ui_layout.grouping_basis = ["POSITION"];
+  const selfErrors = []; validateSemanticGrouping(self, { canvas: CANVAS }, selfErrors, "self-reference");
+  assert(selfErrors.some((message) => message.includes("position_reference_id") && message.includes("自指")));
+
+  const background = validElements();
+  background.push({ ...structuredClone(background[4]), element_id: "bg", role: "background", region_layer: "background", component_id: "bg", placement_id: "bg", semantic_grouping: { kind: "standalone", rationale: "全屏背景图片" } });
+  background[4].ui_layout.position_reference_id = "bg";
+  background[4].ui_layout.grouping_basis = ["POSITION"];
+  const backgroundErrors = []; validateSemanticGrouping(background, { canvas: CANVAS }, backgroundErrors, "background-reference");
+  assert(backgroundErrors.some((message) => message.includes("position_reference_id") && message.includes("背景")));
+
+  const crossScene = validElements();
+  crossScene[2].ui_layout.position_reference_id = "entry-title";
+  crossScene[2].ui_layout.grouping_basis = ["POSITION"];
+  crossScene[3].scene_id = "other-scene";
+  const sceneErrors = []; validateSemanticGrouping(crossScene, { canvas: CANVAS }, sceneErrors, "cross-scene");
+  assert(sceneErrors.some((message) => message.includes("position_reference_id") && message.includes("scene_id")));
+
+  const crossState = validElements();
+  crossState[2].ui_layout.position_reference_id = "entry-title";
+  crossState[2].ui_layout.grouping_basis = ["POSITION"];
+  crossState[3].state_id = "selected";
+  const stateErrors = []; validateSemanticGrouping(crossState, { canvas: CANVAS }, stateErrors, "cross-state-reference");
+  assert(stateErrors.some((message) => message.includes("position_reference_id") && message.includes("state_id")));
+
+  const crossSpace = validElements();
+  crossSpace[2].coordinate_space = "viewport";
+  crossSpace[3].coordinate_space = "safe-area";
+  crossSpace[2].ui_layout.position_reference_id = "entry-title";
+  crossSpace[2].ui_layout.grouping_basis = ["POSITION"];
+  const spaceErrors = []; validateSemanticGrouping(crossSpace, { canvas: CANVAS }, spaceErrors, "cross-space-reference");
+  assert(spaceErrors.some((message) => message.includes("position_reference_id") && message.includes("coordinate_space")));
+});
+
+test("定位边与父子边合并后拒绝兄弟互指和祖先引用后代", () => {
+  const siblings = validElements();
+  siblings[2].ui_layout.position_reference_id = "entry-title";
+  siblings[2].ui_layout.grouping_basis = ["POSITION"];
+  siblings[3].ui_layout.position_reference_id = "entry-icon";
+  siblings[3].ui_layout.grouping_basis = ["POSITION"];
+  const siblingErrors = []; validateSemanticGrouping(siblings, { canvas: CANVAS }, siblingErrors, "sibling-cycle");
+  assert(siblingErrors.some((message) => message.includes("定位依赖") && message.includes("循环")));
+
+  const ancestor = validElements();
+  ancestor[1].ui_layout.position_reference_id = "entry-icon";
+  ancestor[1].ui_layout.grouping_basis = ["POSITION"];
+  const ancestorErrors = []; validateSemanticGrouping(ancestor, { canvas: CANVAS }, ancestorErrors, "ancestor-cycle");
+  assert(ancestorErrors.some((message) => message.includes("定位依赖") && message.includes("循环")));
+  assert(ancestorErrors.some((message) => message.includes("position_reference_id") && message.includes("同级、祖先")));
 });
 
 test("缺语义、空理由、非法 kind、保留根 ID 和跨 scene/state 父级均停留待补充", () => {

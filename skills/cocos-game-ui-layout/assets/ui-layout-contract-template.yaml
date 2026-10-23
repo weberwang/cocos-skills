@@ -658,6 +658,12 @@
       "width": 390,
       "height": 844
     },
+    "reference_target_bounds": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 844
+    },
     "relative_position": {
       "left": 115,
       "right": 115,
@@ -667,6 +673,11 @@
     "axis_alignment": {
       "horizontal": "center",
       "vertical": "top"
+    },
+    "center_alignment": {
+      "horizontal": {
+        "mode": "strict"
+      }
     },
     "self_anchor": "top-center",
     "reference_anchor": "top-center",

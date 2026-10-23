@@ -22,8 +22,8 @@ function fixture({ longName = false } = {}) {
   const originalBytes = png(120, 80);
   const annotationBytes = png(4, 4, 180);
   const targetSha = sha256(originalBytes);
-  const parent = { x: 10, y: 10, width: 90, height: 60 };
-  const child = { x: 22, y: 24, width: 30, height: 20 };
+  const parent = { x: 15, y: 10, width: 90, height: 60 };
+  const child = { x: 27, y: 24, width: 30, height: 20 };
   const nodesDocument = {
     schema: "cocos-layout-nodes/1.0",
     status: "candidate-awaiting-layout-confirmation",
@@ -48,7 +48,7 @@ function fixture({ longName = false } = {}) {
         parent_target_bounds: { x: 0, y: 0, width: 120, height: 80 },
         target_bounds: parent,
         axis_alignment: { horizontal: "center", vertical: "center" },
-        offset: { x: -5, y: 0 },
+        offset: { x: 0, y: 0 },
         child_layout_node_ids: ["visual:title"],
         marker_id: "L01",
         parent_marker_id: "R01",

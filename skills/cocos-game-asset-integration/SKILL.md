@@ -32,7 +32,7 @@ MCP 若提供的 Build/Preview 操作只打开构建面板或报告 worker ready
 
 ### 场景还原合同（effect-image 强制）
 
-V2 拆解先遵守[功能语义分组约束](../cocos-game-ui-layout/references/functional-semantic-grouping.md)：确认区域、功能组件、部件和独立元素的位置依赖、信息分组与理由；位置依赖方划为被依赖元素所对应布局容器的子元素，共同表达同一信息且彼此无位置依赖的元素列为同组同级项。布局不得按文字类型或几何包含重新分组，归属不明留在拆解确认，不自动生成可放行布局。
+V2 拆解先遵守[功能语义分组约束](../cocos-game-ui-layout/references/functional-semantic-grouping.md)：确认区域、功能组件、部件和独立元素的功能归属及理由，再分别记录真实父级与位置参照。位置依赖方不必成为被参照元素的直接子项；`parent_element_id` 表达功能/状态/交互/生命周期或真实布局管理归属，可选 `ui_layout.position_reference_id` 表达定位依据，省略时默认实际父级。共同表达同一信息的元素可同属组件并保持同级。简单“底板+图标+文本”优先由底板 Sprite 节点兼任容器根，使用 `element_type=container`、`render_kind=sprite`、`kind=component|region` 并保留自身 `component_id`/`placement_id` 图片身份；不拆成空根和底板叶子。只有确有独立职责时才新增纯结构容器；若它包裹可用底板和内容，必须填写 `ui_layout.independent_container_reason`。布局不得按文字类型、元素类别、显示层序或几何包含重新分组，也不得为满足校验增加包装容器；归属不明留在拆解确认，不自动生成可放行布局。中心轴严格居中、显式中心偏移、图文组合整体居中及位置确认规则按[居中策略与组合定位](../cocos-game-ui-layout/references/center-alignment.md)执行。明确视觉溢出、RAW 原尺寸及九宫格尺寸规则按 UI 布局参考执行。
 
 `effect-image` 表示正式 Scene 的视觉事实与结构关系还原，不是独立 PNG 生产。场景 Work Item 只记录自身常驻 HUD；modal/popup 等弹窗按[独立工作项规则](../cocos-game-workflow-control/references/control-model.md#弹窗工作项与场景解耦)建立 DISPLAY_LAYER Work Item，并在 required state 冻结宿主同屏图。弹窗未完成不阻断场景 V4；弹窗自身仍须完成 V2/V3 和打开→交互→关闭/恢复的 V4 轨迹。运行态默认使用 `visual_validation.mode=usability`，只有明确精确需求时才启用严格像素/全矩阵验证。
 
@@ -64,7 +64,7 @@ V3 将当前已确认生产范围内相互独立的静态 component × required 
 
 布局生成的标准交付除 PNG 外必须包含同一候选目录的 `layout-nodes.json`、`layout-decision.json`、自包含 `review.html` 和 `generation-result.json`。布局审阅页只用于可读的人工作业，不能替代拆解确认、独立布局确认或 PNG/F2 机器门；其模板、真实文件与业务绑定、候选状态和离线边界见 [`离线布局审阅产物`](../cocos-game-ui-layout/references/layout-review-artifacts.md)。
 
-V2 拆解 UI 底板、按钮皮肤和框体时，必须按可观察固定角边与可伸展区域评估九宫格，记录适用/不适用原因及源图尺寸、四边切片值；采用九宫格时，选择随已有拆解确认冻结并贯穿 V3 小图生产与 V4 正式场景实现。具体合同读取[九宫格 UI](references/nine-slice-ui.md)，V3 生产按冻结切片参数执行。
+V2 拆解 UI 底板、按钮皮肤和框体时，必须按可观察固定角边与可伸展区域评估九宫格，记录适用/不适用原因及源图尺寸、四边切片值；采用九宫格时，选择随已有拆解确认冻结并贯穿 V3 小图生产与 V4 正式场景实现。具体合同读取[九宫格 UI](references/nine-slice-ui.md)，V3 生产按冻结切片参数执行。普通固定视觉图片派生 `sprite_geometry={type:'SIMPLE',size_mode:'RAW',content_size:null}`，使用正式 SpriteFrame 的完整未裁切原尺寸；即使底板兼任容器根并有子项，也保留 RAW 原尺寸计划。只有冻结九宫格图片派生 `SLICED + CUSTOM` 与目标宽高。九点停靠（水平/垂直对齐、锚点和偏移）表示位置意图，与九宫格纹理切片独立，不触发 CUSTOM。普通图片不得使用 `STRETCH`/`FLEX` 尺寸策略，父布局、Widget 或 Layout 不得改写其 `UITransform.contentSize`；纯结构容器、文字与命中区域的尺寸独立管理。具体边界见[图片原尺寸与九宫格尺寸](../cocos-game-ui-layout/references/cocos-adapter.md#图片原尺寸与九宫格尺寸)。
 
 ## 条件参考
 
