@@ -7,6 +7,7 @@
 
 import { validateEffectImageParentChildLayoutNodes } from "./layout-node-parent-geometry.mjs";
 import { resolveVisualValidationMode, visualGeometryDifferenceExceeds, visualBoundsOutsideViewport } from "./visual-validation-policy.mjs";
+import { validateLayoutRuntimeSnapshots } from "../../cocos-game-ui-layout/scripts/widget-runtime.mjs";
 
 /** 判断是否为普通对象。 */
 function isObject(value) {
@@ -372,6 +373,10 @@ export function validateLayoutGeometryFacts(contract, preacceptance, stage, erro
   const mode = resolveVisualValidationMode(options, contract);
   const exact = mode === "exact";
   const geometry = field(preacceptance, "layout_geometry", "layoutGeometry", "layout_geometry_check", "layoutGeometryCheck");
+  // 组件安全检查覆盖全部节点，独立于 usability 模式只测关键几何的规则。
+  const runtimeErrors = [];
+  validateLayoutRuntimeSnapshots(layoutInfo.nodes, geometry?.component_snapshots, runtimeErrors);
+  for (const message of runtimeErrors) errors.push(contractError(stage, contract, preacceptance, `V4 ${message}`, { returnStage: "V3/V4", rootCause: "执行问题" }));
   if (!isObject(geometry)) {
     if (exact) errors.push(contractError(stage, contract, preacceptance, "V4 同屏组合缺少 layout_geometry 几何检查", { missing: "layout_geometry", returnStage: "V3/V4", rootCause: "执行问题" }));
     return;

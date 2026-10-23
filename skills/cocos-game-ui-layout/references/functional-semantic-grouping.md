@@ -59,7 +59,7 @@ ResourceDisplay [element_type=container, render_kind=sprite, kind=component]
 
 `kind` 只分类元素自身，不能限定其父级类别，也不能要求额外建立特定类型的中间容器。`region` 与 `component` 是容器，`part` 与 `standalone` 是叶子；所有父关系仍须指向真实容器或稳定根，并满足 scene/state、引用存在、自指与联合环检查。允许视觉溢出的子项按自身 bounds 验证，不扩大父框；空容器标记须与实际子项一致。
 
-普通图片的原尺寸合同不由父子关系、参照关系、父容器 bounds 或布局策略覆盖。固定视觉图片必须以正式 SpriteFrame 的完整未裁切原尺寸使用 `SIMPLE + RAW`，`content_size` 为 `null`；仅冻结九宫格的图片使用 `SLICED + CUSTOM` 和冻结目标尺寸。父级布局、Widget 或 Layout 不得向普通图片写入 `UITransform.contentSize`，也不得将普通图片标为 `STRETCH`/`FLEX`。
+普通图片的原尺寸合同不由父子关系、参照关系、父容器 bounds 或布局策略覆盖。固定视觉图片必须以正式 SpriteFrame 的完整未裁切原尺寸使用 `SIMPLE + RAW`，`content_size` 为 `null`；运行时 `UITransform.contentSize` 仍等于该帧原尺寸。仅冻结九宫格的图片使用 `SLICED + CUSTOM` 和冻结目标尺寸。父级布局、Widget 或 Layout 不得向普通图片写入 `UITransform.contentSize`，也不得将普通图片标为 `STRETCH`/`FLEX`；经视觉合同批准的 Node 变换或反馈缩放动画不改变 RAW 内容尺寸，实际 bounds 另行验收。
 
 九点停靠是位置关系：`axis_alignment.horizontal=left|center|right` 与 `vertical=top|center|bottom` 组合成九种语义，再以 `self_anchor`、`reference_anchor` 和 `offset` 表达。中心轴的 strict/reference 选择和组合成员规则见[居中策略与组合定位](center-alignment.md)。九点停靠与纹理切片合同 `nine_slice` 完全独立；九点停靠不触发 `CUSTOM`、切片或 RAW 尺寸修改。按预期的尺寸变化选择停靠语义，不按当前坐标落入几何九等分格来强推锚点；Node 的中心 `anchorPoint` 是另一个坐标转换属性。
 

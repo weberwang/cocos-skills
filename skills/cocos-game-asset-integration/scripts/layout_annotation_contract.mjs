@@ -17,6 +17,7 @@ import { deriveSpriteGeometry, validateSpriteGeometry } from "../../cocos-game-u
 import { hasSpriteRendering, validateDisplayNodeRole } from "../../cocos-game-ui-layout/scripts/display-node-role.mjs";
 import { validateContainerRootReuse } from "./container-root-policy.mjs";
 import { deriveLayoutExecutionPlans, validateLayoutExecutionNodes } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
+import { resolveLayoutRootBounds } from "../../cocos-game-ui-layout/scripts/layout-root-bounds.mjs";
 
 export const LAYOUT_ANNOTATION_SCHEMA = "layout-annotation/png/1";
 export const LAYOUT_ANNOTATION_LAYOUT = "image-plus-right-panel";
@@ -176,12 +177,13 @@ export function deriveAutomaticLayoutFacts(layoutNodes, canvas, context = {}) {
   validateCenterAlignmentNodes(layoutNodes, centerErrors, "布局节点", canvas);
   if (centerErrors.length) throw new Error(centerErrors[0]);
   const rootBounds = { x: 0, y: 0, width: canvas.width, height: canvas.height }; const facts = [];
+  const stableRootBounds = resolveLayoutRootBounds(layoutNodes, canvas, "布局节点");
   for (const rootId of rootIds) children.set(rootId, children.get(rootId) ?? []);
   const depthOf = (id, trail = []) => {
     if (trail.includes(id)) throw new Error(`布局父子关系存在循环：${[...trail, id].join(" -> ")}`);
     const item = source.get(id); return item ? depthOf(item.parentId, [...trail, id]) + 1 : 0;
   };
-  const parentBoundsOf = (parentId) => ROOT_IDS.has(parentId) ? rootBounds : source.get(parentId)?.bounds;
+  const parentBoundsOf = (parentId) => ROOT_IDS.has(parentId) ? stableRootBounds.get(parentId) : source.get(parentId)?.bounds;
   // source 按确认 proposal 的元素顺序建立；这里只做几何计算，不重排公开布局节点。
   for (const item of source.values()) {
     const parentBounds = parentBoundsOf(item.parentId); if (!parentBounds) throw new Error(`布局节点 ${item.id} 缺少父容器 bounds`);
@@ -207,7 +209,8 @@ export function deriveAutomaticLayoutFacts(layoutNodes, canvas, context = {}) {
     facts.push({ layout_node_id: item.id, element_id: field(item.node, "element_id", "elementId", "region_id", "regionId") ?? item.id, element_type: field(item.node, "element_type", "elementType") ?? (isContainer ? "container" : "component"), ...(item.node.render_kind !== undefined ? { render_kind: item.node.render_kind } : {}), display_name_zh: displayNameZh ?? null, display_name: displayNameZh ?? field(item.node, "display_name", "displayName", "label", "name") ?? null, layout_role: field(item.node, "layout_role", "layoutRole", "role", "node_type", "nodeType") ?? null, parent_layout_node_id: item.parentId, parent_element_id: field(item.node, "parent_element_id", "parentElementId") ?? item.parentId, reference_id: referenceId, parent_target_bounds: parentBounds, reference_target_bounds: referenceBounds, ...(spriteGeometry ? { sprite_geometry: spriteGeometry } : {}), depth, color: colorForLayoutDepth(depth), bounds: item.bounds, target_bounds: item.bounds, is_container: isContainer, empty_container: isContainer && childIds.length === 0, semantic_grouping: field(item.node, "semantic_grouping") ?? null, ui_layout: field(item.node, "ui_layout") ?? null, ...(item.node.layout_execution !== undefined ? { layout_execution: item.node.layout_execution } : {}), ...(nineSlice !== undefined ? { nine_slice: nineSlice } : {}), ...(item.node.nine_slice_decision_required === true ? { nine_slice_decision_required: true } : {}), ...(item.node.owner_type ? { owner_type: item.node.owner_type } : {}), ...(item.node.region_layer ? { region_layer: item.node.region_layer } : {}), ...(item.node.visual_route_element_type ? { visual_route_element_type: item.node.visual_route_element_type } : {}), region_id: field(item.node, "region_id", "regionId") ?? null, component_id: field(item.node, "component_id", "componentId") ?? null, placement_id: field(item.node, "placement_id", "placementId") ?? null, child_layout_node_ids: childIds, relative_position: relative, axis_alignment: alignment, ...(item.node.center_alignment !== undefined ? { center_alignment: item.node.center_alignment } : {}), offset, self_anchor: selfAnchor, reference_anchor: referenceAnchor, docking: { horizontal: alignment.horizontal, vertical: alignment.vertical, self_anchor: selfAnchor, reference_anchor: referenceAnchor, offset }, is_root_container: false });
   }
   for (const rootId of rootIds) {
-    const childIds = (children.get(rootId) ?? []).slice(); facts.push({ layout_node_id: rootId, element_id: rootId, display_name: rootId === "safe-area" ? "安全区域" : "根视口", layout_role: "root", parent_layout_node_id: null, parent_element_id: null, reference_id: null, parent_target_bounds: null, depth: 0, color: colorForLayoutDepth(0), bounds: rootBounds, target_bounds: rootBounds, is_container: true, empty_container: childIds.length === 0, semantic_grouping: null, ui_layout: null, child_layout_node_ids: childIds, relative_position: null, axis_alignment: null, offset: null, self_anchor: null, reference_anchor: null, docking: null, is_root_container: true });
+    const rootTargetBounds = stableRootBounds.get(rootId);
+    const childIds = (children.get(rootId) ?? []).slice(); facts.push({ layout_node_id: rootId, element_id: rootId, display_name: rootId === "safe-area" ? "安全区域" : "根视口", layout_role: "root", parent_layout_node_id: null, parent_element_id: null, reference_id: null, parent_target_bounds: null, depth: 0, color: colorForLayoutDepth(0), bounds: rootTargetBounds, target_bounds: rootTargetBounds, is_container: true, empty_container: childIds.length === 0, semantic_grouping: null, ui_layout: null, child_layout_node_ids: childIds, relative_position: null, axis_alignment: null, offset: null, self_anchor: null, reference_anchor: null, docking: null, is_root_container: true });
   }
   // 先检查输入计划，再按最终几何派生；禁止借重新生成悄悄修复被篡改的 Widget 参数。
   const executionErrors = [];

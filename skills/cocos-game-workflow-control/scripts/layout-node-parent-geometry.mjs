@@ -169,6 +169,8 @@ export function validateEffectImageParentChildLayoutNodes(nodes, targetViewport,
       report(index, node, "必须是对象");
       continue;
     }
+    // 合成根只存在于 root_nodes；业务节点不能借根标记跳过执行计划与控制权检查。
+    if (node.is_root_container === true) report(index, node, "layout_nodes 必须是非 root 业务节点，不能声明 is_root_container=true");
     const nodeId = readLayoutNodeField(node, "layout_node_id", "layoutNodeId");
     const parentId = readLayoutNodeField(node, "parent_layout_node_id", "parentLayoutNodeId");
     const referenceId = readLayoutNodeField(node, "reference_id", "referenceId");

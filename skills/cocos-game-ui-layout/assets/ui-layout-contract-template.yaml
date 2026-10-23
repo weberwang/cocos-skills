@@ -654,21 +654,21 @@
     "parent_layout_node_id": "safe-area",
     "parent_target_bounds": {
       "x": 0,
-      "y": 0,
+      "y": 47,
       "width": 390,
-      "height": 844
+      "height": 763
     },
     "reference_target_bounds": {
       "x": 0,
-      "y": 0,
+      "y": 47,
       "width": 390,
-      "height": 844
+      "height": 763
     },
     "relative_position": {
       "left": 115,
       "right": 115,
       "top": 32,
-      "bottom": 764
+      "bottom": 683
     },
     "axis_alignment": {
       "horizontal": "center",
@@ -687,7 +687,7 @@
     },
     "target_bounds": {
       "x": 115,
-      "y": 32,
+      "y": 79,
       "width": 160,
       "height": 48
     },
@@ -699,6 +699,7 @@
       "layout_owner": "SELF",
       "position_driver": "SHARED",
       "size_policy": "CONTENT",
+      "size_driver": "CONTENT",
       "overflow_policy": "KEEP_VISIBLE",
       "safe_area_policy": "INSIDE_SAFE_AREA",
       "interaction_policy": "NONE"

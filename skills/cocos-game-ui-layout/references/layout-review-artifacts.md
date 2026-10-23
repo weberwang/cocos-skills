@@ -38,9 +38,11 @@
 
 审阅页不建立坐标、父子关系、定位参照、对齐规则或名称数据的副本。它只读取同批 `layout-nodes.json` 和生成结果绑定的冻结参考图；布局节点的 `target_bounds`、`parent_target_bounds`、`reference_target_bounds`、`relative_position`、`reference_id`、`axis_alignment`、适用时的规范化 `center_alignment`、`self_anchor`、`reference_anchor` 和 `offset` 是唯一事实来源。布局 PNG 仍由确定性渲染器生成并接受现有的 PNG 魔数、尺寸、metadata、节点、编号和像素检查。
 
+`root_nodes.viewport` 是完整逻辑视口；`root_nodes.safe-area` 必须是本批实际读取的安全区小矩形。所有以 `safe-area` 为父级或参照的节点，快照矩形必须和根记录逐字段一致，审阅页只展示该矩形，不从缺失字段退回全屏。根记录必须使用保留 ID、`is_root_container: true` 和显式 `parent_layout_node_id: null`；业务 `layout_nodes` 不得占用根 ID 或标记 `is_root_container: true`，输出快照中的 `false` 不构成根身份。根记录是合成几何，不能据此声称存在同名 Creator Node 或 Widget target。
+
 生成器和文件门必须读取实际文件，不要求提供或复算 SHA：
 
-- 每个实际父级和有效定位参照都必须存在于同一 scene/state 与坐标空间。父边和参照边不能自引用，合并后的关系图不得成环；父框、参照目标框、相对父框的四边距离和 viewport 边界必须逐项校验。只有明确的 `ui_layout.visual_overflow.reason` 才允许子项超出非根父框，并且不扩展父框，也不豁免 viewport、安全区、裁切与交互约束。
+- 每个实际父级和有效定位参照都必须存在于同一 scene/state 与坐标空间。父边和参照边不能自引用，合并后的关系图不得成环；父框、参照目标框、相对父框的四边距离和 viewport 边界必须逐项校验。`safe-area` 根快照必须绑定本批实际安全区，所有引用该根的父框/参照框必须逐字段相同。只有明确的 `ui_layout.visual_overflow.reason` 才允许子项超出非根父框，并且不扩展父框，也不豁免 viewport、安全区、裁切与交互约束。
 - 必须读取已绑定 proposal 的实际拆解元素，核对功能分组、实际父级、定位参照及其继承；仅让 HTML、JSON 和 PNG 互相一致不够，因为三者可能共同使用了错误关系。`semantic_grouping` 的类别、理由、父级或参照漂移不得复用旧拆解确认，缺失归属不得用最小包含容器补齐，也不得为类型/几何包含增加包装层。
 - `layout-nodes.json` 的节点顺序、节点身份、编号映射、父编号、决策 ID 和 scene/state 必须与布局 PNG 和本批决策逐项一致。缺失父节点、循环关系、非法边界、元素漏绑、调序、跨场景输入或身份不一致都应以明确错误阻断，不能静默丢节点或降级为距离猜测。
 - `review.html`、节点 JSON、决策 JSON、布局 PNG 和冻结参考图都必须存在且可读取；任何路径越界或必要文件缺失都使本批失败，SHA 变化不影响验收。页面模板的布局标识、内嵌数据和下载字节也应由校验器核对。

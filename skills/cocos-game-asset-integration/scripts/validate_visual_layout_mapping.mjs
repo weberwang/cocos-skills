@@ -1,6 +1,7 @@
 import { resolveProductionContract } from "../../cocos-game-workflow-control/scripts/visual-production-contract.mjs";
 
 import { validateEffectImageParentChildLayoutNodes } from "../../cocos-game-workflow-control/scripts/layout-node-parent-geometry.mjs";
+import { validateLayoutRuntimeSnapshots } from "../../cocos-game-ui-layout/scripts/widget-runtime.mjs";
 import { buildDecompositionElements, decompositionElementIds, validateDecompositionElements } from "./decomposition-elements.mjs";
 import { resolveVisualValidationMode, visualBoundsOutsideViewport } from "../../cocos-game-workflow-control/scripts/visual-validation-policy.mjs";
 
@@ -233,6 +234,10 @@ export function validateV4LayoutMeasurements(data, layoutBindings, errors, optio
   const exact = mode === "exact";
   const nodes = layoutBindings?.nodeById;
   if (!(nodes instanceof Map) || nodes.size === 0) { errors.push("V4 缺少可用于逐节点几何验收的 layout_nodes"); return; }
+  const contract = data?.scene_reconstruction_contract;
+  const preacceptance = contract?.combination_preacceptance ?? contract?.combinationPreacceptance;
+  const geometry = preacceptance?.layout_geometry ?? preacceptance?.layoutGeometry;
+  validateLayoutRuntimeSnapshots([...nodes.values()], geometry?.component_snapshots, errors);
   const cases = Array.isArray(data?.fidelity_cases) ? data.fidelity_cases : [];
   for (const [caseIndex, item] of cases.entries()) {
     const label = `fidelity_cases[${caseIndex}]`;

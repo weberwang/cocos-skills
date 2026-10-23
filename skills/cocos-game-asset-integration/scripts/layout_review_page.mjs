@@ -125,7 +125,7 @@ export function validateReviewNodesDocument(nodesDocument) {
     rootIds.add(root.layout_node_id);
     const rootBounds = targetBoundsOf(root);
     validateBounds(rootBounds, viewport, `nodesDocument.root_nodes[${index}].target_bounds`);
-    if (!sameBounds(rootBounds, { x: 0, y: 0, width: viewport.width, height: viewport.height })) throw new Error(`根节点 ${root.layout_node_id} bounds 必须覆盖完整冻结 viewport`);
+    if (root.layout_node_id === "viewport" && !sameBounds(rootBounds, { x: 0, y: 0, width: viewport.width, height: viewport.height })) throw new Error(`根节点 ${root.layout_node_id} bounds 必须覆盖完整冻结 viewport`);
     if (root.is_root_container !== true) throw new Error(`根节点 ${root.layout_node_id} 必须标记为 is_root_container`);
     if (root.parent_layout_node_id !== null) throw new Error(`根节点 ${root.layout_node_id} 必须显式声明空 parent_layout_node_id`);
     roots.push(root);

@@ -13,7 +13,7 @@ UI 布局参照按[场景与弹窗尺寸参照](references/layout-hierarchy.md#�
 
 ## 全局控制接入
 
-位置参照的逻辑根 `viewport`/`safe-area` 当前没有实体 Node 映射，必须由 `SHARED` 布局处理；已有实际 Canvas 父/祖先节点可作为 Widget target。位置与尺寸驱动器分开判定，Widget 定位和共享尺寸计算可顺序协作，只有同一属性出现多个并行写入者才是冲突；完整规则见 [Widget 定位策略](references/widget-layout.md)。
+位置参照根 `viewport`/`safe-area` 使用合成布局几何，不代表同名 Creator Node，也不能作为 Widget target，直接参照时由 `SHARED` 处理。`viewport` 使用当前完整逻辑视口；`safe-area` 使用整批节点统一的实际安全区矩形。已存在的实际 Canvas 等父/祖先节点才可作为 Widget target。位置与尺寸驱动器分开判定，Widget 定位和共享或自身 Layout 尺寸计算可顺序协作，只有同一属性出现多个并行写入者才是冲突；V4 组件快照规则见 [Widget 运行快照](references/widget-runtime-evidence.md)，完整策略见 [Widget 定位策略](references/widget-layout.md)。
 
 控制面边界：可提议、可审查、可在当前用户任务的 Work Item 范围内修改，且必须回到 `$cocos-game-workflow-control` 审计和状态迁移；仅涉及外部写入、付费、真机、破坏性或发布副作用的 A4-A6 操作请求批准，普通可恢复的本地文件清理沿任务执行。
 
@@ -39,7 +39,7 @@ Creator 编辑器、AssetDB、Scene/Node/Component、Prefab 和构建操作按[C
 
 用户明确要求参考布局一致时，在已有关键项中声明适用视口和几何容差；已声明的关键矩形约束即使在 usability 模式也必须满足。这只收紧所声明的项目要求，不自动启用整屏像素差或全矩阵。实际可见主体、字形与布局矩形的差别按校准参考由用户检查。
 
-图片还原默认使用 `Sprite.SizeMode.RAW`，保留已验收 SpriteFrame 的完整未裁切原尺寸，不将布局 bounds 写入普通图片的 `UITransform.contentSize`；普通底板兼任父容器时也保留自身 RAW 图片尺寸计划。只有已冻结采用九宫格的图片使用 `Sprite.Type.SLICED` 与 `Sprite.SizeMode.CUSTOM` 并设置目标宽高。九点停靠由水平/垂直对齐、锚点和偏移表达，只描述位置意图，不是九宫格拉伸，也不触发切片或 CUSTOM。布局容器、文字与命中区域的尺寸独立管理，具体写入与重排边界见[Cocos 适配器](references/cocos-adapter.md#图片原尺寸与九宫格尺寸)。
+图片还原默认使用 `Sprite.SizeMode.RAW`，保留已验收 SpriteFrame 的完整未裁切原尺寸；运行时 `UITransform.contentSize` 等于正式 SpriteFrame 原尺寸，不将布局 bounds 写入普通图片的内容尺寸。RAW 保护不禁止 Node `scale`、缩放动画或非单位 SHARED 坐标变换，视觉 bounds 仍按几何合同独立验收；普通底板兼任父容器时也保留自身 RAW 图片尺寸计划。只有已冻结采用九宫格的图片使用 `Sprite.Type.SLICED` 与 `Sprite.SizeMode.CUSTOM` 并设置目标宽高。九点停靠由水平/垂直对齐、锚点和偏移表达，只描述位置意图，不是九宫格拉伸，也不触发切片或 CUSTOM。布局容器、文字与命中区域的尺寸独立管理，具体写入与重排边界见[Cocos 适配器](references/cocos-adapter.md#图片原尺寸与九宫格尺寸)。
 
 九宫格 UI 的源图生产尺寸、切片边宽和目标显示框分别声明，读取[拆解时确定九宫格](../cocos-game-asset-integration/references/nine-slice-ui.md)。V2 节点和 V3 expected asset 使用同一合同，V4 直接按此合同装配；文字默认禁止实际内容超出目标框，显式允许溢出时仍需人工检查邻项与留白。
 

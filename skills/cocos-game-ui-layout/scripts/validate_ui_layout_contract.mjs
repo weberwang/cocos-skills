@@ -11,6 +11,7 @@ import { resolveVisualValidationMode, validateVisualValidationPolicy } from "../
 import { matchesRepresentativeViewport, measuredOrientation, resolveOrientationCoverage } from "../../cocos-game-workflow-control/scripts/orientation-validation-scope.mjs";
 import { validateUiInteractionTree, validateUiLayout } from "../../cocos-game-asset-integration/scripts/ui-layout-organization.mjs";
 import { hasSpriteRendering } from "./display-node-role.mjs";
+import { validateLayoutRuntimeSnapshots } from "./widget-runtime.mjs";
 
 const ROOT_REQUIRED = ["schema_version", "contract_id", "contract_version", "scope", "fidelity", "frozen_visual_target", "logicalViewportSpace", "designResolutionPolicy", "canvasBackingPolicy", "runtimeDprPolicy", "maxRuntimeDpr", "scaleMode", "cameraViewportPolicy", "cameraZoomPolicy", "cameraOriginPolicy", "inputCoordinatePolicy", "safeAreaPolicy", "resizePolicy", "orientationPolicy", "textResolutionPolicy", "assetResolutionPolicy", "performanceBudget", "representativeViewports", "requiredRuntimeEvidence", "targets", "coordinate_spaces", "regions", "layout_nodes", "content", "platform_insets", "scrolling", "dynamic_content", "overlay_rules", "breakpoints", "invariants", "critical_alignments", "parity_cases", "evidence_matrix"];
 const REQUIRED_EVIDENCE_AXES = new Set(["breakpoint-neighbors", "width", "height", "orientation", "text-scale", "localization", "safe-area", "action-state", "dpr", "dynamic-values", "scene-lifecycle", "overlay-keyboard-scroll"]);
@@ -627,6 +628,7 @@ function validateLayoutNodes(document, fidelity, binding, spaces, regionIds, err
   if (isEffectImageContract(document)) {
     // 父容器、相对测量和显式视觉对齐必须与场景拆解入口使用同一规则。
     for (const issue of validateEffectImageParentChildLayoutNodes(nodes, viewport, { label: "layout_nodes", requireExecutionPlan: true })) errors.push(issue.message);
+    if (document.fidelity?.status === "verified") validateLayoutRuntimeSnapshots(nodes, document.component_snapshots, errors, "component_snapshots");
   }
   const graph = new Map(); const stableRoots = new Set(["viewport", "safe-area"]);
   nodes.forEach((node, index) => {

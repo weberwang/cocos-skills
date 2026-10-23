@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { nativeRenderContract, nativeRuntimeEvidence } from "./native-render-test-fixtures.mjs";
 import { deriveLayoutExecutionPlans } from "../../cocos-game-ui-layout/scripts/widget-layout.mjs";
+import { attachLayoutRuntimeSnapshots } from "../../cocos-game-ui-layout/scripts/widget-runtime-test-fixtures.mjs";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
@@ -295,6 +296,7 @@ function effectImageContract() {
   value.combination_preacceptance.visual_fidelity = { contour: "passed", proportion: "passed", pose: "passed", icon_semantics: "passed", full_scene_composition: "passed" };
   value.combination_preacceptance.redesign_check = "none";
   value.combination_preacceptance.layout_geometry = {
+    component_snapshots: attachLayoutRuntimeSnapshots(value.layout_decomposition.layout_nodes, value.layout_decomposition.layout_nodes.map((node) => ({ layout_node_id: node.layout_node_id ?? node.layoutNodeId }))),
     formal_layout_structure: "MainScene/LayoutContract",
     missing_node_ids: [],
     extra_node_ids: [],

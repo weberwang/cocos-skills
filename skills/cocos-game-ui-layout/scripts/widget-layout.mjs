@@ -5,6 +5,7 @@ const STABLE_ROOTS = new Set(["viewport", "safe-area"]);
 const POSITION_DRIVERS = new Set(["WIDGET", "SHARED", "LAYOUT", "STATIC", "ANIMATION"]);
 const LAYOUT_OWNERS = new Set(["SELF", "PARENT", "EXTERNAL"]);
 const SIZE_POLICIES = new Set(["FIXED", "STRETCH", "CONTENT", "FLEX"]);
+const SIZE_DRIVERS = new Set(["SPRITE_RAW", "FIXED", "WIDGET", "LAYOUT", "SHARED", "CONTENT"]);
 const STRETCH_AXES = new Set(["horizontal", "vertical"]);
 
 /** 判断值是否为普通对象，拒绝把数组当作布局事实。 */
@@ -30,6 +31,27 @@ function isBounds(value) {
     && [value.x, value.y, value.width, value.height].every(Number.isFinite)
     && value.width > 0
     && value.height > 0;
+}
+
+/** 只接受带保留 ID、显式空父级的视口合成根，防止业务节点伪造根身份跳过校验。 */
+function isSyntheticRoot(node, label) {
+  const isReservedId = STABLE_ROOTS.has(node.layout_node_id);
+  if (node.is_root_container === true) {
+    if (!isReservedId) {
+      throw new TypeError(`${label}.is_root_container=true 仅允许用于 viewport 或 safe-area 合成根`);
+    }
+    if (!Object.hasOwn(node, "parent_layout_node_id") || node.parent_layout_node_id !== null) {
+      throw new TypeError(`${label} 合成根必须显式声明 parent_layout_node_id=null`);
+    }
+    return true;
+  }
+  if (isReservedId) {
+    throw new TypeError(`${label}.layout_node_id=${node.layout_node_id} 是保留合成根 ID，必须声明合法根身份`);
+  }
+  if (Object.hasOwn(node, "is_root_container") && typeof node.is_root_container !== "boolean") {
+    throw new TypeError(`${label}.is_root_container 必须是布尔值`);
+  }
+  return false;
 }
 
 /** 用字段和值进行递归比较，字段顺序不影响 plan 校验。 */
@@ -77,6 +99,10 @@ export function validateLayoutDriverDeclaration(uiLayout, errors = [], label = "
     && (typeof uiLayout.size_policy !== "string" || !SIZE_POLICIES.has(uiLayout.size_policy))) {
     errors.push(`${label}.size_policy 只支持 FIXED、STRETCH、CONTENT 或 FLEX`);
   }
+  if (Object.hasOwn(uiLayout, "size_driver")
+    && (typeof uiLayout.size_driver !== "string" || !SIZE_DRIVERS.has(uiLayout.size_driver))) {
+    errors.push(`${label}.size_driver 只支持 SPRITE_RAW、FIXED、WIDGET、LAYOUT、SHARED 或 CONTENT`);
+  }
 
   if (Object.hasOwn(uiLayout, "widget_stretch_axes")) {
     const axes = uiLayout.widget_stretch_axes;
@@ -96,14 +122,17 @@ export function validateLayoutDriverDeclaration(uiLayout, errors = [], label = "
 function indexNodes(nodes, label) {
   if (!Array.isArray(nodes)) throw new TypeError(`${label} 必须是数组`);
   const byId = new Map();
+  const seenIds = new Set();
   nodes.forEach((node, index) => {
     if (!isRecord(node)) throw new TypeError(`${label}[${index}] 必须是对象`);
-    if (node.is_root_container === true) return;
+    const nodeLabel = `${label}[${index}]`;
+    const isRoot = isSyntheticRoot(node, nodeLabel);
     if (!isNonEmptyString(node.layout_node_id)) {
-      throw new TypeError(`${label}[${index}].layout_node_id 必须是非空字符串`);
+      throw new TypeError(`${nodeLabel}.layout_node_id 必须是非空字符串`);
     }
-    if (byId.has(node.layout_node_id)) throw new TypeError(`${label} 存在重复 layout_node_id：${node.layout_node_id}`);
-    byId.set(node.layout_node_id, node);
+    if (seenIds.has(node.layout_node_id)) throw new TypeError(`${label} 存在重复 layout_node_id：${node.layout_node_id}`);
+    seenIds.add(node.layout_node_id);
+    if (!isRoot) byId.set(node.layout_node_id, node);
   });
   return byId;
 }
@@ -157,7 +186,7 @@ function isParentOrAncestor(node, referenceId, byId, label) {
 function collectCenterGroupMembers(nodes, byId, label) {
   const members = new Set();
   for (const node of nodes) {
-    if (node?.is_root_container === true || node?.center_alignment?.member_ids === undefined) continue;
+    if (isSyntheticRoot(node, label) || node?.center_alignment?.member_ids === undefined) continue;
     const ids = node.center_alignment.member_ids;
     if (!Array.isArray(ids) || ids.length < 2 || ids.some((id) => !isNonEmptyString(id))
       || new Set(ids).size !== ids.length || !ids.includes(node.layout_node_id)) {
@@ -232,9 +261,49 @@ function createWidget(node, bounds, referenceBounds, referenceId, stretchAxes, l
   };
 }
 
+/** 按 RAW、Widget 拉伸授权及尺寸策略解析尺寸控制者，避免位置与尺寸所有权互相推断。 */
+function deriveSizeDriver(uiLayout, isRawSprite, hasWidgetStretch, positionDriver, label) {
+  const explicitDriver = uiLayout.size_driver;
+  const sizePolicy = uiLayout.size_policy;
+  if (isRawSprite) {
+    if (explicitDriver !== undefined && explicitDriver !== "SPRITE_RAW") {
+      throw new TypeError(`${label}.ui_layout.size_driver 普通 RAW 图片只能声明 SPRITE_RAW`);
+    }
+    return "SPRITE_RAW";
+  }
+  if (hasWidgetStretch) {
+    if (explicitDriver !== undefined && explicitDriver !== "WIDGET") {
+      throw new TypeError(`${label}.ui_layout.size_driver 使用 Widget 拉伸时只能声明 WIDGET`);
+    }
+    return "WIDGET";
+  }
+  if (explicitDriver !== undefined) {
+    if (explicitDriver === "SPRITE_RAW") {
+      throw new TypeError(`${label}.ui_layout.size_driver=SPRITE_RAW 仅适用于普通 RAW 图片`);
+    }
+    if (explicitDriver === "WIDGET") {
+      throw new TypeError(`${label}.ui_layout.size_driver=WIDGET 必须同时声明 widget_stretch_axes`);
+    }
+    if (explicitDriver === "CONTENT" && sizePolicy !== "CONTENT") {
+      throw new TypeError(`${label}.ui_layout.size_driver=CONTENT 要求 size_policy=CONTENT`);
+    }
+    if (explicitDriver === "FIXED" && sizePolicy !== "FIXED") {
+      throw new TypeError(`${label}.ui_layout.size_driver=FIXED 要求 size_policy=FIXED`);
+    }
+    if (["LAYOUT", "SHARED"].includes(explicitDriver) && !["STRETCH", "FLEX"].includes(sizePolicy)) {
+      throw new TypeError(`${label}.ui_layout.size_driver=${explicitDriver} 要求 size_policy=STRETCH 或 FLEX`);
+    }
+    return explicitDriver;
+  }
+
+  if (sizePolicy === "CONTENT") return "CONTENT";
+  if (["STRETCH", "FLEX"].includes(sizePolicy)) return positionDriver === "LAYOUT" ? "LAYOUT" : "SHARED";
+  return "FIXED";
+}
+
 /** 按节点事实推导定位控制者、尺寸控制者及可选 Widget 参数。 */
 function deriveNodePlan(node, byId, centerMembers, label) {
-  if (node.is_root_container === true) return null;
+  if (isSyntheticRoot(node, label)) return null;
   const declarationErrors = validateLayoutDriverDeclaration(node.ui_layout, [], `${label}.ui_layout`);
   if (declarationErrors.length > 0) throw new TypeError(declarationErrors[0]);
 
@@ -310,25 +379,15 @@ function deriveNodePlan(node, byId, centerMembers, label) {
     widget = createWidget(node, bounds, referenceBounds, referenceId, stretchAxes, label);
   }
 
-  let sizeDriver;
-  if (isRawSprite) {
-    if (stretchAxes.length > 0) throw new TypeError(`${label} RAW 图片必须保留原尺寸，不能声明 Widget 拉伸轴`);
-    sizeDriver = "SPRITE_RAW";
-  } else if (stretchAxes.length > 0) {
-    sizeDriver = "WIDGET";
-  } else if (uiLayout.size_policy === "CONTENT") {
-    sizeDriver = "CONTENT";
-  } else if (["STRETCH", "FLEX"].includes(uiLayout.size_policy)) {
-    sizeDriver = positionDriver === "LAYOUT" ? "LAYOUT" : "SHARED";
-  } else {
-    sizeDriver = "FIXED";
-  }
+  const sizeDriver = deriveSizeDriver(uiLayout, isRawSprite, stretchAxes.length > 0, positionDriver, label);
 
   let reason;
   if (positionDriver === "WIDGET") {
     reason = sizeDriver === "SHARED"
       ? "共享布局先计算节点尺寸，Widget 再按实际父级/祖先定位；两者控制不同属性并按此顺序执行。"
-      : "定位参照是实际父级或祖先，节点拥有位置控制权，使用 Widget 保持九点关系。";
+      : sizeDriver === "LAYOUT"
+        ? "节点上的 Layout 容器先计算自身尺寸，Widget 再按实际父级/祖先定位；两者控制不同属性并按此顺序执行。"
+        : "定位参照是实际父级或祖先，节点拥有位置控制权，使用 Widget 保持九点关系。";
   } else if (positionDriver === "LAYOUT") {
     reason = "layout_owner=PARENT 且显式选择 LAYOUT，由父级布局控制位置，尺寸独立遵循 size_driver。";
   } else if (positionDriver === "ANIMATION") {
@@ -366,7 +425,7 @@ export function deriveLayoutExecutionPlans(nodes) {
   const centerMembers = collectCenterGroupMembers(nodes, byId, label);
   return nodes.map((node, index) => {
     const copy = cloneValue(node);
-    if (node.is_root_container === true) {
+    if (isSyntheticRoot(node, `${label}[${index}]`)) {
       delete copy.layout_execution;
       return copy;
     }
@@ -394,8 +453,13 @@ export function validateLayoutExecutionNodes(nodes, errors = [], label = "layout
     return errors;
   }
   for (const [index, node] of nodes.entries()) {
-    if (node.is_root_container === true) continue;
     const nodeLabel = `${label}[${index}]`;
+    if (isSyntheticRoot(node, nodeLabel)) {
+      if (Object.hasOwn(node, "layout_execution")) {
+        errors.push(`${nodeLabel}.layout_execution 合成根不允许携带执行计划`);
+      }
+      continue;
+    }
     const hasPlan = Object.hasOwn(node, "layout_execution");
     if (!hasPlan) {
       if (requirePlan) errors.push(`${nodeLabel}.layout_execution 缺失`);

@@ -17,7 +17,7 @@ const ENUMS = Object.freeze({
   safe_area_policy: new Set(["FULL_BLEED", "INSIDE_SAFE_AREA"]),
   interaction_policy: new Set(["HIT_TARGET", "DELEGATE_TO_PARENT", "NONE"]),
 });
-const FIELDS = new Set(["grouping_basis", ...Object.keys(ENUMS), "minimum_size", "position_reference_id", "visual_overflow", "independent_container_reason", "position_driver", "widget_stretch_axes"]);
+const FIELDS = new Set(["grouping_basis", ...Object.keys(ENUMS), "minimum_size", "position_reference_id", "visual_overflow", "independent_container_reason", "position_driver", "size_driver", "widget_stretch_axes"]);
 
 /** 判断普通对象。 */
 function isObject(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }

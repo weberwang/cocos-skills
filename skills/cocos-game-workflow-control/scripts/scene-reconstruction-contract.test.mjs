@@ -212,6 +212,30 @@ test("V4 正式组合布局几何必须覆盖全部节点并拒绝 unknown 或�
   assert(evidenceErrors.some((item) => item.includes("缺少 layout diff evidence")));
 });
 
+test("V4组件安全快照在usability下仍覆盖全节点，不能由几何passed代替", () => {
+  const value = effectImageContract();
+  const target = effectImageManifest(value);
+  // 可用性模式仍只测关键几何；组件快照独立覆盖全部业务节点。
+  value.visual_validation = { mode: "usability" };
+  target.visual_validation = { mode: "usability" };
+  value.combination_preacceptance.layout_geometry.node_measurements.pop();
+  const options = { effectImage: true, manifest: target, visual_validation: { mode: "usability" } };
+  assert.deepEqual(validateSceneCombinationPreacceptance(value, "V4", options), []);
+  const snapshots = value.combination_preacceptance.layout_geometry.component_snapshots;
+  const hidden = snapshots.pop();
+  assert(validateSceneCombinationPreacceptance(value, "V4", options).some((message) => message.includes("component_snapshot") && message.includes("缺少节点")));
+  snapshots.push(hidden);
+  snapshots[0].component_snapshot.parent_layout = { enabled: true, type: "HORIZONTAL", resize_mode: "NONE", align_horizontal: false, align_vertical: false };
+  assert(validateSceneCombinationPreacceptance(value, "V4", options).some((message) => message.includes("父 Layout 会重排")));
+});
+
+test("最终场景布局节点不得伪造合成根跳过执行计划", () => {
+  const value = effectImageContract();
+  value.layout_decomposition.layout_nodes[0].is_root_container = true;
+  delete value.layout_decomposition.layout_nodes[0].layout_execution;
+  assert(validateSceneReconstructionContract(value, effectImageManifest(value), { stage: "V2" }).some((message) => /非 root|合成根/.test(message)));
+});
+
 test("场景目标和 fidelity DPR 允许动态有效值并拒绝非法声明", () => {
   for (const dpr of [0.5, 1, 1.25, 1.5, 2]) {
     const target = structuredClone(contract());

@@ -1,3 +1,5 @@
+import { resolveLayoutRootBounds } from "./layout-root-bounds.mjs";
+
 const AXES = Object.freeze(["horizontal", "vertical"]);
 const ALIGNMENT_VALUES = Object.freeze({
   horizontal: new Set(["left", "center", "right"]),
@@ -346,6 +348,9 @@ export function resolveCenteredLayoutNodes(nodes, canvas) {
   const hasStableRoot = [...model.records.values()].some((record) =>
     STABLE_ROOTS.has(record.parentId) || STABLE_ROOTS.has(record.referenceId));
   const canvasBounds = hasStableRoot ? normalizeCanvas(canvas, label) : null;
+  // 全部节点共用一份安全区快照，避免未重复携带快照的节点错误地按整屏居中。
+  const stableRootBounds = hasStableRoot ? resolveLayoutRootBounds(nodes, canvasBounds, label) : null;
+  for (const record of model.records.values()) record.stableRootBounds = stableRootBounds;
   const resolved = new Map();
   const outputById = new Map();
   const output = nodes.map((node) => {
@@ -445,6 +450,7 @@ function unionBounds(boundsList) {
 
 /** 读取稳定根的权威矩形；viewport 用画布，safe-area 优先有效快照。 */
 function readStableRootBounds(record, canvasBounds) {
+  if (record.stableRootBounds?.has(record.referenceId)) return record.stableRootBounds.get(record.referenceId);
   const snapshot = [
     record.node.reference_target_bounds,
     record.parentId === record.referenceId ? record.node.parent_target_bounds : undefined,
@@ -507,6 +513,8 @@ export function validateCenterAlignmentNodes(nodes, errors = [], label = "layout
   if (usesStableRoot && canvas !== undefined) {
     try {
       canvasBounds = normalizeCanvas(canvas, label);
+      const stableRootBounds = resolveLayoutRootBounds(nodes, canvasBounds, label);
+      for (const record of model.records.values()) record.stableRootBounds = stableRootBounds;
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));
     }

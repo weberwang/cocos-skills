@@ -7,6 +7,7 @@ import { checkContractFiles, computeLayoutContractIdentityHash, main, validateCo
 import { validateUiInteractionTree, validateUiLayout } from "../../cocos-game-asset-integration/scripts/ui-layout-organization.mjs";
 
 import { deriveLayoutExecutionPlans } from "./widget-layout.mjs";
+import { attachLayoutRuntimeSnapshots } from "./widget-runtime-test-fixtures.mjs";
 
 const templatePath = resolve(dirname(new URL(import.meta.url).pathname.replace(/^\/(.:)/, "$1")), "../assets/ui-layout-contract-template.yaml");
 const base = JSON.parse(await readFile(templatePath, "utf8"));
@@ -22,6 +23,7 @@ function fidelityContract(status = "verified") {
   document.scene_reconstruction_binding = { target_sha256: targetSha, scene_id: "MainScene", state_id: "default", visual_baseline_version: "ui-v1", reconstruction_contract_version: "1.0.0", layout_contract_sha256: "pending", layout_decomposition_version: "layout-v1", target_viewport: { width: 390, height: 844 } };
   document.layout_nodes = [{ layout_node_id: "hud.title", region_id: "title", coordinate_space: "ui-space", reference_id: "safe-area", parent_layout_node_id: "safe-area", parent_target_bounds: { x: 0, y: 0, width: 390, height: 844 }, relative_position: { left: 115, right: 115, top: 32, bottom: 764 }, axis_alignment: { horizontal: "center", vertical: "top" }, self_anchor: "top-center", reference_anchor: "top-center", offset: { x: 0, y: 32 }, target_bounds: { x: 115, y: 32, width: 160, height: 48 }, ui_layout: { grouping_basis: ["POSITION"], layout_owner: "SELF", size_policy: "FIXED", overflow_policy: "KEEP_VISIBLE", safe_area_policy: "INSIDE_SAFE_AREA", interaction_policy: "NONE" }, size_policy: "fixed-at-target", z_order: 10, clip_policy: "none", responsive_rule: "preserve-center-and-top-gap", planned_test_id: "tests/layout/title-center" }];
   document.layout_nodes = deriveLayoutExecutionPlans(document.layout_nodes);
+  document.component_snapshots = attachLayoutRuntimeSnapshots(document.layout_nodes, document.layout_nodes.map((node) => ({ layout_node_id: node.layout_node_id })));
   document.layout_annotation = { layout_annotation_file: "evidence/layout-annotation.png", layout_annotation_sha256: targetSha, layout_annotation_width: 390, layout_annotation_height: 844, layout_annotation_schema: "layout-annotation/png/1", layout_annotation_layout: "image-plus-right-panel", layout_annotation_metadata_sha256: targetSha, layout_annotation_identity_sha256: targetSha, layout_review_file: "evidence/layout-review.html", layout_review_sha256: targetSha, layout_review_identity_sha256: targetSha, layout_nodes_file: "evidence/layout-nodes.json", layout_nodes_sha256: targetSha, decomposition_confirmation_id: "v2-confirmation", decomposition_confirmation_sha256: targetSha, proposal_sha256: targetSha, layout_decision_file: "evidence/automatic-layout-decision.json", layout_decision_sha256: targetSha, layout_decision_id: "layout-decision-1", target_sha256: targetSha, scene_id: "MainScene", state_id: "default", layout_node_ids: ["hud.title"] };
   document.scene_reconstruction_binding.layout_contract_sha256 = computeLayoutContractIdentityHash(document);
   document.critical_alignments = [{ id: "title-center", layout_node_id: "hud.title", element_id: "title", reference_id: "safe-area", horizontal: { type: "center-aligned", element_anchor: "center", reference_anchor: "center" }, vertical: { type: "top-offset", element_anchor: "top", reference_anchor: "top" }, target_measurement: { x: 115, y: 32, width: 160, height: 48 }, planned_test_id: "tests/layout/title-center", target_evidence: ["evidence/target-title.png"], target_sha256: targetSha, candidate_sha256: candidateSha, tolerance: { unit: "logical-px", value: 2 } }];
@@ -112,6 +114,22 @@ test("最终效果图合同必须保留可复算的布局执行计划", () => {
   changed.layout_nodes[0].layout_execution.position_driver = "WIDGET";
   changed.scene_reconstruction_binding.layout_contract_sha256 = computeLayoutContractIdentityHash(changed);
   assertFailed(changed, "layout_execution 与节点事实派生结果不一致");
+});
+
+test("verified布局合同必须核对运行时组件，specified不要求提前采集", () => {
+  const specified = fidelityContract("specified");
+  delete specified.component_snapshots;
+  assert.equal(validateContract(specified).status, "passed");
+  const verified = fidelityContract();
+  delete verified.component_snapshots;
+  assertFailed(verified, "component_snapshots 必须是组件快照数组");
+  const conflicting = fidelityContract();
+  conflicting.component_snapshots[0].component_snapshot.parent_layout = { enabled: true, type: "VERTICAL", resize_mode: "CHILDREN", align_horizontal: false, align_vertical: false };
+  assertFailed(conflicting, "父 Layout 会重排");
+  const offCenter = fidelityContract();
+  offCenter.visual_validation = { mode: "usability" };
+  offCenter.component_snapshots[0].component_snapshot.layout_bounds.x += 1;
+  assertFailed(offCenter, "必须严格居中");
 });
 
 test("节点职责要求合法枚举、非根分组依据和空容器职责", () => {

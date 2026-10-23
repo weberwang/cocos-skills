@@ -248,7 +248,7 @@ test("validator优先使用安全区快照，viewport仍使用canvas", () => {
     alignment: { horizontal: "center", vertical: "center" },
     extra: { reference_target_bounds: { x: 20, y: 30, width: 40, height: 20 } },
   });
-  assert.deepEqual(validateCenterAlignmentNodes([viewportNode], [], "layout_nodes", canvas), []);
+  assert(validateCenterAlignmentNodes([viewportNode], [], "layout_nodes", canvas).some((message) => message.includes("viewport 根快照必须逐字段一致")));
 });
 
 test("validator检查跨虚拟组依赖单元形成的联合循环", () => {

@@ -428,6 +428,21 @@ test("V4 必须记录全部布局节点的逐节点几何差异和证据", () =>
   assert(validateManifest(forgedDelta).some((item) => item.includes("delta 必须由 candidate_bounds 减 target_bounds")), "伪造布局 delta 必须失败");
 });
 
+test("V4资源清单校验实际组件快照，拒绝遗漏与Layout改写RAW尺寸", () => {
+  const missing = validManifest();
+  delete missing.scene_reconstruction_contract.combination_preacceptance.layout_geometry.component_snapshots;
+  assert(validateManifest(missing, STRUCTURAL_FILE_GATE_OPTIONS).some((message) => message.includes("component_snapshots 必须是组件快照数组")));
+  const changed = validManifest();
+  const snapshots = changed.scene_reconstruction_contract.combination_preacceptance.layout_geometry.component_snapshots;
+  const raw = snapshots.find((item) => item.component_snapshot.sprite?.size_mode === "RAW");
+  assert(raw, "夹具必须包含普通 RAW 图片");
+  raw.component_snapshot.parent_layout = { enabled: true, type: "HORIZONTAL", resize_mode: "CHILDREN", align_horizontal: false, align_vertical: false };
+  assert(validateManifest(changed, STRUCTURAL_FILE_GATE_OPTIONS).some((message) => message.includes("普通 RAW 图片不得由父 Layout.CHILDREN")));
+  raw.component_snapshot.parent_layout = null;
+  raw.component_snapshot.ui_transform.width += 1;
+  assert(validateManifest(changed, STRUCTURAL_FILE_GATE_OPTIONS).some((message) => message.includes("UITransform 尺寸必须保持 SpriteFrame 原始 contentSize")));
+});
+
 
 test("产品体积预算非必需且最新初始化模板不生成该字段", () => {
   const manifest = validManifest(); assert(!Object.hasOwn(manifest.budgets, "package_size_mb")); assert.deepEqual(validateManifest(manifest, STRUCTURAL_FILE_GATE_OPTIONS), []); const template = JSON.parse(OPTIONAL_TEMPLATES.assets["visual-assets.json"]); assert.equal(template.schema_version, "1.5"); assert(!Object.hasOwn(template.budgets, "package_size_mb"));
